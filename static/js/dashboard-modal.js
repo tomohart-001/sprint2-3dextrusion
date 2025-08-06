@@ -58,6 +58,7 @@ class DashboardModalManager extends BaseManager {
         const form = document.getElementById('addProjectForm');
 
         if (modal) {
+            modal.classList.add('show');
             modal.style.display = 'flex';
 
             setTimeout(() => {
@@ -78,6 +79,7 @@ class DashboardModalManager extends BaseManager {
         this.info('Closing Add Project modal');
         const modal = document.getElementById('addProjectModal');
         if (modal) {
+            modal.classList.remove('show');
             modal.style.display = 'none';
 
             if (this.projectSetupMap) {
