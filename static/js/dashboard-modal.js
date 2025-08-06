@@ -60,6 +60,8 @@ class DashboardModalManager extends BaseManager {
         if (modal) {
             modal.classList.add('show');
             modal.style.display = 'flex';
+            modal.style.justifyContent = 'center';
+            modal.style.alignItems = 'center';
 
             setTimeout(() => {
                 this.initializeProjectSetupMap();
@@ -81,6 +83,8 @@ class DashboardModalManager extends BaseManager {
         if (modal) {
             modal.classList.remove('show');
             modal.style.display = 'none';
+            modal.style.justifyContent = '';
+            modal.style.alignItems = '';
 
             if (this.projectSetupMap) {
                 const existingMarkers = document.querySelectorAll('.project-setup-marker');
