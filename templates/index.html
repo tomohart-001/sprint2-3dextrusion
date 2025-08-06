@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EngineRoom</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='ER Logo_1749447115584.png') }}">
+
+    <!-- CSS Architecture -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/header.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/user-dropdown.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/hero.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/features.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/blueprints.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/footer.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/modal.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="bg-gradient"></div>
+
+        <!-- Header Component -->
+        {% include 'components/header.html' %}
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Hero Section Component -->
+            {% include 'components/hero_section.html' %}
+
+            <!-- Features Grid Component -->
+            {% include 'components/features_grid.html' %}
+
+            <!-- Popular Project Blueprints Section -->
+            {% include 'components/blueprints_section.html' %}
+        </main>
+
+        <!-- Footer Component -->
+        {% include 'components/footer.html' %}
+
+        <!-- Signup Modal Component -->
+        {% if not user %}
+            {% include 'components/signup_modal.html' %}
+        {% endif %}
+    </div>
+
+    <script src="{{ url_for('static', filename='js/components/dropdown.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/components/modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+[project]
+name = "engineroom"
+version = "0.1.0"
+description = "Engineering design and analysis platform with AI agents"
+authors = [
+    {name = "EngineRoom Team", email = "team@engineroom.dev"}
+]
+readme = "README.md"
+license = {text = "MIT"}
+keywords = ["engineering", "structural", "design", "ai", "agents"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "agents>=1.4.0",
+    "authlib>=1.6.0",
+    "bcrypt>=4.3.0",
+    "flask>=3.1.1",
+    "openai>=1.84.0",
+    "openai-agents==0.0.13",
+    "opencv-python>=4.11.0.86",
+    "pillow>=11.2.1",
+    "plotly>=6.2.0",
+    "psycopg2-binary>=2.9.10",
+    "pydantic>=2.11.5",
+    "pyproj>=3.7.1",
+    "pytz>=2025.2",
+    "rasterio>=1.4.3",
+    "requests>=2.32.3",
+    "scipy>=1.16.0",
+    "shapely>=2.1.1",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.urls]
+Homepage = "https://github.com/engineroom/engineroom"
+Documentation = "https://docs.engineroom.dev"
+Repository = "https://github.com/engineroom/engineroom"
+Issues = "https://github.com/engineroom/engineroom/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
+exclude = ["tests*", "core*", "routes*", "services*", "utils*", "static*", "templates*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.html", "*.css", "*.js", "*.png", "*.jpg", "*.svg"]

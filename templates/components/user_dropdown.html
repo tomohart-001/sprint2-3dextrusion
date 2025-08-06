@@ -1,0 +1,38 @@
+
+<div class="user-dropdown">
+    <button 
+        class="dropdown-toggle" 
+        id="userDropdownToggle"
+        aria-expanded="false"
+        aria-haspopup="true"
+        aria-label="User menu for {{ user.username }}"
+    >
+        <div class="user-avatar">
+            {% if user.profile_picture %}
+                <img src="{{ user.profile_picture }}" alt="Profile Picture" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+            {% else %}
+                {{ user.username[0].upper() }}
+            {% endif %}
+        </div>
+        <span>{{ user.username }}</span>
+        <span class="dropdown-arrow" aria-hidden="true">▼</span>
+    </button>
+    <nav 
+        class="dropdown-menu" 
+        id="userDropdownMenu"
+        role="menu"
+        aria-labelledby="userDropdownToggle"
+    >
+        <a href="/dashboard" class="dropdown-item" role="menuitem">
+            <span>Dashboard</span>
+        </a>
+        <a href="/dashboard-settings" class="dropdown-item" role="menuitem">
+            <span>Settings</span>
+        </a>
+        <form action="/logout" method="POST" style="display: contents;">
+            <button type="submit" class="dropdown-item logout" role="menuitem">
+                <span>Logout</span>
+            </button>
+        </form>
+    </nav>
+</div>

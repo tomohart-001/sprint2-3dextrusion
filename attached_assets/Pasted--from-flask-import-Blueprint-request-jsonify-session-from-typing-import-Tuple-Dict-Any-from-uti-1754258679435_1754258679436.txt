@@ -1,0 +1,127 @@
+
+from flask import Blueprint, request, jsonify, session
+from typing import Tuple, Dict, Any
+from utils.logger import app_logger
+from services.chat_service import ChatService
+
+adam_chat_routes = Blueprint('adam_chat_routes', __name__)
+
+# Initialize chat service
+chat_service = ChatService(enable_streaming=True)
+
+@adam_chat_routes.route('/api/chat', methods=['POST'])
+def handle_adam_chat() -> Tuple[Dict[str, Any], int]:
+    """Handle ADAM chat messages in structure designer"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+
+        user_message = data.get('message', '').strip()
+        conversation_id = data.get('conversation_id')
+        
+        if not user_message:
+            return jsonify({'success': False, 'error': 'Message cannot be empty'}), 400
+
+        # Use session ID for ADAM conversations
+        session_id = conversation_id or session.get('session_id', 'adam_default_session')
+        
+        app_logger.info(f"Processing ADAM chat message: {user_message[:50]}...")
+
+        # Process message through chat service
+        response_text, message_id = chat_service.process_message(
+            user_message=user_message,
+            session_id=session_id,
+            conversation_id=conversation_id
+        )
+
+        app_logger.info(f"ADAM response generated: {len(response_text)} characters")
+
+        return jsonify({
+            'success': True,
+            'response': response_text,
+            'message_id': message_id,
+            'session_id': session_id
+        }), 200
+
+    except Exception as e:
+        app_logger.error(f"ADAM chat error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to process message'
+        }), 500
+
+@adam_chat_routes.route('/api/chat/stream', methods=['POST'])
+def handle_adam_chat_stream():
+    """Handle streaming ADAM chat responses"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        user_message = data.get('message', '').strip()
+        conversation_id = data.get('conversation_id')
+        
+        if not user_message:
+            return jsonify({'error': 'Message cannot be empty'}), 400
+
+        session_id = conversation_id or session.get('session_id', 'adam_default_session')
+        
+        # Process message and get response
+        response_text, message_id = chat_service.process_message(
+            user_message=user_message,
+            session_id=session_id,
+            conversation_id=conversation_id
+        )
+
+        # Return streaming generator
+        def generate_stream():
+            yield from chat_service.generate_streaming_response(response_text, message_id)
+
+        from flask import Response
+        return Response(
+            generate_stream(),
+            mimetype='text/plain',
+            headers={
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'X-Accel-Buffering': 'no'
+            }
+        )
+
+    except Exception as e:
+        app_logger.error(f"ADAM streaming chat error: {e}")
+        return jsonify({'error': 'Failed to process streaming message'}), 500
+
+@adam_chat_routes.route('/api/chat/history/<conversation_id>', methods=['GET'])
+def get_adam_chat_history(conversation_id: str) -> Tuple[Dict[str, Any], int]:
+    """Get chat history for ADAM conversation"""
+    try:
+        from database import get_conversation_history
+        
+        history = get_conversation_history(conversation_id)
+        
+        return jsonify({
+            'success': True,
+            'history': history
+        }), 200
+
+    except Exception as e:
+        app_logger.error(f"Error getting ADAM chat history: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to retrieve chat history'
+        }), 500
+
+class AdamChatRoutes:
+    """ADAM Chat Routes class for route registration"""
+    
+    def __init__(self):
+        self.blueprint = adam_chat_routes
+    
+    def register_routes(self, app):
+        """Register ADAM chat routes with the Flask app"""
+        app.register_blueprint(self.blueprint)
+
+# Export route handler for registration
+adam_chat_route_handler = adam_chat_routes

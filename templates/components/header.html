@@ -1,0 +1,21 @@
+
+<header class="header" role="banner">
+    <div class="header-content">
+        <div class="nav-left">
+            <a href="{{ url_for('index') }}" class="logo" aria-label="EngineRoom Home">
+                <span class="engine">Engine</span><span class="room">Room</span>
+            </a>
+            <nav class="nav-links" role="navigation" aria-label="Main navigation">
+                <a href="/blueprints" class="nav-item">Project Blueprints</a>
+                <a href="/toolshop" class="nav-item">Tool Shop</a>
+            </nav>
+        </div>
+        <div class="nav-right">
+            {% if user %}
+                {% include 'components/user_dropdown.html' %}
+            {% else %}
+                <a href="/login" class="auth-btn signup-btn">Start Building</a>
+            {% endif %}
+        </div>
+    </div>
+</header>

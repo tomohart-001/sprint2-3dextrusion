@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FormLab - EngineRoom</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/adam-chat-widget.css') }}">
+
+    <!-- Plotly.js for 3D terrain visualization -->
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+
+    <!-- Core JavaScript -->
+    <script src="{{ url_for('static', filename='js/core.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/adam-chat-widget.js') }}"></script>
+
+    <!-- Site Developer Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/site-developer.css') }}">
+</head>
+<body>
+    <!-- Site Header -->
+    <div class="site-header">
+        <div class="header-left">
+            <a href="/project/{{ project_data.get('id', project_id) if project_data else project_id }}" class="header-back-btn">
+                ← Project Overview
+            </a>
+            <div class="header-title-section">
+                <h1 class="header-title">FormLab</h1>
+                <p class="header-subtitle">AI-Powered Site Development Assistant</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <a href="/structure-designer?project_id={{ project_data.get('id', project_id) if project_data else project_id }}" class="header-cta-btn">Structure Designer →</a>
+        </div>
+    </div>
+
+    <!-- Engineering Flow Progress -->
+    <div class="engineering-flow-progress">
+        <div class="flow-container">
+            <!-- Project Information -->
+            <div class="project-info-section">
+                {% if project_data and project_data.name %}
+                <div class="project-name">{{ project_data.name }}</div>
+                {% endif %}
+                {% if project_data and project_data.address %}
+                <div class="project-address">{{ project_data.address }}</div>
+                {% endif %}
+            </div>
+
+            <div class="flow-steps-container">
+                <div class="flow-step completed clickable" onclick="navigateToStep(1)">
+                    <div class="step-indicator">
+                        <div class="step-number">1</div>
+                        <div class="step-check">✓</div>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-title">Site Inspector</div>
+                        <div class="step-subtitle">Define site boundaries</div>
+                    </div>
+                </div>
+
+                <div class="flow-connector"></div>
+
+                <div class="flow-step completed clickable" onclick="navigateToStep(2)">
+                    <div class="step-indicator">
+                        <div class="step-number">2</div>
+                        <div class="step-check">✓</div>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-title">Terrain Analysis</div>
+                        <div class="step-subtitle">Analyse site topography</div>
+                    </div>
+                </div>
+
+                <div class="flow-connector"></div>
+
+                <div class="flow-step active">
+                    <div class="step-indicator">
+                        <div class="step-number">3</div>
+                        <div class="step-check">✓</div>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-title">FormLab</div>
+                        <div class="step-subtitle">AI development assistant</div>
+                    </div>
+                </div>
+
+                <div class="flow-connector"></div>
+
+                <div class="flow-step clickable" onclick="navigateToStep(4)">
+                    <div class="step-indicator">
+                        <div class="step-number">4</div>
+                        <div class="step-check">✓</div>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-title">Structure Designer</div>
+                        <div class="step-subtitle">Design your building</div>
+                    </div>
+                </div>
+
+                <div class="flow-connector"></div>
+
+                <div class="flow-step clickable" onclick="navigateToStep(5)">
+                    <div class="step-indicator">
+                        <div class="step-number">5</div>
+                        <div class="step-check">✓</div>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-title">Structure Analyser</div>
+                        <div class="step-subtitle">Validate structural integrity</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Split Screen Container -->
+    <div class="split-container">
+        <!-- ADAM Chat Panel (Left) -->
+        <div class="adam-panel">
+            <div class="adam-panel-header">
+                <h1 class="adam-welcome">Hello! I'm ADAM</h1>
+                <p class="adam-subtitle">Your AI Development Assistant. Describe what you want to build on your site.</p>
+            </div>
+
+            <div class="adam-chat-container">
+                <div class="adam-conversation" id="adamConversation">
+                    <!-- Initial messages will be added by JavaScript -->
+                </div>
+
+                <div class="adam-input-area">
+                    <div class="adam-input-container">
+                        <textarea id="adamChatInput" class="adam-chat-input" placeholder="Ask me about your site development..." rows="1"></textarea>
+                        <button id="adamSendBtn" class="adam-send-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualizer Panel (Right) -->
+        <div class="visualizer-panel">
+            <div class="visualizer-header">
+                <div>
+                    <h2 class="visualizer-title">Site Visualisation</h2>
+                </div>
+                <div class="visualizer-controls">
+                    <button class="visualizer-btn active" id="view3DBtn">3D View</button>
+                    <button class="visualizer-btn" id="viewTopBtn">Top View</button>
+                    <button class="visualizer-btn" id="viewResetBtn">Reset View</button>
+                </div>
+            </div>
+
+            <div id="visualizerCanvas" style="position: relative;">
+                <div class="loading-overlay" id="loadingOverlay">
+                    <div class="loading-spinner"></div>
+                    <p>Loading site visualization...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Site Developer Core JavaScript -->
+    <script src="{{ url_for('static', filename='js/site-developer-drawing.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/site-developer-core.js') }}"></script>
+
+    <script>
+        // Initialize global variables with template data
+        window.siteData = {{ site_data_json|safe if site_data_json else '{}' }};
+        window.terrainData = {{ terrain_data_json|safe if terrain_data_json else '{}' }};
+        window.projectId = {% if project_id %}'{{ project_id }}'{% else %}null{% endif %};
+
+        // Initialize Site Developer when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof SiteDeveloperCore !== 'undefined') {
+                window.siteDeveloper = new SiteDeveloperCore();
+                window.siteDeveloper.initialize();
+            } else {
+                console.error('SiteDeveloperCore not loaded');
+            }
+        });
+    </script>
+</body>
+</html>
