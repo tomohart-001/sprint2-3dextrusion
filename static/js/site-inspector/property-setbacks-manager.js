@@ -15,6 +15,7 @@ class PropertySetbacksManager extends BaseManager {
         this.currentBuildableArea = null;
         this.edgeLabels = {};
         this.edgePopups = []; // Initialize the edge popups array
+        this.cachedPolygonEdges = null;
     }
 
     async initialize() {
@@ -298,31 +299,54 @@ class PropertySetbacksManager extends BaseManager {
             if (overlay) overlay.classList.add('show');
         } else {
             // Enter edge selection mode
-            if (!this.polygonEdges || this.polygonEdges.length === 0) {
-                this.warn('No polygon edges available for selection');
-
-                // Try to get edges from boundary manager
-                const boundaryManager = window.siteInspectorCore?.siteBoundaryManager;
-                if (boundaryManager && boundaryManager.getPolygonEdges) {
-                    const edges = boundaryManager.getPolygonEdges();
-                    if (edges && edges.length > 0) {
-                        this.polygonEdges = edges;
-                        this.info('Retrieved edges from boundary manager:', edges.length);
-                    } else {
-                        alert('Please draw a site boundary first before selecting edges.');
-                        return;
-                    }
-                } else {
-                    alert('Please draw a site boundary first before selecting edges.');
-                    return;
-                }
-            }
-
+            this.startEdgeSelection();
             this.enterEdgeSelectionMode();
             button.textContent = 'Exit Edge Selection';
             button.classList.add('active');
             if (overlay) overlay.classList.add('show');
         }
+    }
+
+    startEdgeSelection() {
+        // Get polygon edges from the site boundary
+        const siteBoundaryCore = window.siteInspectorCore?.siteBoundaryCore;
+        if (!siteBoundaryCore) {
+            this.error('Site boundary core not available');
+            this.showError('Site boundary system not available. Please refresh the page.');
+            return;
+        }
+
+        // Check if site boundary exists first
+        if (!siteBoundaryCore.hasSiteBoundary()) {
+            this.warn('No site boundary available');
+            this.showError('Please draw a site boundary first before selecting edges.');
+            return;
+        }
+
+        let polygonEdges = siteBoundaryCore.getPolygonEdges();
+
+        // If no edges from site boundary core, try cached edges
+        if (!polygonEdges || polygonEdges.length === 0) {
+            polygonEdges = this.cachedPolygonEdges;
+        }
+
+        // If still no edges, try to calculate them from the site polygon
+        if (!polygonEdges || polygonEdges.length === 0) {
+            this.info('No cached polygon edges, calculating from site polygon...');
+            const sitePolygon = siteBoundaryCore.getSitePolygon();
+            if (sitePolygon && sitePolygon.geometry && sitePolygon.geometry.coordinates) {
+                polygonEdges = this.calculatePolygonEdges(sitePolygon.geometry.coordinates[0]);
+                // Cache the calculated edges
+                this.cachedPolygonEdges = polygonEdges;
+            }
+        }
+
+        if (!polygonEdges || polygonEdges.length === 0) {
+            this.warn('No polygon edges available for selection');
+            this.showError('Unable to detect site boundary edges. Please redraw the site boundary.');
+            return;
+        }
+        this.polygonEdges = polygonEdges; // Assign to the class property
     }
 
     enterEdgeSelectionMode() {
@@ -561,20 +585,20 @@ class PropertySetbacksManager extends BaseManager {
     clearAllSetbackData() {
         try {
             this.info('Starting comprehensive setback data clearing...');
-            
+
             // Clear setback visualization first
             this.clearSetbackVisualization();
-            
+
             // Clear all edge selections and UI state
             this.clearEdgeSelections();
-            
+
             // Clear buildable area visualization completely
             this.clearBuildableAreaVisualization();
-            
+
             // Clear all edge highlights and labels completely
             this.clearEdgeHighlights();
             this.hideEdgeSelectionLabels();
-            
+
             // Clear any remaining setback warnings
             ['frontSetback', 'backSetback', 'sideSetback', 'heightLimit'].forEach(inputId => {
                 const warningElement = document.getElementById(inputId + 'Warning');
@@ -582,27 +606,27 @@ class PropertySetbacksManager extends BaseManager {
                     warningElement.style.display = 'none';
                 }
             });
-            
+
             // Reset all internal state
             this.polygonEdges = [];
             this.selectedEdges = { front: null, back: null };
             this.currentBuildableArea = null;
             this.setbackOverlays = [];
-            
+
             // Force exit any active modes
             if (this.isEdgeSelectionMode) {
                 this.exitEdgeSelectionMode();
             }
-            
+
             // Hide all related UI elements
             this.hideExtrusionControls();
-            
+
             // Reset UI panel state  
             if (window.siteInspectorCore?.uiPanelManager) {
                 window.siteInspectorCore.uiPanelManager.hideExtrusionControls();
                 window.siteInspectorCore.uiPanelManager.hideAllDependentPanels();
             }
-            
+
             this.info('All setback data cleared comprehensively');
         } catch (error) {
             this.error('Error clearing all setback data:', error);
@@ -614,7 +638,7 @@ class PropertySetbacksManager extends BaseManager {
             // Remove ALL possible buildable area and related layers
             const layersToRemove = [
                 'buildable-area-fill', 
-                'buildable-area-stroke', 
+                'buildable-area-stroke',
                 'buildable-area-dimension-labels',
                 'buildable-area-dimensions',
                 'buildable-dimension-labels',
@@ -1396,7 +1420,7 @@ class PropertySetbacksManager extends BaseManager {
                        this.selectedEdges.back &&
                        this.selectedEdges.front.index !== undefined &&
                        this.selectedEdges.back.index !== undefined;
-        
+
         if (!hasBoth) {
             this.warn('hasSelectedEdges validation failed:', {
                 selectedEdges: this.selectedEdges,
@@ -1406,7 +1430,7 @@ class PropertySetbacksManager extends BaseManager {
                 backIndex: this.selectedEdges?.back?.index
             });
         }
-        
+
         return hasBoth;
     }
 
@@ -1718,6 +1742,71 @@ class PropertySetbacksManager extends BaseManager {
         if (setbackInputsContainer) {
             setbackInputsContainer.style.display = 'block';
         }
+    }
+
+    // Utility methods
+    isValidCoordinate(coord) {
+        return coord && coord.length >= 2 && 
+               typeof coord[0] === 'number' && 
+               typeof coord[1] === 'number' &&
+               !isNaN(coord[0]) && !isNaN(coord[1]);
+    }
+
+    calculatePolygonEdges(coordinates) {
+        const edges = [];
+        if (!coordinates || coordinates.length < 3) return edges;
+
+        try {
+            // Normalize coordinates (remove duplicate closing point if present)
+            let coords = coordinates;
+            if (coords.length > 3 && 
+                coords[0][0] === coords[coords.length - 1][0] && 
+                coords[0][1] === coords[coords.length - 1][1]) {
+                coords = coords.slice(0, -1);
+            }
+
+            for (let i = 0; i < coords.length; i++) {
+                const start = coords[i];
+                const end = coords[(i + 1) % coords.length];
+
+                if (this.isValidCoordinate(start) && this.isValidCoordinate(end)) {
+                    edges.push({
+                        index: i,
+                        start: start,
+                        end: end,
+                        midpoint: [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2]
+                    });
+                }
+            }
+
+            this.info(`Calculated ${edges.length} polygon edges from coordinates`);
+            return edges;
+        } catch (error) {
+            this.error('Error calculating polygon edges:', error);
+            return [];
+        }
+    }
+
+    setupSiteBoundaryEventListeners() {
+        // Listen for site boundary creation and updates
+        window.eventBus.on('site-boundary-created', (data) => {
+            this.info('Site boundary created - updating polygon edges cache');
+            if (data.edges) {
+                this.cachedPolygonEdges = data.edges;
+            }
+        });
+
+        window.eventBus.on('site-boundary-loaded', (data) => {
+            this.info('Site boundary loaded - updating polygon edges cache');
+            if (data.edges) {
+                this.cachedPolygonEdges = data.edges;
+            }
+        });
+
+        window.eventBus.on('site-boundary-deleted', () => {
+            this.info('Site boundary deleted - clearing polygon edges cache');
+            this.cachedPolygonEdges = null;
+        });
     }
 }
 
