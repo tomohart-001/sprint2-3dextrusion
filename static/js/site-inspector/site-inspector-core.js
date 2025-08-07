@@ -101,9 +101,18 @@ class SiteInspectorCore extends BaseManager {
     async loadProjectAddress() {
         try {
             const urlParams = new URLSearchParams(window.location.search);
-            let projectId = urlParams.get('project_id') || urlParams.get('project') || 
-                           sessionStorage.getItem('project_id') ||
-                           sessionStorage.getItem('current_project_id');
+            let projectId = urlParams.get('project_id') || urlParams.get('project');
+            
+            // Clean up malformed project IDs (remove any extra query parameters)
+            if (projectId && projectId.includes('?')) {
+                projectId = projectId.split('?')[0];
+                this.info('Cleaned malformed project ID from URL:', projectId);
+            }
+            
+            // Also check session storage
+            if (!projectId) {
+                projectId = sessionStorage.getItem('project_id') || sessionStorage.getItem('current_project_id');
+            }
 
             // Also check for current project data in session storage
             const currentProjectAddress = sessionStorage.getItem('current_project_address');
@@ -116,7 +125,7 @@ class SiteInspectorCore extends BaseManager {
             }
 
             // If we have the address already in session, use it directly
-            if (currentProjectAddress && currentProjectAddress !== 'undefined') {
+            if (currentProjectAddress && currentProjectAddress !== 'undefined' && currentProjectAddress.trim() !== '') {
                 this.info('✅ Using current project address from session:', currentProjectAddress);
                 this.siteData.project_address = currentProjectAddress;
                 return await this.geocodeProjectAddress(currentProjectAddress);
@@ -129,6 +138,7 @@ class SiteInspectorCore extends BaseManager {
             }
 
             projectId = String(projectId).trim();
+            this.info('Loading project address for project ID:', projectId);
 
             // Try to get project address directly first
             try {
@@ -136,34 +146,51 @@ class SiteInspectorCore extends BaseManager {
 
                 if (response.ok) {
                     const data = await response.json();
-                    if (data.success && data.site_address) {
+                    if (data.success && data.site_address && data.site_address.trim() !== '') {
                         this.siteData.project_address = data.site_address;
-                        this.info('✅ Project address loaded:', data.site_address);
+                        this.info('✅ Project address loaded from API:', data.site_address);
+
+                        // Store in session for future use
+                        sessionStorage.setItem('current_project_address', data.site_address);
+                        sessionStorage.setItem('current_project_id', projectId);
 
                         if (data.location && data.location.lat && data.location.lng) {
                             this.siteData.center = {
                                 lat: parseFloat(data.location.lat),
                                 lng: parseFloat(data.location.lng)
                             };
-                            this.info('✅ Project coordinates available:', this.siteData.center);
+                            this.info('✅ Project coordinates available from API:', this.siteData.center);
                             return true;
                         } else {
                             // Geocode the address
+                            this.info('🌍 Geocoding project address from API:', data.site_address);
                             return await this.geocodeProjectAddress(data.site_address);
                         }
+                    } else {
+                        this.warn('No valid site address in API response:', data);
                     }
+                } else {
+                    this.warn('Failed to fetch project address, status:', response.status);
                 }
             } catch (error) {
                 this.warn('Failed to fetch project address directly:', error.message);
             }
 
             // If project data is available in template, use it
-            if (window.projectData && window.projectData.address) {
+            if (window.projectData && window.projectData.address && window.projectData.address.trim() !== '') {
                 this.siteData.project_address = window.projectData.address;
                 this.info('✅ Using project address from template:', window.projectData.address);
+                
+                // Store in session for future use
+                sessionStorage.setItem('current_project_address', window.projectData.address);
+                if (projectId) {
+                    sessionStorage.setItem('current_project_id', projectId);
+                }
+                
                 return await this.geocodeProjectAddress(window.projectData.address);
             }
 
+            this.warn('No project address found from any source');
             return false;
         } catch (error) {
             this.error('Error loading project address:', error);
@@ -319,23 +346,7 @@ class SiteInspectorCore extends BaseManager {
                 this.info('✅ Using project location for map center:', center, 'for address:', this.siteData.project_address);
             } else {
                 this.warn('⚠️ No project coordinates available, using Wellington fallback:', center);
-
-                // Try one more time to get project address if we have project data
-                if (window.projectData && window.projectData.address && !this.siteData.project_address) {
-                    this.info('📍 Attempting to geocode project address from template data...');
-                    // This will happen after map loads
-                    setTimeout(async () => {
-                        const geocoded = await this.geocodeProjectAddress(window.projectData.address);
-                        if (geocoded && this.siteData.center) {
-                            this.map.flyTo({
-                                center: [this.siteData.center.lng, this.siteData.center.lat],
-                                zoom: 17,
-                                essential: true
-                            });
-                            this.info('✅ Map recentered to project location after geocoding');
-                        }
-                    }, 1000);
-                }
+                this.info('Will attempt to geocode project address after map loads...');
             }
 
             // Initialize map with timeout and better error handling
@@ -358,11 +369,26 @@ class SiteInspectorCore extends BaseManager {
                     reject(new Error('Map loading timeout'));
                 }, 15000);
 
-                this.map.on('load', () => {
+                this.map.on('load', async () => {
                     clearTimeout(timeout);
                     this.setupMapControls();
                     this.setup3DTerrain();
                     this.info('Map loaded successfully');
+                    
+                    // If we don't have coordinates yet, try to geocode the project address
+                    if (!this.siteData.center && this.siteData.project_address) {
+                        this.info('📍 Attempting to geocode project address after map load:', this.siteData.project_address);
+                        const geocoded = await this.geocodeProjectAddress(this.siteData.project_address);
+                        if (geocoded && this.siteData.center) {
+                            this.map.flyTo({
+                                center: [this.siteData.center.lng, this.siteData.center.lat],
+                                zoom: 17,
+                                essential: true
+                            });
+                            this.info('✅ Map recentered to project location after geocoding');
+                        }
+                    }
+                    
                     resolve();
                 });
 
