@@ -1,3 +1,4 @@
+
 """
 Earthworks Service - Handles cut/fill calculations for building platforms
 """
@@ -12,7 +13,6 @@ try:
     from pyproj import Transformer
     import rasterio
     from scipy import interpolate
-    import logging
     GEOSPATIAL_AVAILABLE = True
 except ImportError:
     GEOSPATIAL_AVAILABLE = False
@@ -30,80 +30,6 @@ class EarthworksService(BaseService):
         else:
             self.logger.warning("Earthworks service unavailable - missing geospatial dependencies")
 
-    def define_platform(self, length, width, rotation=0, center_x=None, center_y=None, terrain_data=None):
-        """
-        Define a platform with specified dimensions and rotation
-
-        Args:
-            length (float): Platform length in meters
-            width (float): Platform width in meters
-            rotation (float): Platform rotation in degrees (default: 0)
-            center_x (float): Center X coordinate (optional, uses terrain center if not provided)
-            center_y (float): Center Y coordinate (optional, uses terrain center if not provided)
-            terrain_data (dict): Terrain data for centering (optional)
-
-        Returns:
-            dict: Platform definition with coordinates
-        """
-        import math
-
-        # Use terrain center if center coordinates not provided
-        if center_x is None or center_y is None:
-            if terrain_data and 'x_coords' in terrain_data and 'y_coords' in terrain_data:
-                x_coords = terrain_data['x_coords']
-                y_coords = terrain_data['y_coords']
-                center_x = (max(x_coords) + min(x_coords)) / 2 if center_x is None else center_x
-                center_y = (max(y_coords) + min(y_coords)) / 2 if center_y is None else center_y
-            else:
-                # Default center
-                center_x = 25.0 if center_x is None else center_x
-                center_y = 41.0 if center_y is None else center_y
-
-        # Convert rotation to radians
-        rotation_rad = math.radians(rotation)
-        cos_r = math.cos(rotation_rad)
-        sin_r = math.sin(rotation_rad)
-
-        # Calculate half dimensions
-        half_length = length / 2
-        half_width = width / 2
-
-        # Define corners before rotation (relative to center)
-        corners = [
-            (-half_length, -half_width),  # Bottom-left
-            (half_length, -half_width),   # Bottom-right
-            (half_length, half_width),    # Top-right
-            (-half_length, half_width)    # Top-left
-        ]
-
-        # Apply rotation and translation
-        platform_coords = []
-        for x, y in corners:
-            # Rotate
-            rotated_x = x * cos_r - y * sin_r
-            rotated_y = x * sin_r + y * cos_r
-
-            # Translate to center position
-            final_x = rotated_x + center_x
-            final_y = rotated_y + center_y
-
-            platform_coords.append({'x': final_x, 'y': final_y})
-
-        platform_definition = {
-            'coordinates': platform_coords,
-            'length': length,
-            'width': width,
-            'rotation': rotation,
-            'center_x': center_x,
-            'center_y': center_y,
-            'area': length * width
-        }
-
-        self.logger.info(f"Platform defined: {length}m x {width}m at {rotation}° rotation, center ({center_x:.1f}, {center_y:.1f})")
-
-        return platform_definition
-
-
     def calculate_earthworks(self, terrain_data: Dict[str, Any], platform_coords: List[List[float]], 
                            ffl: Optional[float] = None, optimize_ffl: bool = False) -> Dict[str, Any]:
         """Calculate cut/fill volumes for a building platform"""
@@ -115,11 +41,11 @@ class EarthworksService(BaseService):
                 }
 
             self.logger.info(f"Starting earthworks calculation - platform coords: {len(platform_coords)} points")
-
+            
             # Validate inputs
             if not terrain_data or 'elevation_data' not in terrain_data:
                 return {'success': False, 'error': 'Valid terrain data required'}
-
+            
             if not platform_coords or len(platform_coords) < 3:
                 return {'success': False, 'error': 'Platform requires at least 3 coordinate points'}
 
@@ -128,7 +54,7 @@ class EarthworksService(BaseService):
             x_coords = np.array(terrain_data['x_coords'])
             y_coords = np.array(terrain_data['y_coords'])
             base_level = terrain_data.get('base_level', 0)
-
+            
             self.logger.info(f"Terrain data: {elevation_data.shape}, base level: {base_level}")
 
             # Convert platform coordinates to local coordinate system
@@ -139,10 +65,10 @@ class EarthworksService(BaseService):
             # Create platform polygon
             platform_polygon = Polygon(platform_local)
             platform_bounds = platform_polygon.bounds
-
+            
             self.logger.info(f"Platform bounds: {platform_bounds}")
             self.logger.info(f"Platform area: {platform_polygon.area:.2f}")
-
+            
             # Validate polygon is not degenerate
             if platform_polygon.area < 1.0:  # Less than 1 square meter
                 return {
@@ -152,7 +78,7 @@ class EarthworksService(BaseService):
 
             # Create interpolation function for terrain elevation
             terrain_interpolator = self._create_terrain_interpolator(x_coords, y_coords, elevation_data)
-
+            
             # Calculate or optimize FFL
             if optimize_ffl:
                 ffl = self._calculate_optimal_ffl(platform_polygon, terrain_interpolator)
@@ -209,25 +135,25 @@ class EarthworksService(BaseService):
             # Get terrain coordinate ranges
             x_coords = np.array(terrain_data['x_coords'])
             y_coords = np.array(terrain_data['y_coords'])
-
+            
             x_min, x_max = x_coords.min(), x_coords.max()
             y_min, y_max = y_coords.min(), y_coords.max()
-
+            
             platform_local = []
             self.logger.info(f"Converting {len(platform_coords)} platform coordinates from: {platform_coords}")
             self.logger.info(f"Terrain coordinate ranges: x({x_min:.1f} to {x_max:.1f}), y({y_min:.1f} to {y_max:.1f})")
-
+            
             for i, coord in enumerate(platform_coords):
                 if isinstance(coord, dict):
                     # Dictionary format with x, y keys (from buildable area or relative coordinates)
                     x_val = coord.get('x', 0)
                     y_val = coord.get('y', 0)
                     self.logger.info(f"Coord {i}: dict format x={x_val}, y={y_val}")
-
+                    
                     # Check if these are lat/lng coordinates (buildable area format)
                     if abs(x_val) > 2 and abs(y_val) > 2:  # Likely lat/lng coordinates
                         self.logger.info(f"Processing lat/lng coordinate: lng={x_val}, lat={y_val}")
-
+                        
                         # Get site coordinates for reference - use the first site coordinate as reference point
                         site_coords = terrain_data.get('coordinates', {})
                         if site_coords and hasattr(site_coords, 'get'):
@@ -237,47 +163,47 @@ class EarthworksService(BaseService):
                             # Fallback to approximate center of Wellington
                             ref_lat = -41.28
                             ref_lng = 174.73
-
+                        
                         self.logger.info(f"Using reference point: lat={ref_lat}, lng={ref_lng}")
-
+                        
                         # Convert lat/lng difference to meters (approximate)
                         # 1 degree longitude ≈ 111320 * cos(lat) meters
                         # 1 degree latitude ≈ 111320 meters
                         lat_diff = y_val - ref_lat
                         lng_diff = x_val - ref_lng
-
+                        
                         # Convert to approximate meters
                         import math
                         y_meters = lat_diff * 111320
                         x_meters = lng_diff * 111320 * math.cos(math.radians(ref_lat))
-
+                        
                         self.logger.info(f"Coordinate offset in meters: x={x_meters:.1f}m, y={y_meters:.1f}m")
-
+                        
                         # Convert meters to relative coordinates within terrain bounds
                         terrain_width = x_max - x_min
                         terrain_height = y_max - y_min
-
+                        
                         # Place relative to terrain center with offset
                         x_rel = 0.5 + (x_meters / terrain_width)
                         y_rel = 0.5 + (y_meters / terrain_height)
-
+                        
                         self.logger.info(f"Calculated relative coordinates: x_rel={x_rel:.3f}, y_rel={y_rel:.3f}")
                         self.logger.info(f"Terrain dimensions: width={terrain_width:.1f}m, height={terrain_height:.1f}m")
                     else:
                         # Assume relative coordinates (0-1 range)
                         x_rel = x_val
                         y_rel = y_val
-
+                        
                 else:
                     # List format [x, y] or [lng, lat]
                     x_val = coord[0] if len(coord) > 0 else 0
                     y_val = coord[1] if len(coord) > 1 else 0
                     self.logger.info(f"Coord {i}: list format x={x_val}, y={y_val}")
-
+                    
                     # Check if these are lat/lng coordinates
                     if abs(x_val) > 2 and abs(y_val) > 2:  # Likely lat/lng coordinates
                         self.logger.info(f"Processing lat/lng coordinate (list): lng={x_val}, lat={y_val}")
-
+                        
                         # Get site coordinates for reference
                         site_coords = terrain_data.get('coordinates', {})
                         if site_coords and hasattr(site_coords, 'get'):
@@ -286,42 +212,42 @@ class EarthworksService(BaseService):
                         else:
                             ref_lat = -41.28
                             ref_lng = 174.73
-
+                        
                         # Convert lat/lng difference to meters
                         lat_diff = y_val - ref_lat
                         lng_diff = x_val - ref_lng
-
+                        
                         import math
                         y_meters = lat_diff * 111320
                         x_meters = lng_diff * 111320 * math.cos(math.radians(ref_lat))
-
+                        
                         # Convert meters to relative coordinates within terrain bounds
                         terrain_width = x_max - x_min
                         terrain_height = y_max - y_min
-
+                        
                         x_rel = 0.5 + (x_meters / terrain_width)
                         y_rel = 0.5 + (y_meters / terrain_height)
-
+                        
                         self.logger.info(f"List format - relative coordinates: x_rel={x_rel:.3f}, y_rel={y_rel:.3f}")
                     else:
                         # Assume relative coordinates
                         x_rel = x_val
                         y_rel = y_val
-
+                
                 # Convert to local terrain coordinates
                 # Ensure we have valid relative coordinates (0-1 range)
                 x_rel = max(0.0, min(1.0, x_rel))
                 y_rel = max(0.0, min(1.0, y_rel))
-
+                
                 x_local = x_min + (x_rel * (x_max - x_min))
                 y_local = y_min + (y_rel * (y_max - y_min))
-
+                
                 self.logger.info(f"Coordinate conversion: rel({x_rel:.3f}, {y_rel:.3f}) -> local({x_local:.1f}, {y_local:.1f})")
                 platform_local.append((x_local, y_local))
-
+            
             self.logger.info(f"Converted {len(platform_coords)} platform coordinates to local system")
             return platform_local
-
+            
         except Exception as e:
             self.logger.error(f"Failed to convert platform coordinates: {e}")
             return []
@@ -333,20 +259,20 @@ class EarthworksService(BaseService):
             x_flat = x_coords.flatten()
             y_flat = y_coords.flatten()
             z_flat = elevation_data.flatten()
-
+            
             # Remove NaN values
             valid_mask = ~np.isnan(z_flat)
             x_valid = x_flat[valid_mask]
             y_valid = y_flat[valid_mask]
             z_valid = z_flat[valid_mask]
-
+            
             # Create interpolator
             interpolator = interpolate.LinearNDInterpolator(
                 np.column_stack([x_valid, y_valid]), z_valid, fill_value=np.nan
             )
-
+            
             return interpolator
-
+            
         except Exception as e:
             self.logger.error(f"Failed to create terrain interpolator: {e}")
             return None
@@ -358,7 +284,7 @@ class EarthworksService(BaseService):
             bounds = platform_polygon.bounds
             x_samples = np.linspace(bounds[0], bounds[2], 20)
             y_samples = np.linspace(bounds[1], bounds[3], 20)
-
+            
             elevations = []
             for x in x_samples:
                 for y in y_samples:
@@ -367,13 +293,13 @@ class EarthworksService(BaseService):
                         elevation = terrain_interpolator(x, y)
                         if not np.isnan(elevation):
                             elevations.append(elevation)
-
+            
             if elevations:
                 # Use median as optimal FFL (minimizes total earthwork)
                 return float(np.median(elevations))
             else:
                 return 0.0
-
+                
         except Exception as e:
             self.logger.error(f"Failed to calculate optimal FFL: {e}")
             return 0.0
@@ -384,7 +310,7 @@ class EarthworksService(BaseService):
             bounds = platform_polygon.bounds
             x_samples = np.linspace(bounds[0], bounds[2], 10)
             y_samples = np.linspace(bounds[1], bounds[3], 10)
-
+            
             elevations = []
             for x in x_samples:
                 for y in y_samples:
@@ -393,9 +319,9 @@ class EarthworksService(BaseService):
                         elevation = terrain_interpolator(x, y)
                         if not np.isnan(elevation):
                             elevations.append(elevation)
-
+            
             return float(np.mean(elevations)) if elevations else 0.0
-
+            
         except Exception as e:
             self.logger.error(f"Failed to calculate average elevation: {e}")
             return 0.0
@@ -405,15 +331,15 @@ class EarthworksService(BaseService):
         """Calculate cut/fill volumes using grid method"""
         try:
             bounds = platform_polygon.bounds
-
+            
             # Create grid
             x_range = np.arange(bounds[0], bounds[2] + resolution, resolution)
             y_range = np.arange(bounds[1], bounds[3] + resolution, resolution)
-
+            
             cut_volume = 0.0
             fill_volume = 0.0
             grid_data = []
-
+            
             for i, x in enumerate(x_range[:-1]):
                 grid_row = []
                 for j, y in enumerate(y_range[:-1]):
@@ -425,7 +351,7 @@ class EarthworksService(BaseService):
                         (x, y + resolution)
                     ]
                     cell_polygon = Polygon(cell_coords)
-
+                    
                     # Check if cell intersects with platform
                     intersection = cell_polygon.intersection(platform_polygon)
                     if intersection.area > 0:
@@ -433,17 +359,17 @@ class EarthworksService(BaseService):
                         center_x = x + resolution / 2
                         center_y = y + resolution / 2
                         terrain_elevation = terrain_interpolator(center_x, center_y)
-
+                        
                         if not np.isnan(terrain_elevation):
                             # Calculate cut/fill depth
                             depth_diff = terrain_elevation - ffl
                             cell_area = intersection.area
-
+                            
                             if depth_diff > 0:  # Cut required
                                 cut_volume += depth_diff * cell_area
                             else:  # Fill required
                                 fill_volume += abs(depth_diff) * cell_area
-
+                            
                             grid_row.append({
                                 'x': center_x,
                                 'y': center_y,
@@ -457,17 +383,17 @@ class EarthworksService(BaseService):
                             grid_row.append(None)
                     else:
                         grid_row.append(None)
-
+                
                 if grid_row:
                     grid_data.append(grid_row)
-
+            
             return {
                 'cut_volume': cut_volume,
                 'fill_volume': fill_volume,
                 'net_volume': cut_volume - fill_volume,
                 'grid_data': grid_data
             }
-
+            
         except Exception as e:
             self.logger.error(f"Failed to calculate cut/fill volumes: {e}")
             return {
@@ -483,18 +409,18 @@ class EarthworksService(BaseService):
         try:
             # Platform boundary for visualization
             platform_coords = list(platform_polygon.exterior.coords[:-1])
-
+            
             # Platform surface coordinates (at FFL level)
             platform_surface = {
                 'x': [coord[0] for coord in platform_coords],
                 'y': [coord[1] for coord in platform_coords],
                 'z': [ffl] * len(platform_coords)
             }
-
+            
             # Cut/fill visualisation data with detailed grid information
             cut_fill_viz = []
             grid_data = cut_fill_result.get('grid_data', [])
-
+            
             for row_idx, row in enumerate(grid_data):
                 for col_idx, cell in enumerate(row):
                     if cell and cell['area'] > 0:  # Only include cells with actual area
@@ -502,11 +428,11 @@ class EarthworksService(BaseService):
                         engineered_depth = self._apply_slope_grading(
                             cell['cut_fill_depth'], cell['x'], cell['y'], platform_polygon
                         )
-
+                        
                         # Determine earthwork type and intensity
                         cut_fill_type = 'cut' if cell['cut_fill_depth'] > 0 else 'fill'
                         depth_magnitude = abs(cell['cut_fill_depth'])
-
+                        
                         # Classify intensity
                         if depth_magnitude > 2.0:
                             intensity = 'heavy'
@@ -516,7 +442,7 @@ class EarthworksService(BaseService):
                             intensity = 'light'
                         else:
                             intensity = 'minimal'
-
+                        
                         cut_fill_viz.append({
                             'x': cell['x'],
                             'y': cell['y'],
@@ -532,14 +458,14 @@ class EarthworksService(BaseService):
                             'slope_type': self._determine_slope_type(engineered_depth),
                             'grid_position': {'row': row_idx, 'col': col_idx}
                         })
-
+            
             # Create platform boundary at FFL for 3D visualization
             platform_boundary_3d = {
                 'x': [coord[0] for coord in platform_coords] + [platform_coords[0][0]],
                 'y': [coord[1] for coord in platform_coords] + [platform_coords[0][1]],
                 'z': [ffl] * (len(platform_coords) + 1)
             }
-
+            
             return {
                 'platform_surface': platform_surface,
                 'platform_boundary': platform_boundary_3d,
@@ -554,7 +480,7 @@ class EarthworksService(BaseService):
                     'platform_elevation': ffl
                 }
             }
-
+            
         except Exception as e:
             self.logger.error(f"Failed to create visualization data: {e}")
             return {}
@@ -566,7 +492,7 @@ class EarthworksService(BaseService):
             # Get platform bounds and create transition zones
             bounds = platform_polygon.bounds
             transition_width = 3.0  # 3 meter transition zone
-
+            
             # Expand bounds for transition zone
             expanded_bounds = (
                 bounds[0] - transition_width,
@@ -574,19 +500,19 @@ class EarthworksService(BaseService):
                 bounds[2] + transition_width,
                 bounds[3] + transition_width
             )
-
+            
             engineered_points = []
-
+            
             # Create grid for engineered surface
             resolution = 1.0
             x_range = np.arange(expanded_bounds[0], expanded_bounds[2] + resolution, resolution)
             y_range = np.arange(expanded_bounds[1], expanded_bounds[3] + resolution, resolution)
-
+            
             for x in x_range:
                 for y in y_range:
                     point = Point(x, y)
                     distance_to_platform = platform_polygon.exterior.distance(point)
-
+                    
                     if distance_to_platform <= transition_width:
                         # Apply 3:1 slope ratio (33% grade) for transitions
                         slope_ratio = 3.0
@@ -597,14 +523,14 @@ class EarthworksService(BaseService):
                             engineered_z = ffl  # Simplified for now
                         else:
                             engineered_z = ffl
-
+                            
                         engineered_points.append({
                             'x': x, 'y': y, 'z': engineered_z,
                             'type': 'transition', 'distance': distance_to_platform
                         })
-
+            
             return {'transition_points': engineered_points}
-
+            
         except Exception as e:
             self.logger.error(f"Failed to create engineered surface: {e}")
             return {}
@@ -614,22 +540,22 @@ class EarthworksService(BaseService):
         try:
             point = Point(x, y)
             distance_to_edge = platform_polygon.exterior.distance(point)
-
+            
             # If we're at the platform edge, apply slope grading
             if distance_to_edge <= 5.0:  # 5 meter influence zone
                 # Standard 3:1 slope (run:rise)
                 slope_ratio = 3.0
                 max_transition = min(abs(original_depth) / slope_ratio, distance_to_edge)
-
+                
                 if original_depth > 0:  # Cut
                     # Gradual cut with slope
                     return original_depth * (1 - (distance_to_edge / 5.0) * 0.7)
                 else:  # Fill
                     # Gradual fill with slope
                     return original_depth * (1 - (distance_to_edge / 5.0) * 0.5)
-
+            
             return original_depth
-
+            
         except Exception as e:
             return original_depth
 
@@ -647,11 +573,11 @@ class EarthworksService(BaseService):
     def _generate_engineering_notes(self, cut_fill_result: Dict[str, Any]) -> List[str]:
         """Generate engineering recommendations based on cut/fill analysis"""
         notes = []
-
+        
         cut_vol = cut_fill_result['cut_volume']
         fill_vol = cut_fill_result['fill_volume']
         net_vol = cut_fill_result['net_volume']
-
+        
         # Material balance recommendations
         if abs(net_vol) < (cut_vol + fill_vol) * 0.1:
             notes.append("✓ Good cut/fill balance - minimal material import/export needed")
@@ -659,20 +585,20 @@ class EarthworksService(BaseService):
             notes.append(f"⚠ Excess cut material: {net_vol:.1f}m³ - consider export or landscape use")
         else:
             notes.append(f"⚠ Fill material needed: {abs(net_vol):.1f}m³ - source quality fill material")
-
+        
         # Slope stability recommendations
         max_depth = max([max([cell['cut_fill_depth'] if cell else 0 for cell in row]) 
                         for row in cut_fill_result.get('grid_data', [])])
-
+        
         if max_depth > 3.0:
             notes.append("⚠ Deep cuts detected - consider retaining walls or terracing")
         elif max_depth > 1.5:
             notes.append("• Standard 3:1 slopes recommended for stability")
-
+        
         # Drainage recommendations
         notes.append("• Install proper drainage systems in cut areas")
         notes.append("• Compact fill material in 300mm lifts to 95% standard Proctor density")
-
+        
         return notes
 
 
