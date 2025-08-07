@@ -637,7 +637,7 @@ class PropertySetbacksManager extends BaseManager {
         try {
             // Remove ALL possible buildable area and related layers
             const layersToRemove = [
-                'buildable-area-fill', 
+                'buildable-area-fill',
                 'buildable-area-stroke',
                 'buildable-area-dimension-labels',
                 'buildable-area-dimensions',
@@ -655,7 +655,7 @@ class PropertySetbacksManager extends BaseManager {
 
             // Remove ALL possible buildable area and related sources
             const sourcesToRemove = [
-                'buildable-area', 
+                'buildable-area',
                 'buildable-area-dimensions',
                 'buildable-dimension-labels',
                 'setback-dimensions',
@@ -726,17 +726,6 @@ class PropertySetbacksManager extends BaseManager {
                 this.map.addSource(sourceId, {
                     type: 'geojson',
                     data: lineString
-                });
-
-                this.map.addLayer({
-                    id: layerId,
-                    type: 'line',
-                    source: sourceId,
-                    paint: {
-                        'line-color': '#007cbf',
-                        'line-width': 5,
-                        'line-opacity': 0.8
-                    }
                 });
 
                 this.addEdgeLabel(edge, index);
@@ -1015,7 +1004,7 @@ class PropertySetbacksManager extends BaseManager {
         try {
             // Remove setback layers - including all possible setback layer variations
             const layersToRemove = [
-                'setback-fill', 
+                'setback-fill',
                 'setback-stroke',
                 'front-setback-line',
                 'back-setback-line',
@@ -1144,7 +1133,7 @@ class PropertySetbacksManager extends BaseManager {
         }
 
         // Additional validation to ensure edges have required properties
-        if (!this.selectedEdges.front.index === undefined || !this.selectedEdges.back.index === undefined) {
+        if (this.selectedEdges.front.index === undefined || this.selectedEdges.back.index === undefined) {
             this.warn('Edge index validation failed:', {
                 frontIndex: this.selectedEdges.front?.index,
                 backIndex: this.selectedEdges.back?.index
@@ -1415,8 +1404,8 @@ class PropertySetbacksManager extends BaseManager {
     }
 
     hasSelectedEdges() {
-        const hasBoth = this.selectedEdges && 
-                       this.selectedEdges.front && 
+        const hasBoth = this.selectedEdges &&
+                       this.selectedEdges.front &&
                        this.selectedEdges.back &&
                        this.selectedEdges.front.index !== undefined &&
                        this.selectedEdges.back.index !== undefined;
@@ -1746,8 +1735,8 @@ class PropertySetbacksManager extends BaseManager {
 
     // Utility methods
     isValidCoordinate(coord) {
-        return coord && coord.length >= 2 && 
-               typeof coord[0] === 'number' && 
+        return coord && coord.length >= 2 &&
+               typeof coord[0] === 'number' &&
                typeof coord[1] === 'number' &&
                !isNaN(coord[0]) && !isNaN(coord[1]);
     }
@@ -1759,8 +1748,8 @@ class PropertySetbacksManager extends BaseManager {
         try {
             // Normalize coordinates (remove duplicate closing point if present)
             let coords = coordinates;
-            if (coords.length > 3 && 
-                coords[0][0] === coords[coords.length - 1][0] && 
+            if (coords.length > 3 &&
+                coords[0][0] === coords[coords.length - 1][0] &&
                 coords[0][1] === coords[coords.length - 1][1]) {
                 coords = coords.slice(0, -1);
             }

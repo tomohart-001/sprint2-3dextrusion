@@ -1474,7 +1474,7 @@ class SiteBoundaryCore extends MapManagerBase {
 
             if (result.buildable_coords && result.buildable_coords.length > 0) {
                 this.buildableAreaData = result;
-                this.updateBuildableAreaDisplay(result);
+                this.updateBuildableAreaDisplay(result, false); // Pass false for isPreview
                 await this.saveBuildableAreaToProject(result, setbackData);
 
                 this.info('Buildable area calculated successfully with', result.buildable_coords.length, 'coordinates');
@@ -1517,17 +1517,17 @@ class SiteBoundaryCore extends MapManagerBase {
         return await response.json();
     }
 
-    async previewBuildableArea(data) {
+    async calculateBuildableAreaPreview(data) {
         try {
             this.info('Starting buildable area preview calculation');
 
-            // Get site polygon coordinates
-            const sitePolygon = this.getSitePolygon();
-            if (!sitePolygon || !sitePolygon.geometry || !sitePolygon.geometry.coordinates) {
-                throw new Error('No site boundary available for calculation');
+            if (!this.sitePolygon || !this.sitePolygon.geometry || !this.sitePolygon.geometry.coordinates) {
+                this.warn('No site boundary available for buildable area calculation');
+                return;
             }
 
-            const siteCoords = sitePolygon.geometry.coordinates[0];
+            // Get site coordinates
+            const siteCoords = this.sitePolygon.geometry.coordinates[0];
 
             // Prepare calculation data
             const calculationData = {
@@ -1537,13 +1537,13 @@ class SiteBoundaryCore extends MapManagerBase {
                     side_setback: data.sideSetback || 1.5,
                     rear_setback: data.backSetback || 3.5
                 },
-                frontage: 'north',
-                edge_classifications: this.createEdgeClassifications(data.selectedEdges, data.polygonEdges)
+                frontage: data.frontage || 'north',
+                edge_classifications: this.createEdgeClassifications(data.selectedEdges, siteCoords)
             };
 
             this.info('Preview calculation data prepared:', calculationData);
 
-            // Call calculation API
+            // Calculate buildable area
             const response = await fetch('/api/calculate-buildable-area', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1551,28 +1551,27 @@ class SiteBoundaryCore extends MapManagerBase {
             });
 
             if (!response.ok) {
-                throw new Error(`Calculation failed: ${response.status} ${response.statusText}`);
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             const result = await response.json();
+            this.info('Buildable area preview calculation result:', result);
 
-            if (!result.success) {
-                throw new Error(result.error || 'Calculation failed');
+            // Update buildable area display with the actual result data
+            if (result && result.buildable_coords && result.buildable_coords.length > 0) {
+                this.updateBuildableAreaDisplay(result, true);
+            } else {
+                this.info('No buildable coordinates in result, clearing display');
+                this.updateBuildableAreaDisplay(null, true);
             }
-
-            // Display preview result
-            this.updateBuildableAreaDisplay(result.data, true);
 
             this.info('Buildable area preview completed successfully');
 
-            // Return the result for further processing
-            return result.data;
-
         } catch (error) {
-            this.error('Buildable area preview failed:', error);
-            throw error;
+            this.error('Error calculating buildable area preview:', error);
         }
     }
+
 
     createEdgeClassifications(setbackData) {
         const edgeClassifications = [];
@@ -1610,70 +1609,113 @@ class SiteBoundaryCore extends MapManagerBase {
     }
 
     updateBuildableAreaDisplay(result, isPreview = false) {
-        try {
-            console.log('[SiteBoundaryCore] INFO:', 'Updating buildable area display with data:', result);
+        this.info('Updating buildable area display with data:', result);
 
-            if (!result || (!result.buildable_coords && !result.coordinates)) {
-                console.log('[SiteBoundaryCore] INFO:', 'No buildable data provided');
-                this.clearBuildableAreaDisplay();
-                return;
-            }
-
-            // Handle different coordinate formats
-            let coords = result.buildable_coords || result.coordinates;
-            if (!coords || coords.length === 0) {
-                console.log('[SiteBoundaryCore] INFO:', 'No buildable coordinates to display');
-                this.clearBuildableAreaDisplay();
-                return;
-            }
-
-            // Clear existing buildable area
+        if (!result || !result.buildable_coords || result.buildable_coords.length === 0) {
+            this.info('No buildable data provided');
             this.clearBuildableAreaDisplay();
+            return;
+        }
 
-            // Coordinate format correction - the API returns [lat, lng] but we need [lng, lat] for GeoJSON
-            let coordinates = [...coords];
-            coordinates = this.correctCoordinateFormat(coordinates);
-            coordinates = this.ensureClosedPolygon(coordinates);
+        try {
+            // Convert coordinates for display
+            let coordinates = result.buildable_coords.map(coord => {
+                if (Array.isArray(coord) && coord.length >= 2) {
+                    // Backend returns [lat, lng], Mapbox needs [lng, lat]
+                    return [coord[1], coord[0]];
+                }
+                return coord;
+            });
 
-            // Update the buildable area source for Mapbox
-            this.updateSource(this.sourceIds.buildableArea, {
-                type: 'geojson',
-                data: {
-                    type: 'Feature',
-                    geometry: {
-                        type: 'Polygon',
-                        coordinates: [coordinates]
-                    },
-                    properties: {
-                        area_m2: result.buildable_area_m2 || 0,
-                        type: 'buildable-area',
-                        is_preview: isPreview
-                    }
+            // Ensure polygon is closed
+            if (coordinates.length > 0) {
+                const firstCoord = coordinates[0];
+                const lastCoord = coordinates[coordinates.length - 1];
+                if (firstCoord[0] !== lastCoord[0] || firstCoord[1] !== lastCoord[1]) {
+                    coordinates.push([...firstCoord]);
+                }
+            }
+
+            // Display the buildable area
+            this.displayBuildableAreaPolygon(coordinates, isPreview);
+
+        } catch (error) {
+            this.error('Error updating buildable area display:', error);
+        }
+    }
+
+    displayBuildableAreaPolygon(coordinates, isPreview = false) {
+        try {
+            // Remove existing buildable area layers
+            const layersToRemove = ['buildable-area-fill', 'buildable-area-stroke'];
+            layersToRemove.forEach(layerId => {
+                if (this.map.getLayer(layerId)) {
+                    this.map.removeLayer(layerId);
                 }
             });
 
-            if (!isPreview) {
-                console.log('[SiteBoundaryCore] INFO:', `Buildable area displayed on map with ${coordinates.length - 1} vertices`);
+            if (this.map.getSource('buildable-area')) {
+                this.map.removeSource('buildable-area');
             }
 
-            // Update legend
-            this.updateMapLegend();
+            if (coordinates && coordinates.length > 0) {
+                // Add source
+                this.map.addSource('buildable-area', {
+                    type: 'geojson',
+                    data: {
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Polygon',
+                            coordinates: [coordinates]
+                        },
+                        properties: {
+                            type: 'buildable-area',
+                            is_preview: isPreview
+                        }
+                    }
+                });
 
+                // Different styling for preview vs confirmed
+                const fillColor = isPreview ? '#002040' : '#002040';
+                const fillOpacity = isPreview ? 0.2 : 0.4;
+                const strokeColor = isPreview ? '#002040' : '#002040';
+                const strokeOpacity = isPreview ? 0.7 : 0.8;
+                const strokeWidth = isPreview ? 2 : 3;
+
+                // Add fill layer
+                this.map.addLayer({
+                    id: 'buildable-area-fill',
+                    type: 'fill',
+                    source: 'buildable-area',
+                    layout: {},
+                    paint: {
+                        'fill-color': fillColor,
+                        'fill-opacity': fillOpacity
+                    }
+                });
+
+                // Add stroke layer
+                this.map.addLayer({
+                    id: 'buildable-area-stroke',
+                    type: 'line',
+                    source: 'buildable-area',
+                    layout: {},
+                    paint: {
+                        'line-color': strokeColor,
+                        'line-width': strokeWidth,
+                        'line-opacity': strokeOpacity
+                    }
+                });
+
+                if (!isPreview) {
+                    this.info(`Buildable area displayed on map with ${coordinates.length - 1} vertices`);
+                }
+            }
         } catch (error) {
-            console.error('[SiteBoundaryCore] ERROR:', 'Error updating buildable area display:', error);
-            console.error('[SiteBoundaryCore] ERROR:', 'Error details:', error.message, error.stack);
+            this.error('Error displaying buildable area polygon:', error);
         }
     }
 
-    correctCoordinateFormat(coordinates) {
-        if (coordinates[0] && coordinates[0].length === 2) {
-            const firstCoord = coordinates[0];
-            if (Math.abs(firstCoord[0]) <= 90 && Math.abs(firstCoord[1]) > 90) {
-                return coordinates.map(coord => [coord[1], coord[0]]);
-            }
-        }
-        return coordinates;
-    }
 
     clearBuildableAreaDisplay() {
         try {
