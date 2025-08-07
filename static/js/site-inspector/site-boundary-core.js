@@ -1,4 +1,3 @@
-
 /**
  * Site Boundary Core - Refactored Implementation
  * Handles all site boundary operations including drawing, validation, and buildable area calculations
@@ -27,7 +26,7 @@ class SiteBoundaryCore extends MapManagerBase {
         // Source and layer management
         this.sources = new Map();
         this.layers = new Map();
-        
+
         this.initializeSources();
         this.initializeLayers();
     }
@@ -35,7 +34,7 @@ class SiteBoundaryCore extends MapManagerBase {
     initializeSources() {
         this.sourceIds = {
             preview: 'boundary-drawing-preview',
-            points: 'boundary-drawing-points', 
+            points: 'boundary-drawing-points',
             dimensions: 'boundary-dimensions',
             final: 'site-boundary-final',
             buildableArea: 'buildable-area'
@@ -57,12 +56,12 @@ class SiteBoundaryCore extends MapManagerBase {
 
     async validateDependencies() {
         await super.validateDependencies();
-        
+
         if (!this.draw) {
             this.warn('MapboxDraw not available - drawing features limited');
             return false;
         }
-        
+
         return true;
     }
 
@@ -228,7 +227,7 @@ class SiteBoundaryCore extends MapManagerBase {
     setupEventHandlers() {
         // Setup UI handlers immediately
         this.setupUIEventHandlers();
-        
+
         // Setup map drawing handlers with defensive approach
         if (this.draw && this.map) {
             this.setupDrawingEventHandlers();
@@ -366,13 +365,13 @@ class SiteBoundaryCore extends MapManagerBase {
         const checkReadiness = () => {
             attempts++;
             try {
-                if (this.map && this.map.isStyleLoaded() && this.draw && 
+                if (this.map && this.map.isStyleLoaded() && this.draw &&
                     typeof this.draw.changeMode === 'function') {
                     this.updateButtonState('drawPolygonButton', 'inactive', 'Draw Site Boundary');
                     this.info('Drawing tools enabled and ready');
                     return;
                 }
-                
+
                 if (attempts < maxRetries) {
                     setTimeout(checkReadiness, 500);
                 } else {
@@ -395,7 +394,7 @@ class SiteBoundaryCore extends MapManagerBase {
         }
 
         this.info(`Toggle drawing mode - currently drawing: ${this.isDrawing}`);
-        
+
         if (this.isDrawing) {
             this.stopDrawingMode();
         } else {
@@ -432,28 +431,28 @@ class SiteBoundaryCore extends MapManagerBase {
 
         try {
             this.info('Starting drawing mode...');
-            
+
             // Clear any existing state
             this.clearDrawingVisualization();
             this.drawingPoints = [];
-            
+
             // Clear existing polygons safely
             this.safeDeleteAllFeatures();
-            
+
             // Set drawing state
             this.isDrawing = true;
             this.updateButtonState('drawPolygonButton', 'active', 'Stop Drawing');
-            
+
             // Set up drawing event listeners for live preview
             this.setupDrawingPreview();
-            
+
             // Start polygon drawing mode
             this.draw.changeMode('draw_polygon');
             this.info('Drawing mode activated - click on map to start drawing polygon');
-            
+
             // Verify mode change
             this.verifyModeChange();
-            
+
         } catch (error) {
             this.error('Failed to start drawing mode:', error);
             this.resetDrawingState();
@@ -489,14 +488,14 @@ class SiteBoundaryCore extends MapManagerBase {
     setupDrawingPreview() {
         // Add map click listener for adding points
         this.map.on('click', this.handleDrawingClick);
-        
+
         // Add mouse move listener for live preview
         this.map.on('mousemove', this.handleDrawingMouseMove);
-        
+
         // Add drawing event listeners
         this.map.on('draw.update', this.handleDrawingUpdate);
         this.map.on('draw.selectionchange', this.handleDrawingSelectionChange);
-        
+
         this.info('Drawing preview listeners set up');
     }
 
@@ -514,19 +513,19 @@ class SiteBoundaryCore extends MapManagerBase {
 
     handleDrawingClick = (e) => {
         if (!this.isDrawing) return;
-        
+
         try {
             const point = [e.lngLat.lng, e.lngLat.lat];
             this.drawingPoints.push(point);
-            
+
             this.info(`Drawing point ${this.drawingPoints.length} added:`, point);
-            
+
             // Update the preview visualization
             this.updateDrawingPreview();
-            
+
             // Add point marker
             this.addDrawingPointMarker(point, this.drawingPoints.length - 1);
-            
+
         } catch (error) {
             this.error('Error handling drawing click:', error);
         }
@@ -534,7 +533,7 @@ class SiteBoundaryCore extends MapManagerBase {
 
     handleDrawingMouseMove = (e) => {
         if (!this.isDrawing || this.drawingPoints.length === 0) return;
-        
+
         try {
             const mousePoint = [e.lngLat.lng, e.lngLat.lat];
             this.updateLiveDrawingPreview(mousePoint);
@@ -546,7 +545,7 @@ class SiteBoundaryCore extends MapManagerBase {
 
     handleDrawingUpdate = (e) => {
         if (!this.isDrawing) return;
-        
+
         try {
             // Update our internal points array from the draw tool
             if (e.features && e.features[0] && e.features[0].geometry && e.features[0].geometry.coordinates) {
@@ -611,7 +610,7 @@ class SiteBoundaryCore extends MapManagerBase {
 
                 // Add dimensions for edges
                 this.updateDrawingDimensions();
-                
+
                 this.info(`Drawing preview updated with ${features.length} features and ${this.drawingPoints.length} points`);
             } else {
                 this.clearDrawingVisualization();
@@ -828,30 +827,30 @@ class SiteBoundaryCore extends MapManagerBase {
 
     handlePolygonCreated(e) {
         this.info('Polygon creation event received');
-        
+
         try {
             // Validate event
             this.validatePolygonEvent(e);
-            
+
             // Process coordinates
             const coordinates = this.processPolygonCoordinates(e.features[0]);
-            
+
             // Create polygon feature
             const feature = this.createPolygonFeature(coordinates);
             this.sitePolygon = feature;
-            
+
             // Calculate metrics
             const metrics = this.calculatePolygonMetrics(coordinates);
             this.polygonEdges = metrics.edges;
-            
+
             // Update UI
             this.updateUIAfterCreation(coordinates, metrics);
-            
+
             // Emit events
             this.emitBoundaryCreatedEvent(coordinates, metrics);
-            
+
             this.info(`Site boundary created successfully - Area: ${metrics.area.toFixed(2)} m², Points: ${coordinates.length - 1}`);
-            
+
         } catch (error) {
             this.handlePolygonCreationError(error);
         }
@@ -879,7 +878,7 @@ class SiteBoundaryCore extends MapManagerBase {
 
         // Validate and clean coordinates
         const cleanCoords = this.cleanCoordinates(coordinates);
-        
+
         if (cleanCoords.length < this.config.minPolygonPoints) {
             throw new Error('Not enough valid coordinates for polygon');
         }
@@ -890,25 +889,25 @@ class SiteBoundaryCore extends MapManagerBase {
 
     cleanCoordinates(coordinates) {
         const cleanCoords = [];
-        
+
         for (let i = 0; i < coordinates.length; i++) {
             const coord = coordinates[i];
-            
+
             if (!this.isValidCoordinateArray(coord)) {
                 this.warn(`Invalid coordinate at index ${i}:`, coord);
                 continue;
             }
-            
+
             const [lng, lat] = this.parseCoordinate(coord);
-            
+
             if (!this.isValidCoordinateRange(lng, lat)) {
                 this.warn(`Invalid coordinate range at index ${i}:`, coord);
                 continue;
             }
-            
+
             cleanCoords.push([lng, lat]);
         }
-        
+
         return cleanCoords;
     }
 
@@ -919,11 +918,11 @@ class SiteBoundaryCore extends MapManagerBase {
     parseCoordinate(coord) {
         const lng = parseFloat(coord[0]);
         const lat = parseFloat(coord[1]);
-        
+
         if (isNaN(lng) || isNaN(lat)) {
             throw new Error(`NaN coordinate: ${coord}`);
         }
-        
+
         return [lng, lat];
     }
 
@@ -934,11 +933,11 @@ class SiteBoundaryCore extends MapManagerBase {
     ensureClosedPolygon(coordinates) {
         const firstCoord = coordinates[0];
         const lastCoord = coordinates[coordinates.length - 1];
-        
+
         if (!this.pointsAreEqual(firstCoord, lastCoord)) {
             coordinates.push([...firstCoord]);
         }
-        
+
         return coordinates;
     }
 
@@ -976,7 +975,7 @@ class SiteBoundaryCore extends MapManagerBase {
         this.showFinalDimensions(coordinates);
         this.showFinalBoundary(coordinates);
         this.resetDrawingState();
-        
+
         // Safely change draw mode
         setTimeout(() => {
             try {
@@ -1018,13 +1017,13 @@ class SiteBoundaryCore extends MapManagerBase {
 
     calculatePolygonArea(coordinates) {
         if (!coordinates || coordinates.length < 3) return 0;
-        
+
         // Try Turf.js first if available
         if (this.tryTurfCalculation) {
             const turfArea = this.tryTurfCalculation(coordinates);
             if (turfArea > 0) return turfArea;
         }
-        
+
         // Fallback to manual calculation
         return this.calculatePolygonAreaFallback(coordinates);
     }
@@ -1046,21 +1045,21 @@ class SiteBoundaryCore extends MapManagerBase {
             // Use shoelace formula
             let area = 0;
             const coords = this.normalizeCoordinates(coordinates);
-            
+
             for (let i = 0; i < coords.length; i++) {
                 const j = (i + 1) % coords.length;
                 const [xi, yi] = coords[i];
                 const [xj, yj] = coords[j];
-                
+
                 if (isNaN(xi) || isNaN(yi) || isNaN(xj) || isNaN(yj)) {
                     continue;
                 }
-                
+
                 area += xi * yj - xj * yi;
             }
-            
+
             area = Math.abs(area) / 2;
-            
+
             // Convert from degrees² to m² (approximate for NZ)
             return area * 111320 * 111320;
         } catch (error) {
@@ -1125,7 +1124,7 @@ class SiteBoundaryCore extends MapManagerBase {
     }
 
     normalizeCoordinates(coordinates) {
-        if (coordinates.length > 3 && 
+        if (coordinates.length > 3 &&
             this.pointsAreEqual(coordinates[0], coordinates[coordinates.length - 1])) {
             return coordinates.slice(0, -1);
         }
@@ -1133,8 +1132,8 @@ class SiteBoundaryCore extends MapManagerBase {
     }
 
     isValidCoordinate(coord) {
-        return coord && coord.length >= 2 && 
-               typeof coord[0] === 'number' && 
+        return coord && coord.length >= 2 &&
+               typeof coord[0] === 'number' &&
                typeof coord[1] === 'number';
     }
 
@@ -1181,7 +1180,7 @@ class SiteBoundaryCore extends MapManagerBase {
             if (!button) return;
 
             button.classList.toggle('active', state === 'active');
-            
+
             if (text) {
                 button.textContent = text;
             }
@@ -1343,13 +1342,13 @@ class SiteBoundaryCore extends MapManagerBase {
         }
 
         this.isLocked = true;
-        
+
         // Emit boundary-applied event to trigger UI workflow
         window.eventBus.emit('boundary-applied');
         this.info('Site boundary confirmed and locked - boundary-applied event emitted');
-        
+
         this.updateButtonStates(false, true);
-        
+
         // Also update UI panel manager directly as fallback
         setTimeout(() => {
             const uiManager = window.siteInspectorCore?.uiPanelManager;
@@ -1362,27 +1361,27 @@ class SiteBoundaryCore extends MapManagerBase {
     clearBoundary() {
         try {
             this.info('Starting comprehensive boundary clearing...');
-            
+
             // Clear all visualization layers
             this.clearDrawingVisualization();
             this.clearBuildableArea();
             this.clearBoundaryLayers();
-            
+
             // Reset internal state
             this.resetBoundaryState();
-            
+
             // Reset UI to initial state
             this.updateUI();
-            
+
             // Force reset the drawing button state
             this.updateButtonState('drawPolygonButton', 'inactive', 'Draw Site Boundary');
-            
+
             // Clear the boundary info display
             this.setElementDisplay('boundaryInfoDisplay', 'none');
-            
+
             // Emit clearing events
             this.emitClearingEvents();
-            
+
             // Reset UI panels to initial state
             setTimeout(() => {
                 const uiManager = window.siteInspectorCore?.uiPanelManager;
@@ -1390,7 +1389,7 @@ class SiteBoundaryCore extends MapManagerBase {
                     uiManager.resetAllPanelStates();
                 }
             }, 100);
-            
+
             this.info('Site boundary cleared completely - ready for new boundary');
         } catch (error) {
             this.error('Error clearing boundary:', error);
@@ -1456,7 +1455,7 @@ class SiteBoundaryCore extends MapManagerBase {
     emitClearingEvents() {
         this.emit('site-boundary-deleted');
         this.emit('clear-all-dependent-features');
-        
+
         setTimeout(() => {
             this.emit('clear-all-dependent-features');
         }, 100);
@@ -1472,12 +1471,12 @@ class SiteBoundaryCore extends MapManagerBase {
             }
 
             const result = await this.performBuildableAreaCalculation(setbackData);
-            
+
             if (result.buildable_coords && result.buildable_coords.length > 0) {
                 this.buildableAreaData = result;
                 this.updateBuildableAreaDisplay(result);
                 await this.saveBuildableAreaToProject(result, setbackData);
-                
+
                 this.info('Buildable area calculated successfully with', result.buildable_coords.length, 'coordinates');
                 this.emit('buildable-area-calculated', result);
                 return result;
@@ -1518,41 +1517,75 @@ class SiteBoundaryCore extends MapManagerBase {
         return await response.json();
     }
 
-    async previewBuildableArea(setbackData) {
+    async previewBuildableArea(data) {
         try {
-            if (!this.hasSiteBoundary()) return;
+            this.info('Starting buildable area preview calculation');
 
-            // Cancel previous preview
-            if (this.previewAbortController) {
-                this.previewAbortController.abort();
+            // Get site polygon coordinates
+            const sitePolygon = this.getSitePolygon();
+            if (!sitePolygon || !sitePolygon.geometry || !sitePolygon.geometry.coordinates) {
+                throw new Error('No site boundary available for calculation');
             }
-            this.previewAbortController = new AbortController();
 
-            const result = await this.performBuildableAreaCalculation(setbackData);
-            
-            if (result.buildable_coords && result.buildable_coords.length > 0) {
-                this.updateBuildableAreaDisplay(result, true);
+            const siteCoords = sitePolygon.geometry.coordinates[0];
+
+            // Prepare calculation data
+            const calculationData = {
+                site_coords: siteCoords,
+                requirements: {
+                    front_setback: data.frontSetback || 4.5,
+                    side_setback: data.sideSetback || 1.5,
+                    rear_setback: data.backSetback || 3.5
+                },
+                frontage: 'north',
+                edge_classifications: this.createEdgeClassifications(data.selectedEdges, data.polygonEdges)
+            };
+
+            this.info('Preview calculation data prepared:', calculationData);
+
+            // Call calculation API
+            const response = await fetch('/api/calculate-buildable-area', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(calculationData)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Calculation failed: ${response.status} ${response.statusText}`);
             }
+
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.error || 'Calculation failed');
+            }
+
+            // Display preview result
+            this.updateBuildableAreaDisplay(result.data, true);
+
+            this.info('Buildable area preview completed successfully');
+
+            // Return the result for further processing
+            return result.data;
 
         } catch (error) {
-            if (error.name !== 'AbortError') {
-                console.debug('Preview calculation failed (non-critical):', error.message);
-            }
+            this.error('Buildable area preview failed:', error);
+            throw error;
         }
     }
 
     createEdgeClassifications(setbackData) {
         const edgeClassifications = [];
-        
-        if (setbackData.selectedEdges && setbackData.selectedEdges.front && setbackData.selectedEdges.back) {
+
+        if (setbackData.front && setbackData.back) {
             this.polygonEdges.forEach((edge, index) => {
                 let type = 'side';
                 let setback = parseFloat(setbackData.sideSetback) || 0;
 
-                if (index === setbackData.selectedEdges.front.index) {
+                if (index === setbackData.front.index) {
                     type = 'front';
                     setback = parseFloat(setbackData.frontSetback) || 0;
-                } else if (index === setbackData.selectedEdges.back.index) {
+                } else if (index === setbackData.back.index) {
                     type = 'back';
                     setback = parseFloat(setbackData.backSetback) || 0;
                 }
@@ -1584,7 +1617,7 @@ class SiteBoundaryCore extends MapManagerBase {
 
             // Coordinate format correction
             coordinates = this.correctCoordinateFormat(coordinates);
-            
+
             // Ensure closed polygon
             coordinates = this.ensureClosedPolygon(coordinates);
 
@@ -1642,7 +1675,7 @@ class SiteBoundaryCore extends MapManagerBase {
 
             const snapshotData = this.createSnapshotData(result, setbackData);
             await this.postSnapshotData(projectId, snapshotData);
-            
+
         } catch (error) {
             this.error('Error saving buildable area:', error);
         }
@@ -1869,7 +1902,7 @@ class SiteBoundaryCore extends MapManagerBase {
             const area = this.calculatePolygonArea(coordinates);
             const centerLng = coordinates.reduce((sum, coord) => sum + coord[0], 0) / coordinates.length;
             const centerLat = coordinates.reduce((sum, coord) => sum + coord[1], 0) / coordinates.length;
-            
+
             siteData.coordinates = coordinates;
             siteData.area = area;
             siteData.area_m2 = area;

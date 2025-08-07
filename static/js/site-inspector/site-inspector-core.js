@@ -861,8 +861,20 @@ class SiteInspectorCore extends BaseManager {
     }
 
     async handleBuildableAreaPreview(data) {
-        // Use the unified core's preview method
-        await this.siteBoundaryCore.previewBuildableArea(data);
+        try {
+            this.info('Handling buildable area preview with data:', data);
+            
+            // Use the unified core's preview method
+            const result = await this.siteBoundaryCore.previewBuildableArea(data);
+            
+            // If the preview returns a result, display it
+            if (result && result.buildable_coords) {
+                this.updateBuildableAreaDisplay(result, true);
+                this.info('Buildable area preview displayed on map');
+            }
+        } catch (error) {
+            this.error('Error handling buildable area preview:', error);
+        }
     }
 
     async handleBuildableAreaCalculation(data) {
@@ -1084,16 +1096,18 @@ class SiteInspectorCore extends BaseManager {
                 // Convert coordinates to proper format [lng, lat] if needed
                 let coordinates = result.buildable_coords;
 
-                // More robust coordinate format detection
+                this.info(`Buildable area coordinates received: ${coordinates.length} points`, coordinates.slice(0, 2));
+
+                // More robust coordinate format detection for buildable area
                 if (coordinates[0] && coordinates[0].length === 2) {
                     const firstCoord = coordinates[0];
                     // Check if coordinates are in [lat, lng] format (latitude typically between -90 and 90)
+                    // For New Zealand, longitude is around 165-180, latitude around -35 to -47
                     if (Math.abs(firstCoord[0]) <= 90 && Math.abs(firstCoord[1]) > 90) {
                         // Likely [lat, lng] format, flip to [lng, lat]
                         coordinates = coordinates.map(coord => [coord[1], coord[0]]);
-                        if (!isPreview) {
-                            this.info('Corrected coordinate format from [lat, lng] to [lng, lat]');
-                        }
+                        this.info('Corrected buildable area coordinate format from [lat, lng] to [lng, lat]');
+                        this.info('Converted coordinates sample:', coordinates.slice(0, 2));
                     }
                 }
 
@@ -1104,7 +1118,7 @@ class SiteInspectorCore extends BaseManager {
                     coordinates.push([...firstCoord]);
                 }
 
-                this.map.addSource('buildable-area', {
+                const geojsonData = {
                     'type': 'geojson',
                     'data': {
                         'type': 'Feature',
@@ -1118,7 +1132,10 @@ class SiteInspectorCore extends BaseManager {
                             'is_preview': isPreview
                         }
                     }
-                });
+                };
+
+                this.info('Adding buildable area source with data:', geojsonData);
+                this.map.addSource('buildable-area', geojsonData);
 
                 // Different styling for preview vs confirmed with better visual feedback
                 const fillColor = isPreview ? '#002040' : '#002040';
