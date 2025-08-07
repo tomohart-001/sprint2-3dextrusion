@@ -1343,9 +1343,20 @@ class SiteBoundaryCore extends MapManagerBase {
         }
 
         this.isLocked = true;
-        this.emit('boundary-applied');
-        this.info('Site boundary confirmed and locked');
+        
+        // Emit boundary-applied event to trigger UI workflow
+        window.eventBus.emit('boundary-applied');
+        this.info('Site boundary confirmed and locked - boundary-applied event emitted');
+        
         this.updateButtonStates(false, true);
+        
+        // Also update UI panel manager directly as fallback
+        setTimeout(() => {
+            const uiManager = window.siteInspectorCore?.uiPanelManager;
+            if (uiManager) {
+                uiManager.updateBoundaryAppliedState();
+            }
+        }, 100);
     }
 
     clearBoundary() {
