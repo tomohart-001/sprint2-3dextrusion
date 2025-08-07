@@ -40,77 +40,120 @@ if (typeof FloorplanManager === 'undefined') {
         this.drawButton = null;
         this.clearButton = null;
         this.statusDisplay = null;
+        this.extrudeButton = null; // Added for extrude functionality
+        this.stopButton = null; // Added for stop drawing functionality
     }
 
     async initialize() {
         this.info('Initializing Floorplan Manager...');
 
         try {
-            // Get draw instance from core
-            if (window.siteInspectorCore && window.siteInspectorCore.getDraw()) {
-                this.draw = window.siteInspectorCore.getDraw();
-            } else {
-                this.warn('MapboxDraw not available - structure drawing will be limited');
+            if (!this.map) {
+                throw new Error('Map instance required for FloorplanManager');
             }
 
-            // Initialize UI elements
-            this.initializeUI();
+            // Get UI elements with proper fallback
+            this.drawButton = document.getElementById('drawStructureButton');
+            this.clearButton = document.getElementById('clearStructuresButton');
+            this.extrudeButton = document.getElementById('extrudeStructureButton');
+            this.stopButton = document.getElementById('stopStructureDrawingButton');
 
-            // Setup event listeners
-            this.setupEventListeners();
+            // Setup event handlers
+            this.setupEventHandlers();
+
+            // Initialize state
+            this.isDrawing = false;
+            this.structures = [];
+
+            // Ensure UI is in correct initial state
+            this.updateStructureControls(false);
 
             this.info('✅ Floorplan Manager initialized successfully');
-
         } catch (error) {
-            this.error('Failed to initialize Floorplan Manager:', error);
+            this.error('Failed to initialize FloorplanManager:', error);
             throw error;
         }
     }
 
-    initializeUI() {
-        // Get UI elements
-        this.drawButton = document.getElementById('drawStructureButton');
-        this.clearButton = document.getElementById('clearFloorplanButton');
-        this.statusDisplay = document.querySelector('.floorplan-status');
+    setupEventHandlers() {
+        this.info('Setting up event handlers...');
 
-        // Setup button event listeners
+        // UI Event Handlers with better error handling
         if (this.drawButton) {
-            this.drawButton.addEventListener('click', () => {
+            this.drawButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.info('Draw structure button clicked');
                 this.toggleDrawingMode();
+            });
+        } else {
+            this.warn('Draw structure button not found in DOM');
+        }
+
+        if (this.stopButton) {
+            this.stopButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.stopDrawing();
             });
         }
 
         if (this.clearButton) {
-            this.clearButton.addEventListener('click', () => {
+            this.clearButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 this.clearStructure();
             });
         }
-    }
 
-    setupEventListeners() {
-        // Listen for drawing events if draw is available
-        if (this.draw) {
-            this.map.on('draw.create', (e) => {
-                this.handleStructureCreated(e);
-            });
-
-            this.map.on('draw.update', (e) => {
-                this.handleStructureUpdated(e);
-            });
-
-            this.map.on('draw.delete', (e) => {
-                this.handleStructureDeleted(e);
+        if (this.extrudeButton) {
+            this.extrudeButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.extrudeStructure();
             });
         }
 
-        // Listen for global events
-        window.eventBus.on('site-boundary-deleted', () => {
-            this.clearAllStructures();
-        });
+        // Wait for draw control to be available
+        this.setupDrawEventHandlers();
 
-        window.eventBus.on('clear-all-dependent-features', () => {
-            this.clearAllStructures();
-        });
+        this.info('Event handlers setup completed');
+    }
+
+    setupDrawEventHandlers() {
+        // Check if draw control is available, if not, wait for it
+        const checkDraw = () => {
+            const core = window.siteInspectorCore;
+            if (core && core.draw) {
+                this.draw = core.draw;
+                this.info('Draw control found, setting up map event handlers');
+
+                // Map Drawing Event Handlers
+                this.map.on('draw.create', (e) => this.handleStructureCreated(e));
+                this.map.on('draw.update', (e) => this.handleStructureUpdated(e));
+                this.map.on('draw.delete', (e) => this.handleStructureDeleted(e));
+
+                return true;
+            }
+            return false;
+        };
+
+        // Try immediately, then retry if needed
+        if (!checkDraw()) {
+            this.info('Draw control not ready, will retry...');
+            let attempts = 0;
+            const maxAttempts = 20;
+
+            const retryInterval = setInterval(() => {
+                attempts++;
+                if (checkDraw() || attempts >= maxAttempts) {
+                    clearInterval(retryInterval);
+                    if (attempts >= maxAttempts) {
+                        this.warn('Draw control not available after maximum retries');
+                    }
+                }
+            }, 250);
+        }
     }
 
     toggleDrawingMode() {
@@ -192,6 +235,14 @@ if (typeof FloorplanManager === 'undefined') {
                 this.drawButton.textContent = 'Draw Structure';
                 this.drawButton.classList.remove('active');
             }
+        }
+        // Show/hide the stop button based on drawing state
+        if (this.stopButton) {
+            this.stopButton.style.display = isDrawing ? 'inline-block' : 'none';
+        }
+        // Disable draw button when drawing
+        if (this.drawButton) {
+            this.drawButton.disabled = isDrawing;
         }
     }
 
@@ -301,11 +352,25 @@ if (typeof FloorplanManager === 'undefined') {
         if (extrusionCard && hasStructure) {
             extrusionCard.classList.remove('collapsed');
         }
+        // Also update the extrude button's enabled state
+        if (this.extrudeButton) {
+            this.extrudeButton.disabled = !hasStructure;
+        }
     }
 
-    extrudeStructure(height) {
+    extrudeStructure() {
+        // For now, prompt for height; in future, this might come from UI
+        const heightInput = prompt('Enter extrusion height (in meters):');
+        const height = parseFloat(heightInput);
+
+        if (isNaN(height) || height <= 0) {
+            this.showStatus('Invalid height entered for extrusion.', 'error');
+            return;
+        }
+
         if (!this.currentStructure) {
             this.warn('No structure available to extrude');
+            this.showStatus('No structure selected to extrude.', 'warning');
             return;
         }
 
