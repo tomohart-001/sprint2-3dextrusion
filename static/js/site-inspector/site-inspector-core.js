@@ -1236,8 +1236,12 @@ class SiteInspectorCore extends BaseManager {
                             });
                             this.info('Added mapbox-dem terrain source');
                         } catch (addSourceError) {
-                            if (addSourceError.message && addSourceError.message.includes('already exists')) {
-                                this.info('Terrain source already exists, skipping creation');
+                            if (addSourceError.message && (
+                                addSourceError.message.includes('already exists') ||
+                                addSourceError.message.includes('mapbox-gl-draw-cold') ||
+                                addSourceError.message.includes('There is already a source')
+                            )) {
+                                this.info('Source conflict detected (likely from MapboxDraw), skipping terrain source creation');
                             } else {
                                 throw addSourceError;
                             }
@@ -1289,8 +1293,12 @@ class SiteInspectorCore extends BaseManager {
                     this.info('✅ 3D terrain features setup completed');
                 } catch (terrainError) {
                     // Check if it's the known source conflict error
-                    if (terrainError.message && (terrainError.message.includes('mapbox-gl-draw-cold') || terrainError.message.includes('already exists'))) {
-                        this.warn('MapboxDraw source conflict detected - this is expected and can be ignored');
+                    if (terrainError.message && (
+                        terrainError.message.includes('mapbox-gl-draw-cold') || 
+                        terrainError.message.includes('already exists') ||
+                        terrainError.message.includes('There is already a source')
+                    )) {
+                        this.warn('MapboxDraw source conflict detected - this is expected and can be ignored:', terrainError.message);
                     } else {
                         this.error('Failed to add 3D terrain features:', terrainError);
                     }
