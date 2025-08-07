@@ -93,7 +93,7 @@ if (typeof FloorplanManager === 'undefined') {
             this.info('✅ Draw structure button found and event listener attached');
         } else {
             this.warn('Draw structure button not found in DOM - checking alternatives...');
-            
+
             // Try to find button by different selectors
             const alternativeButtons = [
                 document.querySelector('#drawFloorplanButton'),
@@ -104,7 +104,7 @@ if (typeof FloorplanManager === 'undefined') {
                 document.querySelector('#floorplanControls .draw-button'),
                 document.querySelector('#floorplanCard .btn:first-child')
             ];
-            
+
             for (let i = 0; i < alternativeButtons.length; i++) {
                 if (alternativeButtons[i]) {
                     this.drawButton = alternativeButtons[i];
@@ -118,7 +118,7 @@ if (typeof FloorplanManager === 'undefined') {
                     break;
                 }
             }
-            
+
             if (!this.drawButton) {
                 this.error('Could not find draw structure button with any selector');
             }
@@ -202,7 +202,7 @@ if (typeof FloorplanManager === 'undefined') {
 
     toggleDrawingMode() {
         this.info('toggleDrawingMode called - checking draw control availability');
-        
+
         // Try to get draw control from multiple sources
         if (!this.draw) {
             const core = window.siteInspectorCore;
@@ -211,7 +211,7 @@ if (typeof FloorplanManager === 'undefined') {
                 this.info('Draw control obtained from siteInspectorCore');
             }
         }
-        
+
         if (!this.draw) {
             this.warn('Drawing not available - MapboxDraw not initialized');
             alert('Structure drawing is currently unavailable. Please refresh the page.');
@@ -235,7 +235,7 @@ if (typeof FloorplanManager === 'undefined') {
 
         try {
             this.info('Starting structure drawing mode...');
-            
+
             // Emit tool activation event to stop other tools
             window.eventBus.emit('tool-activated', 'floorplan');
 
@@ -246,7 +246,7 @@ if (typeof FloorplanManager === 'undefined') {
             if (typeof this.draw.changeMode !== 'function') {
                 throw new Error('Draw control missing changeMode method');
             }
-            
+
             if (typeof this.draw.getMode !== 'function') {
                 throw new Error('Draw control missing getMode method');
             }
@@ -286,7 +286,7 @@ if (typeof FloorplanManager === 'undefined') {
         try {
             // Remove existing structure visualization layers
             this.removeStructureVisualization();
-            
+
             // Don't touch the draw control's features - structures are managed separately
             this.info('Cleared existing structure visualizations');
         } catch (error) {
@@ -306,7 +306,7 @@ if (typeof FloorplanManager === 'undefined') {
                      feature.properties.name === 'Structure Footprint' ||
                      feature.properties.layer_type === 'structure_footprint')
                 );
-                
+
                 if (structureFeatures.length > 0) {
                     const structureIds = structureFeatures.map(f => f.id);
                     this.draw.delete(structureIds);
@@ -484,6 +484,17 @@ if (typeof FloorplanManager === 'undefined') {
             });
 
             this.info('Structure visualization added to map with completely independent layers');
+            this.map.setLayoutProperty('structure-footprint-stroke-independent', 'visibility', 'visible');
+            this.map.setLayoutProperty('structure-footprint-fill-independent', 'visibility', 'visible');
+
+            // Save structure placement data for persistence to other pages
+            this.saveStructurePlacementData();
+
+            // Update UI to show structure is drawn
+            this.updateStructureUI();
+
+            this.info('Draw mode reset to simple_select, preserving site boundary integrity');
+            this.isDrawing = false;
 
         } catch (error) {
             this.error('Error adding structure visualization:', error);
@@ -743,8 +754,112 @@ if (typeof FloorplanManager === 'undefined') {
 
         // Add missing methods for fallback compatibility
         clearAllFloorplanData() {
-            this.clearAllStructures();
+        this.info('Clearing all floorplan data');
+
+        // Clear the main state
+        this.state.geojsonPolygon = null;
+        this.state.isDrawing = false;
+        this.state.isLocked = false;
+
+        // Clear visualization
+        this.removeFloorplanFromMap();
+
+        // Clear structure placement data from session
+        this.clearStructurePlacementData();
+
+        // Update UI
+        this.updateStructureUI();
+
+        this.info('All floorplan data cleared');
+    }
+
+    saveStructurePlacementData() {
+        if (!this.state.geojsonPolygon) {
+            this.warn('No structure to save');
+            return;
         }
+
+        try {
+            const coordinates = this.state.geojsonPolygon.geometry.coordinates[0];
+            const area = this.calculatePolygonArea(coordinates);
+
+            // Calculate center point
+            const centerLng = coordinates.reduce((sum, coord) => sum + coord[0], 0) / coordinates.length;
+            const centerLat = coordinates.reduce((sum, coord) => sum + coord[1], 0) / coordinates.length;
+
+            // Calculate approximate dimensions (for rectangular structures)
+            const bounds = this.calculateBounds(coordinates);
+            const width = Math.abs(bounds.maxLng - bounds.minLng) * 111320 * Math.cos(centerLat * Math.PI / 180);
+            const length = Math.abs(bounds.maxLat - bounds.minLat) * 111320;
+
+            const structureData = {
+                coordinates: coordinates,
+                area_m2: area,
+                center: {
+                    lat: centerLat,
+                    lng: centerLng
+                },
+                dimensions: {
+                    width: Math.round(width * 10) / 10,
+                    length: Math.round(length * 10) / 10
+                },
+                type: 'structure_placement',
+                timestamp: new Date().toISOString(),
+                project_id: this.getProjectId()
+            };
+
+            // Store in session for immediate access
+            sessionStorage.setItem('structure_placement_data', JSON.stringify(structureData));
+
+            // Also store in localStorage for persistence across sessions
+            const projectId = this.getProjectId();
+            if (projectId) {
+                localStorage.setItem(`structure_placement_${projectId}`, JSON.stringify(structureData));
+            }
+
+            this.info('Structure placement data saved:', structureData);
+        } catch (error) {
+            this.error('Failed to save structure placement data:', error);
+        }
+    }
+
+    clearStructurePlacementData() {
+        try {
+            sessionStorage.removeItem('structure_placement_data');
+
+            const projectId = this.getProjectId();
+            if (projectId) {
+                localStorage.removeItem(`structure_placement_${projectId}`);
+            }
+
+            this.info('Structure placement data cleared');
+        } catch (error) {
+            this.error('Failed to clear structure placement data:', error);
+        }
+    }
+
+    calculateBounds(coordinates) {
+        const lngs = coordinates.map(coord => coord[0]);
+        const lats = coordinates.map(coord => coord[1]);
+
+        return {
+            minLng: Math.min(...lngs),
+            maxLng: Math.max(...lngs),
+            minLat: Math.min(...lats),
+            maxLat: Math.max(...lats)
+        };
+    }
+
+    getProjectId() {
+        const urlParams = new URLSearchParams(window.location.search);
+        let projectId = urlParams.get('project_id') || urlParams.get('project');
+
+        if (!projectId) {
+            projectId = sessionStorage.getItem('current_project_id');
+        }
+
+        return projectId;
+    }
     }
 
     // Make available globally

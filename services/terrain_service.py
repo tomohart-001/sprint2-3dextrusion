@@ -310,14 +310,24 @@ class TerrainService(CacheableService):
                     'setbacks': buildable.get('setbacks', {})
                 }
 
+            # Check for structure placement data from session or site data
+            structure_data = None
             if site_data.get('structure_placement', {}).get('coordinates'):
-                structure = site_data['structure_placement']
+                structure_data = site_data['structure_placement']
+            elif hasattr(flask, 'session') and flask.session.get('structure_placement_data'):
+                try:
+                    import json
+                    structure_data = json.loads(flask.session.get('structure_placement_data'))
+                except:
+                    pass
+            
+            if structure_data and structure_data.get('coordinates'):
                 polygons['structure_placement'] = {
-                    'coordinates': structure['coordinates'],
-                    'area_m2': structure.get('area_m2', 0),
-                    'color': '#dc3545',
+                    'coordinates': structure_data['coordinates'],
+                    'area_m2': structure_data.get('area_m2', 0),
+                    'color': '#ff6b35',
                     'name': 'Structure Placement',
-                    'structure_type': structure.get('structure_type', 'unknown')
+                    'structure_type': structure_data.get('structure_type', 'building')
                 }
 
             if polygons:

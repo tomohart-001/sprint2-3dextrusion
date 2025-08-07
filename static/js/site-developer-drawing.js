@@ -13,6 +13,7 @@ class SiteDeveloperDrawing {
         this.platformControls = null;
         this.drawingMode = null;
         this.drawnObjects = [];
+        this.buildingLayout = null; // Added to store generated layout
     }
 
     initialize() {
@@ -272,28 +273,160 @@ class SiteDeveloperDrawing {
         }
     }
 
-    createBuildPlatform() {
-        // Get rotation from stored dimensions first, then input field as fallback
-        let rotation = this.platformDimensions.rotation;
-        
-        // If no stored rotation, check the input field
-        if (rotation === undefined || rotation === null || isNaN(rotation)) {
-            const rotationInput = document.getElementById('platformRotation');
-            if (rotationInput) {
-                rotation = parseFloat(rotationInput.value) || 0;
-            } else {
-                rotation = 0;
+    /**
+     * Retrieves structure placement data from session storage or local storage.
+     * This data is expected to contain coordinates and dimensions of a drawn structure.
+     * @returns {object|null} The structure placement data or null if not found.
+     */
+    getStructurePlacementData() {
+        try {
+            // Try session storage first
+            let structureData = sessionStorage.getItem('structure_placement_data');
+
+            if (!structureData) {
+                // Try localStorage with project ID
+                const urlParams = new URLSearchParams(window.location.search);
+                const projectId = urlParams.get('project_id') || urlParams.get('project');
+                if (projectId) {
+                    structureData = localStorage.getItem(`structure_placement_${projectId}`);
+                }
             }
+
+            return structureData ? JSON.parse(structureData) : null;
+        } catch (error) {
+            console.error('[SiteDeveloper] Error getting structure placement data:', error);
+            return null;
         }
-        
-        // Always store the rotation value
-        this.platformDimensions.rotation = rotation;
-        
-        console.log('[SiteDeveloperDrawing] Creating platform with rotation:', rotation, '°');
-        this.createBuildPlatformWithRotation(rotation);
     }
 
-    createBuildPlatformWithRotation(degrees) {
+    setupDragControls() {
+        console.log('[SiteDeveloper] Setting up platform drag controls');
+
+        const platformControls = document.getElementById('platformControls');
+        if (!platformControls) return;
+
+        // Add draggable class to platform controls
+        platformControls.classList.add('draggable-platform');
+    }
+
+    createBuildPlatform() {
+        if (!this.core.terrainData || !this.core.terrainData.elevation_data) {
+            console.warn('[SiteDeveloper] No terrain data available for platform creation');
+            return;
+        }
+
+        console.log('[SiteDeveloper] Creating build platform...');
+
+        try {
+            // Get platform dimensions
+            const length = this.platformDimensions.length || 20;
+            const width = this.platformDimensions.width || 15;
+            const height = this.platformDimensions.height || 3;
+
+            let centerX, centerY, corners;
+
+            // Check if we have structure placement data to use as platform position
+            const structurePlacementData = this.getStructurePlacementData();
+
+            if (structurePlacementData && structurePlacementData.coordinates) {
+                console.log('[SiteDeveloper] Using structure placement coordinates for platform');
+
+                // Convert from lat/lng to terrain coordinates
+                const structureCoords = structurePlacementData.coordinates;
+
+                // Calculate bounds of structure
+                const lngs = structureCoords.map(coord => coord[0]);
+                const lats = structureCoords.map(coord => coord[1]);
+                const structureCenterLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+                const structureCenterLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+
+                // Convert to terrain space (this is a simplified conversion)
+                const terrainWidth = this.core.terrainData.width_m || 50;
+                const terrainLength = this.core.terrainData.length_m || 50;
+
+                // Placeholder for actual terrain coordinate conversion
+                // For now, we'll assume the center of the structure corresponds to the center of the terrain bounding box
+                centerX = terrainWidth / 2; 
+                centerY = terrainLength / 2;
+
+                // Use the structure dimensions if available
+                if (structurePlacementData.dimensions) {
+                    // Override platform dimensions with structure dimensions
+                    const structLength = structurePlacementData.dimensions.length || length;
+                    const structWidth = structurePlacementData.dimensions.width || width;
+
+                    const halfLength = structLength / 2;
+                    const halfWidth = structWidth / 2;
+
+                    corners = [
+                        [centerX - halfWidth, centerY - halfLength],
+                        [centerX + halfWidth, centerY - halfLength], 
+                        [centerX + halfWidth, centerY + halfLength],
+                        [centerX - halfWidth, centerY + halfLength],
+                        [centerX - halfWidth, centerY - halfLength] // Close the polygon
+                    ];
+                } else {
+                    // Use default dimensions but position at structure location
+                    const halfLength = length / 2;
+                    const halfWidth = width / 2;
+
+                    corners = [
+                        [centerX - halfWidth, centerY - halfLength],
+                        [centerX + halfWidth, centerY - halfLength], 
+                        [centerX + halfWidth, centerY + halfLength],
+                        [centerX - halfWidth, centerY + halfLength],
+                        [centerX - halfWidth, centerY - halfLength] // Close the polygon
+                    ];
+                }
+            } else {
+                // Default behavior - center of terrain
+                const terrainWidth = this.core.terrainData.width_m || 50;
+                const terrainLength = this.core.terrainData.length_m || 50;
+
+                centerX = terrainWidth / 2;
+                centerY = terrainLength / 2;
+
+                const halfLength = length / 2;
+                const halfWidth = width / 2;
+
+                corners = [
+                    [centerX - halfWidth, centerY - halfLength],
+                    [centerX + halfWidth, centerY - halfLength], 
+                    [centerX + halfWidth, centerY + halfLength],
+                    [centerX - halfWidth, centerY + halfLength],
+                    [centerX - halfWidth, centerY - halfLength] // Close the polygon
+                ];
+            }
+
+            // Store current dimensions and center for rotation and updates
+            this.platformDimensions = { ...this.platformDimensions, length: length, width: width, height: height, centerX: centerX, centerY: centerY };
+
+            // Get rotation from stored dimensions first, then input field as fallback
+            let rotation = this.platformDimensions.rotation;
+
+            // If no stored rotation, check the input field
+            if (rotation === undefined || rotation === null || isNaN(rotation)) {
+                const rotationInput = document.getElementById('platformRotation');
+                if (rotationInput) {
+                    rotation = parseFloat(rotationInput.value) || 0;
+                } else {
+                    rotation = 0;
+                }
+            }
+
+            // Always store the rotation value
+            this.platformDimensions.rotation = rotation;
+
+            console.log('[SiteDeveloperDrawing] Creating platform with rotation:', rotation, '°');
+            this.createBuildPlatformWithRotation(rotation, corners);
+
+        } catch (error) {
+            console.error('[SiteDeveloperDrawing] Error creating build platform:', error);
+            // Reject the promise if using one, or handle error appropriately
+        }
+    }
+
+    createBuildPlatformWithRotation(degrees, corners) {
         console.log('[SiteDeveloperDrawing] Creating build platform with rotation:', degrees, '°');
 
         return new Promise((resolve, reject) => {
@@ -301,61 +434,11 @@ class SiteDeveloperDrawing {
                 // Remove existing platform first
                 this.removeBuildPlatform();
 
-                const length = this.platformDimensions.length;
-                const width = this.platformDimensions.width;
-                const height = this.platformDimensions.height;
-
-                // Ensure rotation is stored in platform dimensions
-                this.platformDimensions.rotation = degrees;
-
-                // Get terrain data for platform positioning
-                const maxX = this.core.terrainData?.width_m || 50;
-                const maxY = this.core.terrainData?.length_m || 50;
-
-                // Position platform at center of site
-                const centerX = maxX / 2;
-                const centerY = maxY / 2;
-
-                // Create platform corners (before rotation)
-                const baseCorners = [
-                    [-length/2, -width/2],
-                    [length/2, -width/2],
-                    [length/2, width/2],
-                    [-length/2, width/2],
-                    [-length/2, -width/2] // Close the loop
-                ];
-
-                // Apply rotation - always use the degrees parameter passed to this function
-                const rotation = degrees * Math.PI / 180; // Convert to radians
-                const cos = Math.cos(rotation);
-                const sin = Math.sin(rotation);
-
-                console.log('[SiteDeveloperDrawing] Applying rotation matrix:', {
-                    degrees: degrees,
-                    radians: rotation,
-                    cos: cos,
-                    sin: sin
-                });
-
-                const corners = baseCorners.map(([x, y]) => {
-                    // Apply rotation matrix: [cos -sin; sin cos] * [x; y]
-                    const rotatedX = x * cos - y * sin;
-                    const rotatedY = x * sin + y * cos;
-                    
-                    // Translate to center position
-                    const finalX = centerX + rotatedX;
-                    const finalY = centerY + rotatedY;
-                    
-                    console.log(`[SiteDeveloperDrawing] Corner (${x}, ${y}) -> rotated (${rotatedX.toFixed(2)}, ${rotatedY.toFixed(2)}) -> final (${finalX.toFixed(2)}, ${finalY.toFixed(2)})`);
-                    
-                    return [finalX, finalY];
-                });
-
-                // Create platform trace
+                // Use provided corners directly
                 const platformX = corners.map(c => c[0]);
                 const platformY = corners.map(c => c[1]);
-                const platformZ = corners.map(() => height);
-                
+                const platformZ = corners.map(() => this.platformDimensions.height);
+
                 console.log('[SiteDeveloperDrawing] Platform trace coordinates:', {
                     x: platformX,
                     y: platformY,
@@ -373,32 +456,32 @@ class SiteDeveloperDrawing {
                         color: '#007cbf',
                         width: 6
                     },
-                    name: `Build Platform (${length}m × ${width}m @ ${degrees}°)`,
+                    name: `Build Platform (${this.platformDimensions.length}m × ${this.platformDimensions.width}m @ ${degrees}°)`,
                     showlegend: true,
                     opacity: 0.8,
                     meta: {
                         type: 'platform',
-                        centerX: centerX,
-                        centerY: centerY,
-                        length: length,
-                        width: width,
-                        height: height,
+                        centerX: this.platformDimensions.centerX,
+                        centerY: this.platformDimensions.centerY,
+                        length: this.platformDimensions.length,
+                        width: this.platformDimensions.width,
+                        height: this.platformDimensions.height,
                         rotation: degrees
                     }
                 };
 
-                // Add platform surface (filled) - exclude the closing corner for mesh3d
+                // Create platform surface (filled) - exclude the closing corner for mesh3d
                 const surfaceCorners = corners.slice(0, 4);
                 const platformSurface = {
                     x: surfaceCorners.map(c => c[0]),
                     y: surfaceCorners.map(c => c[1]),
-                    z: surfaceCorners.map(() => height),
+                    z: surfaceCorners.map(() => this.platformDimensions.height),
                     type: 'mesh3d',
                     opacity: 0.3,
                     color: '#007cbf',
                     name: 'Platform Surface',
                     showlegend: false,
-                    hovertemplate: `Platform Surface<br>Height: ${height}m<br>Rotation: ${degrees}°<extra></extra>`
+                    hovertemplate: `Platform Surface<br>Height: ${this.platformDimensions.height}m<br>Rotation: ${degrees}°<extra></extra>`
                 };
 
                 if (typeof Plotly !== 'undefined') {
@@ -459,16 +542,43 @@ class SiteDeveloperDrawing {
     updatePlatformDimensions() {
         if (this.buildPlatform) {
             const currentRotation = this.platformDimensions.rotation || 0;
-            this.createBuildPlatformWithRotation(currentRotation);
+            // Re-fetch dimensions from inputs to ensure they are current
+            const length = parseFloat(document.getElementById('platformLength')?.value) || this.platformDimensions.length;
+            const width = parseFloat(document.getElementById('platformWidth')?.value) || this.platformDimensions.width;
+            const height = parseFloat(document.getElementById('platformHeight')?.value) || this.platformDimensions.height;
+            this.platformDimensions = { ...this.platformDimensions, length, width, height };
+            this.createBuildPlatformWithRotation(currentRotation, this.generatePlatformCorners()); // Regenerate corners for update
         }
     }
 
     updatePlatformHeight() {
         if (this.buildPlatform) {
             const currentRotation = this.platformDimensions.rotation || 0;
-            this.createBuildPlatformWithRotation(currentRotation);
+            this.platformDimensions.height = parseFloat(document.getElementById('platformHeight')?.value);
+            this.createBuildPlatformWithRotation(currentRotation, this.generatePlatformCorners()); // Regenerate corners for update
         }
     }
+
+    // Helper to generate corners based on current platform dimensions and center
+    generatePlatformCorners() {
+        const length = this.platformDimensions.length;
+        const width = this.platformDimensions.width;
+        const centerX = this.platformDimensions.centerX;
+        const centerY = this.platformDimensions.centerY;
+
+        const halfLength = length / 2;
+        const halfWidth = width / 2;
+
+        const corners = [
+            [centerX - halfWidth, centerY - halfLength],
+            [centerX + halfWidth, centerY - halfLength],
+            [centerX + halfWidth, centerY + halfLength],
+            [centerX - halfWidth, centerY + halfLength],
+            [centerX - halfWidth, centerY - halfLength] // Close the polygon
+        ];
+        return corners;
+    }
+
 
     rotatePlatform(degrees) {
         try {
@@ -490,23 +600,18 @@ class SiteDeveloperDrawing {
 
             // If platform exists, recreate it with new rotation
             if (this.buildPlatform) {
-                // Store current dimensions
-                const currentLength = this.platformDimensions.length;
-                const currentWidth = this.platformDimensions.width;
-                const currentHeight = this.platformDimensions.height;
-
                 // Remove existing platform
                 this.removeBuildPlatform();
 
                 // Recreate with rotation and force redraw
-                this.createBuildPlatformWithRotation(degrees).then(() => {
+                this.createBuildPlatformWithRotation(degrees, this.generatePlatformCorners()).then(() => {
                     console.log('[SiteDeveloperDrawing] Platform rotation completed successfully:', degrees, '°');
-                    
+
                     // If buildings exist, re-render them with the new platform rotation
                     if (currentBuildingLayout && this.buildingUnits && this.buildingUnits.length > 0) {
                         console.log('[SiteDeveloperDrawing] Re-rendering', this.buildingUnits.length, 'buildings with new platform rotation:', degrees, '°');
                         this.renderBuildingLayout(currentBuildingLayout);
-                        
+
                         // Force a complete plot redraw to ensure visual changes
                         setTimeout(() => {
                             if (typeof Plotly !== 'undefined') {
@@ -543,7 +648,7 @@ class SiteDeveloperDrawing {
             this.removeBuildingLayout();
 
             const traces = [];
-            const colors = ['#ff6b35', '#004e89', '#009639', '#fcab10', '#b08cc9'];
+            const colors = ['#ff6b35', '#004e89', '#009639', '#fcab10', '#b19cc9'];
 
             layout.units.forEach((unit, index) => {
                 const color = colors[index % colors.length];
@@ -623,6 +728,10 @@ class SiteDeveloperDrawing {
                         if (trace.name && (trace.name.includes('Building') || trace.name.includes('Unit_'))) {
                             tracesToRemove.push(index);
                         }
+                        if (trace.name && trace.name.includes('Surface') && 
+                            this.buildingUnits.some(unit => trace.name.includes(unit.metadata.id))) {
+                            tracesToRemove.push(index);
+                        }
                     });
 
                     if (tracesToRemove.length > 0) {
@@ -631,9 +740,11 @@ class SiteDeveloperDrawing {
                     }
                 }
             }
-            this.buildingLayout = null;
+            this.buildingUnits = [];
+            this.buildingLayout = null; // Clear stored layout
+            console.log('[SiteDeveloperDrawing] Building layout cleared');
         } catch (error) {
-            console.error('[SiteDeveloperDrawing] Error removing building layout:', error);
+            console.error('[SiteDeveloperDrawing] Error clearing building layout:', error);
         }
     }
 
@@ -778,7 +889,7 @@ class SiteDeveloperDrawing {
 
         const platformHeight = this.platformDimensions.height;
         const platformRotation = this.platformDimensions.rotation || 0;
-        
+
         // Get platform center for rotation calculations
         const platformCenterX = this.buildPlatform?.meta?.centerX || 0;
         const platformCenterY = this.buildPlatform?.meta?.centerY || 0;
@@ -787,31 +898,31 @@ class SiteDeveloperDrawing {
             // Calculate unit's position relative to platform center, then apply platform rotation
             let unitX = unit.x;
             let unitY = unit.y;
-            
+
             // If platform is rotated, rotate the unit's position around the platform center
             if (platformRotation !== 0) {
                 const platformAngleRad = (platformRotation * Math.PI) / 180;
                 const platformCos = Math.cos(platformAngleRad);
                 const platformSin = Math.sin(platformAngleRad);
-                
+
                 // Calculate relative position from platform center
                 const relativeX = unit.x - platformCenterX;
                 const relativeY = unit.y - platformCenterY;
-                
+
                 // Rotate the relative position
                 const rotatedRelativeX = relativeX * platformCos - relativeY * platformSin;
                 const rotatedRelativeY = relativeX * platformSin + relativeY * platformCos;
-                
+
                 // Calculate new absolute position
                 unitX = platformCenterX + rotatedRelativeX;
                 unitY = platformCenterY + rotatedRelativeY;
-                
+
                 console.log(`[SiteDeveloperDrawing] Unit ${unit.id} rotated from (${unit.x.toFixed(1)}, ${unit.y.toFixed(1)}) to (${unitX.toFixed(1)}, ${unitY.toFixed(1)})`);
             }
-            
+
             // Buildings also inherit the platform rotation for their orientation
             const totalRotation = platformRotation + (unit.rotation_deg || 0);
-            
+
             // Create building footprint centered on the (possibly rotated) unit position
             const corners = [
                 [unitX - unit.width/2, unitY - unit.length/2],
@@ -892,7 +1003,7 @@ class SiteDeveloperDrawing {
 
         // Store the layout for potential re-rendering when platform rotates
         this.buildingLayout = layout;
-        
+
         console.log('[SiteDeveloperDrawing] Building layout rendered successfully:', this.buildingUnits.length, 'units');
     }
 

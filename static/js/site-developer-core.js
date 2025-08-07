@@ -41,6 +41,9 @@ class SiteDeveloperCore {
             // Initialize drawing manager
             this.initDrawingManager();
 
+            // Load structure placement data if available
+            this.loadStructurePlacementData();
+
             // Set up ADAM chat
             this.setupSiteDeveloperChat();
 
@@ -115,6 +118,31 @@ class SiteDeveloperCore {
             // Don't throw error - allow core to continue initializing
         }
     }
+
+    loadStructurePlacementData() {
+        console.log('[SiteDeveloper] Loading structure placement data...');
+        // Attempt to load structure placement data from siteData
+        if (this.siteData && this.siteData.structurePlacement) {
+            const structureData = this.siteData.structurePlacement;
+            console.log('[SiteDeveloper] Structure placement data found:', structureData);
+
+            // If drawing manager is initialized, use it to set the platform
+            if (this.drawingManager) {
+                try {
+                    // Assuming structureData contains properties like center, dimensions, rotation
+                    this.drawingManager.setPlatformFromData(structureData);
+                    console.log('[SiteDeveloper] Structure placement data applied as default platform.');
+                } catch (error) {
+                    console.error('[SiteDeveloper] Failed to apply structure placement data:', error);
+                }
+            } else {
+                console.warn('[SiteDeveloper] Drawing manager not available to apply structure placement data.');
+            }
+        } else {
+            console.log('[SiteDeveloper] No structure placement data found in siteData.');
+        }
+    }
+
 
     loadSiteModel() {
         console.log('[SiteDeveloper] Loading combined site model...');
@@ -604,7 +632,7 @@ class SiteDeveloperCore {
             if (!this.drawingManager) {
                 throw new Error('Drawing manager not initialized');
             }
-            
+
             if (!this.drawingManager.buildPlatform) {
                 throw new Error('No build platform found. Please create a platform first');
             }
