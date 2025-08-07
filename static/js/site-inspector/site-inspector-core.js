@@ -102,7 +102,25 @@ class SiteInspectorCore extends BaseManager {
         try {
             const urlParams = new URLSearchParams(window.location.search);
             let projectId = urlParams.get('project_id') || urlParams.get('project') || 
-                           sessionStorage.getItem('project_id');
+                           sessionStorage.getItem('project_id') ||
+                           sessionStorage.getItem('current_project_id');
+
+            // Also check for current project data in session storage
+            const currentProjectAddress = sessionStorage.getItem('current_project_address');
+            const currentProjectId = sessionStorage.getItem('current_project_id');
+
+            // If we have current project data in session, use it
+            if (!projectId && currentProjectId) {
+                projectId = currentProjectId;
+                this.info('Using current project ID from session:', projectId);
+            }
+
+            // If we have the address already in session, use it directly
+            if (currentProjectAddress && currentProjectAddress !== 'undefined') {
+                this.info('✅ Using current project address from session:', currentProjectAddress);
+                this.siteData.project_address = currentProjectAddress;
+                return await this.geocodeProjectAddress(currentProjectAddress);
+            }
 
             // Validate and clean project ID
             if (!projectId || !/^\d+$/.test(String(projectId).trim())) {

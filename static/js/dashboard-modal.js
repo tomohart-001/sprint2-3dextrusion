@@ -211,15 +211,18 @@ class DashboardModalManager extends BaseManager {
 
                         this.info('Project ID for redirect:', response.project.id);
 
-                        // Close modal first
+                        // Store the project address in session for site inspector
+                        const siteAddress = document.getElementById('siteAddress').value;
+                        if (siteAddress) {
+                            sessionStorage.setItem('current_project_address', siteAddress);
+                            sessionStorage.setItem('current_project_id', response.project.id);
+                        }
+
+                        // Close modal
                         this.closeAddProjectModal();
 
-                        // Small delay to ensure modal is closed, then redirect to project detail page
-                        setTimeout(() => {
-                            const redirectUrl = `/project/${response.project.id}`;
-                            this.info('Redirecting to project detail page:', redirectUrl);
-                            window.location.href = redirectUrl;
-                        }, 100);
+                        // Navigate to site inspector
+                        this.navigateToSiteInspector(response.project.id);
                     } else {
                 this.error('Project creation failed', response);
                 alert('Error creating project: ' + (response.error || 'Unknown error'));
@@ -423,6 +426,55 @@ class DashboardModalManager extends BaseManager {
                 locateBtn.style.opacity = '1';
             }
         }
+    }
+
+    /**
+     * Navigate to site inspector for a project
+     */
+    navigateToSiteInspector(projectId) {
+        if (projectId) {
+            // Store project ID in session for site inspector to use
+            sessionStorage.setItem('current_project_id', projectId);
+
+            // Try to get project address from the current project data and store it
+            const projectData = this.getCurrentProjectData(projectId);
+            if (projectData && projectData.address) {
+                sessionStorage.setItem('current_project_address', projectData.address);
+                this.info('Stored current project address in session:', projectData.address);
+            }
+
+            window.location.href = `/site-inspector?project_id=${projectId}`;
+        } else {
+            window.location.href = '/site-inspector';
+        }
+    }
+
+    /**
+     * Get current project data by ID
+     */
+    getCurrentProjectData(projectId) {
+        // Try to get from the projects table if available
+        const projectsTable = document.getElementById('projectsTableBody');
+        if (projectsTable) {
+            const rows = projectsTable.querySelectorAll('tr');
+            for (const row of rows) {
+                const actionButtons = row.querySelector('.action-buttons');
+                if (actionButtons) {
+                    const inspectBtn = actionButtons.querySelector(`[onclick*="${projectId}"]`);
+                    if (inspectBtn) {
+                        const cells = row.querySelectorAll('td');
+                        if (cells.length >= 3) {
+                            return {
+                                name: cells[0].textContent.trim(),
+                                address: cells[1].textContent.trim(),
+                                id: projectId
+                            };
+                        }
+                    }
+                }
+            }
+        }
+        return null;
     }
 }
 const siteInspectorBtn = document.getElementById('siteInspectorBtn');
