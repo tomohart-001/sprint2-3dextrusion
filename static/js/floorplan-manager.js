@@ -284,17 +284,11 @@ if (typeof FloorplanManager === 'undefined') {
 
     clearExistingStructures() {
         try {
-            // Only clear structure features, not site boundary
-            const allFeatures = this.draw.getAll();
-            const structureFeatures = allFeatures.features.filter(feature => {
-                return feature.properties && feature.properties.type === 'structure';
-            });
-
-            if (structureFeatures.length > 0) {
-                const structureIds = structureFeatures.map(f => f.id);
-                this.draw.delete(structureIds);
-                this.info(`Cleared ${structureFeatures.length} existing structure features`);
-            }
+            // Remove existing structure visualization layers
+            this.removeStructureVisualization();
+            
+            // Don't touch the draw control's features - structures are managed separately
+            this.info('Cleared existing structure visualizations');
         } catch (error) {
             this.warn('Could not clear existing structures:', error);
         }
@@ -355,22 +349,32 @@ if (typeof FloorplanManager === 'undefined') {
 
             this.info('Structure created:', feature);
 
-            // Mark this feature as a structure (not site boundary)
-            feature.properties = feature.properties || {};
-            feature.properties.type = 'structure';
-            feature.properties.name = 'Structure Footprint';
+            // Immediately remove from draw control to prevent interference with site boundary
+            if (this.draw && feature.id) {
+                this.draw.delete([feature.id]);
+            }
+
+            // Create our own structure representation
+            const structureFeature = {
+                type: 'Feature',
+                geometry: feature.geometry,
+                properties: {
+                    type: 'structure',
+                    name: 'Structure Footprint'
+                }
+            };
 
             // Store the structure
-            this.currentStructure = feature;
-            this.state.geojsonPolygon = feature;
+            this.currentStructure = structureFeature;
+            this.state.geojsonPolygon = structureFeature;
             this.state.hasFloorplan = true;
 
             // Calculate area
-            const area = this.calculatePolygonArea(feature.geometry.coordinates[0]);
+            const area = this.calculatePolygonArea(structureFeature.geometry.coordinates[0]);
             this.info(`Structure area: ${area.toFixed(2)} m²`);
 
-            // Add structure visualization layer
-            this.addStructureVisualization(feature);
+            // Add structure visualization layer (separate from site boundary)
+            this.addStructureVisualization(structureFeature);
 
             // Update UI
             this.showStatus(`Structure created (${area.toFixed(1)} m²)`, 'success');
@@ -381,9 +385,9 @@ if (typeof FloorplanManager === 'undefined') {
 
             // Emit event
             window.eventBus.emit('structure-created', {
-                feature: feature,
+                feature: structureFeature,
                 area: area,
-                coordinates: feature.geometry.coordinates[0],
+                coordinates: structureFeature.geometry.coordinates[0],
                 type: 'structure'
             });
 
@@ -420,13 +424,13 @@ if (typeof FloorplanManager === 'undefined') {
                 }
             });
 
-            // Add structure fill layer
+            // Add structure fill layer with distinct red color (different from blue site boundary)
             this.map.addLayer({
                 id: fillLayerId,
                 type: 'fill',
                 source: sourceId,
                 paint: {
-                    'fill-color': '#dc3545',
+                    'fill-color': '#ff6b35', // Orange-red to distinguish from blue site boundary
                     'fill-opacity': 0.3
                 }
             });
@@ -437,13 +441,13 @@ if (typeof FloorplanManager === 'undefined') {
                 type: 'line',
                 source: sourceId,
                 paint: {
-                    'line-color': '#dc3545',
+                    'line-color': '#ff6b35', // Orange-red to distinguish from blue site boundary
                     'line-width': 3,
                     'line-opacity': 0.8
                 }
             });
 
-            this.info('Structure visualization added to map');
+            this.info('Structure visualization added to map with distinct styling');
 
         } catch (error) {
             this.error('Error adding structure visualization:', error);
@@ -471,22 +475,8 @@ if (typeof FloorplanManager === 'undefined') {
     }
 
     clearStructure() {
-        if (!this.draw) return;
-
         try {
-            // Only remove structure features, not site boundary
-            const allFeatures = this.draw.getAll();
-            const structureFeatures = allFeatures.features.filter(feature => {
-                return feature.properties && feature.properties.type === 'structure';
-            });
-
-            if (structureFeatures.length > 0) {
-                const structureIds = structureFeatures.map(f => f.id);
-                this.draw.delete(structureIds);
-                this.info(`Removed ${structureFeatures.length} structure features from draw`);
-            }
-
-            // Remove structure visualization layers
+            // Remove structure visualization layers (don't touch draw control features)
             this.removeStructureVisualization();
 
             // Clear state
@@ -496,7 +486,10 @@ if (typeof FloorplanManager === 'undefined') {
             this.updateStructureControls(false);
             this.showStatus('Structure cleared', 'info');
 
-            this.info('Structure cleared');
+            this.info('Structure cleared - site boundary unchanged');
+
+            // Emit event
+            window.eventBus.emit('structure-deleted');
 
         } catch (error) {
             this.error('Error clearing structure:', error);
