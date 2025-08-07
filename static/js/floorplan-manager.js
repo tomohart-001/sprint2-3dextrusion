@@ -52,9 +52,12 @@ if (typeof FloorplanManager === 'undefined') {
                 throw new Error('Map instance required for FloorplanManager');
             }
 
-            // Get UI elements with proper fallback
-            this.drawButton = document.getElementById('drawStructureButton');
-            this.clearButton = document.getElementById('clearStructuresButton');
+            // Get UI elements with proper fallback - check multiple possible IDs
+            this.drawButton = document.getElementById('drawStructureButton') || 
+                             document.querySelector('[data-action="draw-structure"]') ||
+                             document.querySelector('.draw-structure-btn');
+            this.clearButton = document.getElementById('clearStructuresButton') ||
+                              document.getElementById('clearFloorplanButton');
             this.extrudeButton = document.getElementById('extrudeStructureButton');
             this.stopButton = document.getElementById('stopStructureDrawingButton');
 
@@ -86,8 +89,35 @@ if (typeof FloorplanManager === 'undefined') {
                 this.info('Draw structure button clicked');
                 this.toggleDrawingMode();
             });
+            this.info('✅ Draw structure button found and event listener attached');
         } else {
-            this.warn('Draw structure button not found in DOM');
+            this.warn('Draw structure button not found in DOM - checking alternatives...');
+            
+            // Try to find button by different selectors
+            const alternativeButtons = [
+                document.querySelector('.draw-structure-btn'),
+                document.querySelector('[onclick*="draw"]'),
+                document.querySelector('.btn[data-action="draw-structure"]'),
+                document.querySelector('#floorplanCard .btn:first-child')
+            ];
+            
+            for (let i = 0; i < alternativeButtons.length; i++) {
+                if (alternativeButtons[i]) {
+                    this.drawButton = alternativeButtons[i];
+                    this.drawButton.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.info('Draw structure button clicked (alternative selector)');
+                        this.toggleDrawingMode();
+                    });
+                    this.info('✅ Found alternative draw button and attached listener');
+                    break;
+                }
+            }
+            
+            if (!this.drawButton) {
+                this.error('Could not find draw structure button with any selector');
+            }
         }
 
         if (this.stopButton) {
@@ -157,6 +187,17 @@ if (typeof FloorplanManager === 'undefined') {
     }
 
     toggleDrawingMode() {
+        this.info('toggleDrawingMode called - checking draw control availability');
+        
+        // Try to get draw control from multiple sources
+        if (!this.draw) {
+            const core = window.siteInspectorCore;
+            if (core && core.draw) {
+                this.draw = core.draw;
+                this.info('Draw control obtained from siteInspectorCore');
+            }
+        }
+        
         if (!this.draw) {
             this.warn('Drawing not available - MapboxDraw not initialized');
             alert('Structure drawing is currently unavailable. Please refresh the page.');
@@ -164,35 +205,58 @@ if (typeof FloorplanManager === 'undefined') {
         }
 
         if (this.isDrawing) {
+            this.info('Currently drawing - stopping drawing mode');
             this.stopDrawing();
         } else {
+            this.info('Not currently drawing - starting drawing mode');
             this.startDrawing();
         }
     }
 
     startDrawing() {
-        if (!this.draw) return;
+        if (!this.draw) {
+            this.error('Cannot start drawing - draw control not available');
+            return;
+        }
 
         try {
+            this.info('Starting structure drawing mode...');
+            
             // Emit tool activation event
             window.eventBus.emit('tool-activated', 'floorplan');
 
-            // Safely start polygon drawing mode
-            if (typeof this.draw.changeMode === 'function') {
-                this.draw.changeMode('draw_polygon');
-                this.isDrawing = true;
-
-                // Update UI
-                this.updateDrawingUI(true);
-
-                this.info('Structure drawing mode started');
-            } else {
-                throw new Error('Draw control not properly initialized');
+            // Check if draw control has the required methods
+            if (typeof this.draw.changeMode !== 'function') {
+                throw new Error('Draw control missing changeMode method');
             }
+            
+            if (typeof this.draw.getMode !== 'function') {
+                throw new Error('Draw control missing getMode method');
+            }
+
+            // Get current mode for debugging
+            const currentMode = this.draw.getMode();
+            this.info(`Current draw mode: ${currentMode}`);
+
+            // Change to polygon drawing mode
+            this.draw.changeMode('draw_polygon');
+            this.isDrawing = true;
+
+            // Verify mode change
+            const newMode = this.draw.getMode();
+            this.info(`New draw mode: ${newMode}`);
+
+            // Update UI
+            this.updateDrawingUI(true);
+
+            // Show user feedback
+            this.showStatus('Click on the map to start drawing your structure footprint', 'info');
+
+            this.info('✅ Structure drawing mode started successfully');
 
         } catch (error) {
             this.error('Failed to start drawing mode:', error);
-            this.showStatus('Failed to start drawing mode', 'error');
+            this.showStatus('Failed to start drawing mode: ' + error.message, 'error');
 
             // Reset state on error
             this.isDrawing = false;
