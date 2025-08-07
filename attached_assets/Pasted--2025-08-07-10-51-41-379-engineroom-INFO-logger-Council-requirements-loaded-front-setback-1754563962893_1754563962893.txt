@@ -1,0 +1,88 @@
+
+2025-08-07 10:51:41,379 - engineroom - INFO - [logger] Council requirements loaded: ['front_setback', 'side_setback', 'rear_setback', 'max_height', 'max_storeys', 'site_coverage', 'permeable_surface', 'notes', 'council', 'zone', 'source']
+2025-08-07 10:51:41,379 - engineroom - ERROR - [logger] No valid coordinates available for buildable area calculation
+172.31.112.130 - - [07/Aug/2025 10:51:41] "GET /site-inspector?project_id=9 HTTP/1.1" 200 -
+172.31.112.130 - - [07/Aug/2025 10:51:41] "GET /static/styles.css HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:41] "GET /static/css/adam-chat-widget.css HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:42] "GET /static/js/core.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:42] "GET /static/js/adam-chat-widget.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:42] "GET /static/js/opencv-processor.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:42] "GET /static/js/floorplan-manager.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:42] "GET /static/js/site-inspector/config.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:43] "GET /static/js/site-inspector/event-system.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:43] "GET /static/js/site-inspector/utils.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:43] "GET /static/js/site-inspector/base-manager.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:43] "GET /static/js/site-inspector/map-manager-base.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:43] "GET /static/js/site-inspector/site-boundary-core.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:43] "GET /static/js/site-inspector/property-setbacks-manager.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:44] "GET /static/js/site-inspector/map-features-manager.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:44] "GET /static/js/site-inspector/ui-panel-manager.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:44] "GET /static/js/site-inspector/extrusion-3d-manager.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:51:44] "GET /static/js/site-inspector/site-inspector-core.js HTTP/1.1" 304 -
+2025-08-07 10:51:46,040 - engineroom - INFO - [logger] Project address requested for project ID: 9 - 3D Extrusion Test Project at 27 Cornford Street, Karori, Wellington 6012, New Zealand
+172.31.112.130 - - [07/Aug/2025 10:51:46] "GET /api/project-address?project_id=9 HTTP/1.1" 200 -
+2025-08-07 10:51:46,064 - engineroom - INFO - [logger] Getting conversations for user ID: 3
+2025-08-07 10:51:46,065 - engineroom - INFO - [logger] Retrieved 0 conversations
+172.31.112.130 - - [07/Aug/2025 10:51:46] "GET /api/conversations?limit=1&agent=ADAM HTTP/1.1" 200 -
+2025-08-07 10:51:46,224 - engineroom - INFO - [logger] Mapbox token request - token available: True
+2025-08-07 10:51:46,224 - engineroom - INFO - [logger] Returning Mapbox token (preview: pk.eyJ1I...C7_w)
+172.31.112.130 - - [07/Aug/2025 10:51:46] "GET /api/mapbox-token HTTP/1.1" 200 -
+2025-08-07 10:52:06,370 - engineroom - INFO - [logger] Site inspector request - URL: http://772be468-3bfd-436e-8a95-f0c335b68d5a-00-1n1sbo23i1ala.spock.replit.dev/site-inspector?project_id=9
+2025-08-07 10:52:06,371 - engineroom - INFO - [logger] Site inspector request - Args: {'project_id': '9'}
+2025-08-07 10:52:06,371 - engineroom - INFO - [logger] Site inspector request - Project ID: 9
+2025-08-07 10:52:06,372 - engineroom - INFO - [logger] Database tables initialized successfully
+2025-08-07 10:52:06,373 - engineroom - INFO - [logger] Retrieved project data: 3D Extrusion Test Project at 27 Cornford Street, Karori, Wellington 6012, New Zealand (ID: 9)
+2025-08-07 10:52:06,373 - engineroom - INFO - [logger] No site data in session, loading site inspector for new polygon creation | Context: {'session_keys': ['current_project_address', 'current_project_id', 'current_project_name', 'geocoded_location_user_3', 'user', 'user_timezone'], 'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'referer': 'https://772be468-3bfd-436e-8a95-f0c335b68d5a-00-1n1sbo23i1ala.spock.replit.dev/site-inspector?project_id=9'}
+2025-08-07 10:52:06,373 - engineroom - INFO - [logger] Processing site inspector request | Context: {'site_data_keys': ['area', 'area_m2', 'type', 'coordinates', 'center', 'ready_for_new_polygon'], 'has_coordinates': False, 'coordinate_count': 0, 'has_center': False, 'area': 0}
+2025-08-07 10:52:06,374 - engineroom - WARNING - [logger] Site data validation failed: ['No coordinates provided', 'Center point is required', 'Area must be positive, got: 0', 'Area too small (min 1 m²): 0']
+2025-08-07 10:52:06,374 - engineroom - WARNING - [logger] Site data validation warnings (non-blocking): Site data validation issues: No coordinates provided; Center point is required; Area must be positive, got: 0; Area too small (min 1 m²): 0
+2025-08-07 10:52:06,374 - engineroom - INFO - [logger] Processing site inspector for area: 0 m²
+2025-08-07 10:52:06,374 - engineroom - INFO - [logger] GradientService - Cache hit: Returning cached gradient data
+2025-08-07 10:52:06,374 - engineroom - INFO - [logger] Gradient data calculated successfully
+2025-08-07 10:52:06,374 - engineroom - INFO - [logger] Extracted council from project address: Wellington City Council
+2025-08-07 10:52:06,374 - engineroom - INFO - [logger] Looking up requirements for Wellington City Council, zoning: residential
+2025-08-07 10:52:06,374 - engineroom - INFO - [logger] Council requirements loaded: ['front_setback', 'side_setback', 'rear_setback', 'max_height', 'max_storeys', 'site_coverage', 'permeable_surface', 'notes', 'council', 'zone', 'source']
+2025-08-07 10:52:06,374 - engineroom - ERROR - [logger] No valid coordinates available for buildable area calculation
+172.31.112.130 - - [07/Aug/2025 10:52:06] "GET /site-inspector?project_id=9 HTTP/1.1" 200 -
+172.31.112.130 - - [07/Aug/2025 10:52:06] "GET /static/styles.css HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:07] "GET /static/css/adam-chat-widget.css HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:07] "GET /static/js/core.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:07] "GET /static/js/adam-chat-widget.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:07] "GET /static/js/opencv-processor.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:08] "GET /static/js/floorplan-manager.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:08] "GET /static/js/site-inspector/config.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:08] "GET /static/js/site-inspector/event-system.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:08] "GET /static/js/site-inspector/utils.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:08] "GET /static/js/site-inspector/base-manager.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:09] "GET /static/js/site-inspector/map-manager-base.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:09] "GET /static/js/site-inspector/site-boundary-core.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:09] "GET /static/js/site-inspector/property-setbacks-manager.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:09] "GET /static/js/site-inspector/map-features-manager.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:09] "GET /static/js/site-inspector/ui-panel-manager.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:09] "GET /static/js/site-inspector/extrusion-3d-manager.js HTTP/1.1" 304 -
+172.31.112.130 - - [07/Aug/2025 10:52:09] "GET /static/js/site-inspector/site-inspector-core.js HTTP/1.1" 304 -
+2025-08-07 10:52:10,041 - engineroom - INFO - [logger] Project address requested for project ID: 9 - 3D Extrusion Test Project at 27 Cornford Street, Karori, Wellington 6012, New Zealand
+172.31.112.130 - - [07/Aug/2025 10:52:10] "GET /api/project-address?project_id=9 HTTP/1.1" 200 -
+2025-08-07 10:52:10,067 - engineroom - INFO - [logger] Getting conversations for user ID: 3
+2025-08-07 10:52:10,068 - engineroom - INFO - [logger] Retrieved 0 conversations
+172.31.112.130 - - [07/Aug/2025 10:52:10] "GET /api/conversations?limit=1&agent=ADAM HTTP/1.1" 200 -
+2025-08-07 10:52:10,228 - engineroom - INFO - [logger] Mapbox token request - token available: True
+2025-08-07 10:52:10,228 - engineroom - INFO - [logger] Returning Mapbox token (preview: pk.eyJ1I...C7_w)
+172.31.112.130 - - [07/Aug/2025 10:52:10] "GET /api/mapbox-token HTTP/1.1" 200 -
+2025-08-07 10:52:29,825 - engineroom - INFO - [logger] Site inspector request - URL: http://772be468-3bfd-436e-8a95-f0c335b68d5a-00-1n1sbo23i1ala.spock.replit.dev/site-inspector?project_id=9
+2025-08-07 10:52:29,825 - engineroom - INFO - [logger] Site inspector request - Args: {'project_id': '9'}
+2025-08-07 10:52:29,825 - engineroom - INFO - [logger] Site inspector request - Project ID: 9
+2025-08-07 10:52:29,826 - engineroom - INFO - [logger] Database tables initialized successfully
+2025-08-07 10:52:29,826 - engineroom - INFO - [logger] Retrieved project data: 3D Extrusion Test Project at 27 Cornford Street, Karori, Wellington 6012, New Zealand (ID: 9)
+2025-08-07 10:52:29,826 - engineroom - INFO - [logger] No site data in session, loading site inspector for new polygon creation | Context: {'session_keys': ['current_project_address', 'current_project_id', 'current_project_name', 'geocoded_location_user_3', 'user', 'user_timezone'], 'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'referer': 'https://772be468-3bfd-436e-8a95-f0c335b68d5a-00-1n1sbo23i1ala.spock.replit.dev/site-inspector?project_id=9'}
+2025-08-07 10:52:29,826 - engineroom - INFO - [logger] Processing site inspector request | Context: {'site_data_keys': ['area', 'area_m2', 'type', 'coordinates', 'center', 'ready_for_new_polygon'], 'has_coordinates': False, 'coordinate_count': 0, 'has_center': False, 'area': 0}
+2025-08-07 10:52:29,827 - engineroom - WARNING - [logger] Site data validation failed: ['No coordinates provided', 'Center point is required', 'Area must be positive, got: 0', 'Area too small (min 1 m²): 0']
+2025-08-07 10:52:29,827 - engineroom - WARNING - [logger] Site data validation warnings (non-blocking): Site data validation issues: No coordinates provided; Center point is required; Area must be positive, got: 0; Area too small (min 1 m²): 0
+2025-08-07 10:52:29,827 - engineroom - INFO - [logger] Processing site inspector for area: 0 m²
+2025-08-07 10:52:29,827 - engineroom - INFO - [logger] GradientService - Cache hit: Returning cached gradient data
+2025-08-07 10:52:29,827 - engineroom - INFO - [logger] Gradient data calculated successfully
+2025-08-07 10:52:29,827 - engineroom - INFO - [logger] Extracted council from project address: Wellington City Council
+2025-08-07 10:52:29,827 - engineroom - INFO - [logger] Looking up requirements for Wellington City Council, zoning: residential
+2025-08-07 10:52:29,827 - engineroom - INFO - [logger] Council requirements loaded: ['front_setback', 'side_setback', 'rear_setback', 'max_height', 'max_storeys', 'site_coverage', 'permeable_surface', 'notes', 'council', 'zone', 'source']
+2025-08-07 10:52:29,827 - engineroom - ERROR - [logger] No valid coordinates available for buildable area calculation
+172.31.112.130 - - [07/Aug/2025 10:52:29] "GET /site-inspector?project_id=9 HTTP/1.1" 200 -
