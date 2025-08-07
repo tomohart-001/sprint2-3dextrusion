@@ -53,7 +53,8 @@ if (typeof FloorplanManager === 'undefined') {
             }
 
             // Get UI elements with proper fallback - check multiple possible IDs
-            this.drawButton = document.getElementById('drawStructureButton') || 
+            this.drawButton = document.getElementById('drawFloorplanButton') || 
+                             document.getElementById('drawStructureButton') || 
                              document.querySelector('[data-action="draw-structure"]') ||
                              document.querySelector('.draw-structure-btn');
             this.clearButton = document.getElementById('clearStructuresButton') ||
@@ -95,9 +96,12 @@ if (typeof FloorplanManager === 'undefined') {
             
             // Try to find button by different selectors
             const alternativeButtons = [
+                document.querySelector('#drawFloorplanButton'),
+                document.querySelector('.draw-button'),
                 document.querySelector('.draw-structure-btn'),
                 document.querySelector('[onclick*="draw"]'),
                 document.querySelector('.btn[data-action="draw-structure"]'),
+                document.querySelector('#floorplanControls .draw-button'),
                 document.querySelector('#floorplanCard .btn:first-child')
             ];
             
