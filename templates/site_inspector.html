@@ -16,23 +16,18 @@
     <script src="{{ url_for('static', filename='js/opencv-processor.js') }}"></script>
     <script src="{{ url_for('static', filename='js/floorplan-manager.js') }}"></script>
 
-    <!-- Site Inspector JavaScript Modules -->
-    <script src="{{ url_for('static', filename='js/site-inspector/base-manager.js') }}"></script>
+    <!-- Load Site Inspector JavaScript modules in dependency order -->
     <script src="{{ url_for('static', filename='js/site-inspector/config.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/site-inspector/utils.js') }}"></script>
     <script src="{{ url_for('static', filename='js/site-inspector/event-system.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/site-inspector/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/site-inspector/base-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/site-inspector/map-manager-base.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/site-inspector/site-inspector-data-manager.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/site-inspector/site-inspector-initializer.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/site-inspector/site-inspector-event-handlers.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/site-inspector/site-inspector-visualization-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/site-inspector/site-boundary-core.js') }}"></script>
     <script src="{{ url_for('static', filename='js/site-inspector/property-setbacks-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/floorplan-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/site-inspector/map-features-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/site-inspector/ui-panel-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/site-inspector/extrusion-3d-manager.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/site-inspector/debug-helper.js') }}"></script>
     <script src="{{ url_for('static', filename='js/site-inspector/site-inspector-core.js') }}"></script>
     <style>
         body { 
@@ -850,7 +845,7 @@
         .edge-selection-btn:hover {
             background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%);
             transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(84, 123, 247, 0.3);
+            box-shadow: 0 4px 16px rgba(84, 123, 247, 0.3);```python
         }
 
         .        .edge-selection-btn.active {
@@ -1782,7 +1777,8 @@
         .dimensions-control-independent {
             position: relative;
             z-index: 1100;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(```python
+255, 255, 255, 0.95);
             border: 1px solid rgba(0, 0, 0, 0.08);
             border-radius: 8px;
             backdrop-filter: blur(20px);
