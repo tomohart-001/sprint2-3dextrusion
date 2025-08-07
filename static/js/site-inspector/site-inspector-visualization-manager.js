@@ -1,7 +1,7 @@
 
 /**
  * Site Inspector Visualization Manager
- * Handles all map visualization and rendering operations
+ * Handles all visualization and display operations
  */
 
 class SiteInspectorVisualizationManager extends BaseManager {
@@ -10,283 +10,197 @@ class SiteInspectorVisualizationManager extends BaseManager {
         this.core = core;
     }
 
-    // Visualization methods
-    createSetbackVisualization(data) {
-        if (!data.selectedEdges || !data.selectedEdges.front || !data.selectedEdges.back) {
-            return;
-        }
-
-        this.clearSetbackVisualization();
+    updateBuildableAreaDisplay(result, isPreview = false) {
+        this.info('Updating buildable area display:', { 
+            area: result.buildable_area_m2, 
+            isPreview 
+        });
 
         try {
-            const frontEdge = data.selectedEdges.front;
-            const backEdge = data.selectedEdges.back;
-            const features = [];
-
-            if (frontEdge) {
-                features.push({
-                    type: 'Feature',
-                    geometry: {
-                        type: 'LineString',
-                        coordinates: [frontEdge.start, frontEdge.end]
-                    },
-                    properties: {
-                        type: 'front-setback',
-                        setback: data.front
-                    }
-                });
+            if (!this.core.map) {
+                this.warn('Map not available for buildable area display');
+                return;
             }
 
-            if (backEdge) {
-                features.push({
-                    type: 'Feature',
-                    geometry: {
-                        type: 'LineString',
-                        coordinates: [backEdge.start, backEdge.end]
-                    },
-                    properties: {
-                        type: 'back-setback',
-                        setback: data.back
-                    }
-                });
+            // Remove existing buildable area layers
+            this.clearBuildableAreaLayers();
+
+            if (result.buildable_coords && result.buildable_coords.length > 0) {
+                const layerId = isPreview ? 'buildable-area-preview' : 'buildable-area';
+                
+                // Add buildable area source and layer
+                this.addBuildableAreaLayer(layerId, result.buildable_coords, isPreview);
+                
+                this.info(`✅ Buildable area ${isPreview ? 'preview' : 'final'} displayed`);
             }
-
-            this.core.map.addSource('setback-lines', {
-                type: 'geojson',
-                data: {
-                    type: 'FeatureCollection',
-                    features: features
-                }
-            });
-
-            this.core.map.addLayer({
-                id: 'front-setback-line',
-                type: 'line',
-                source: 'setback-lines',
-                filter: ['==', ['get', 'type'], 'front-setback'],
-                paint: {
-                    'line-color': '#28a745',
-                    'line-width': 4,
-                    'line-opacity': 0.8
-                }
-            });
-
-            this.core.map.addLayer({
-                id: 'back-setback-line',
-                type: 'line',
-                source: 'setback-lines',
-                filter: ['==', ['get', 'type'], 'back-setback'],
-                paint: {
-                    'line-color': '#dc3545',
-                    'line-width': 4,
-                    'line-opacity': 0.8
-                }
-            });
-
-            this.info('Setback lines visualized on map');
 
         } catch (error) {
-            this.error('Error creating setback visualization:', error);
+            this.error('Failed to update buildable area display:', error);
         }
     }
 
-    clearSetbackVisualization() {
-        const layersToRemove = ['front-setback-line', 'back-setback-line'];
-        layersToRemove.forEach(layerId => {
+    addBuildableAreaLayer(layerId, coordinates, isPreview) {
+        const sourceId = `${layerId}-source`;
+        
+        try {
+            // Remove existing layer and source
             if (this.core.map.getLayer(layerId)) {
                 this.core.map.removeLayer(layerId);
             }
+            if (this.core.map.getSource(sourceId)) {
+                this.core.map.removeSource(sourceId);
+            }
+
+            // Add new source
+            this.core.map.addSource(sourceId, {
+                type: 'geojson',
+                data: {
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [coordinates]
+                    }
+                }
+            });
+
+            // Add new layer
+            this.core.map.addLayer({
+                id: layerId,
+                type: 'fill',
+                source: sourceId,
+                paint: {
+                    'fill-color': isPreview ? '#ffeb3b' : '#4caf50',
+                    'fill-opacity': isPreview ? 0.3 : 0.4
+                }
+            });
+
+            // Add stroke layer
+            this.core.map.addLayer({
+                id: `${layerId}-stroke`,
+                type: 'line',
+                source: sourceId,
+                paint: {
+                    'line-color': isPreview ? '#ff9800' : '#2e7d32',
+                    'line-width': 2
+                }
+            });
+
+        } catch (error) {
+            this.error(`Failed to add buildable area layer ${layerId}:`, error);
+        }
+    }
+
+    clearBuildableAreaLayers() {
+        const layerIds = [
+            'buildable-area-preview',
+            'buildable-area-preview-stroke',
+            'buildable-area',
+            'buildable-area-stroke'
+        ];
+
+        layerIds.forEach(layerId => {
+            try {
+                if (this.core.map.getLayer(layerId)) {
+                    this.core.map.removeLayer(layerId);
+                }
+            } catch (error) {
+                // Layer might not exist, which is fine
+            }
         });
 
-        if (this.core.map.getSource('setback-lines')) {
-            this.core.map.removeSource('setback-lines');
-        }
+        const sourceIds = [
+            'buildable-area-preview-source',
+            'buildable-area-source'
+        ];
 
-        this.info('Setback visualization cleared');
-    }
-
-    updateBuildableAreaDisplay(result, isPreview = false) {
-        try {
-            const layersToRemove = ['buildable-area-fill', 'buildable-area-stroke'];
-            layersToRemove.forEach(layerId => {
-                if (this.core.map.getLayer(layerId)) {
-                    this.core.map.removeLayer(layerId);
-                }
-            });
-
-            if (this.core.map.getSource('buildable-area')) {
-                this.core.map.removeSource('buildable-area');
-            }
-
-            if (result.buildable_coords && result.buildable_coords.length > 0) {
-                let coordinates = result.buildable_coords;
-
-                this.info(`Buildable area coordinates received: ${coordinates.length} points`, coordinates.slice(0, 2));
-
-                if (coordinates[0] && coordinates[0].length === 2) {
-                    const firstCoord = coordinates[0];
-                    if (Math.abs(firstCoord[0]) <= 90 && Math.abs(firstCoord[1]) > 90) {
-                        coordinates = coordinates.map(coord => [coord[1], coord[0]]);
-                        this.info('Corrected buildable area coordinate format from [lat, lng] to [lng, lat]');
-                        this.info('Converted coordinates sample:', coordinates.slice(0, 2));
-                    }
-                }
-
-                const firstCoord = coordinates[0];
-                const lastCoord = coordinates[coordinates.length - 1];
-                if (firstCoord[0] !== lastCoord[0] || firstCoord[1] !== lastCoord[1]) {
-                    coordinates.push([...firstCoord]);
-                }
-
-                const geojsonData = {
-                    'type': 'geojson',
-                    'data': {
-                        'type': 'Feature',
-                        'geometry': {
-                            'type': 'Polygon',
-                            'coordinates': [coordinates]
-                        },
-                        'properties': {
-                            'area_m2': result.buildable_area_m2 || 0,
-                            'type': 'buildable-area',
-                            'is_preview': isPreview
-                        }
-                    }
-                };
-
-                this.info('Adding buildable area source with data:', geojsonData);
-                this.core.map.addSource('buildable-area', geojsonData);
-
-                const fillColor = isPreview ? '#002040' : '#002040';
-                const fillOpacity = isPreview ? 0.2 : 0.4;
-                const strokeColor = isPreview ? '#002040' : '#002040';
-                const strokeOpacity = isPreview ? 0.7 : 0.8;
-                const strokeWidth = isPreview ? 2 : 3;
-
-                this.core.map.addLayer({
-                    'id': 'buildable-area-fill',
-                    'type': 'fill',
-                    'source': 'buildable-area',
-                    'layout': {},
-                    'paint': {
-                        'fill-color': fillColor,
-                        'fill-opacity': fillOpacity
-                    }
-                });
-
-                this.core.map.addLayer({
-                    'id': 'buildable-area-stroke',
-                    'type': 'line',
-                    'source': 'buildable-area',
-                    'layout': {},
-                    'paint': {
-                        'line-color': strokeColor,
-                        'line-width': strokeWidth,
-                        'line-opacity': strokeOpacity
-                    }
-                });
-
-                if (!isPreview) {
-                    this.info(`Buildable area displayed on map with ${coordinates.length - 1} vertices`);
-                }
-
-                this.updateBuildableAreaLegend(true);
-            } else {
-                if (!isPreview) {
-                    this.warn('No buildable coordinates to display');
-                }
-                this.updateBuildableAreaLegend(false);
-            }
-        } catch (error) {
-            this.error('Error updating buildable area display:', error);
-        }
-    }
-
-    updateBuildableAreaLegend(show) {
-        const legendContent = document.getElementById('legendContent');
-        if (!legendContent) return;
-
-        let buildableAreaItem = legendContent.querySelector('.legend-buildable-area-item');
-
-        if (show) {
-            if (!buildableAreaItem) {
-                buildableAreaItem = document.createElement('div');
-                buildableAreaItem.className = 'legend-item legend-buildable-area-item';
-                buildableAreaItem.innerHTML = `
-                    <div class="legend-color" style="background-color: #002040; opacity: 0.4;"></div>
-                    <span class="legend-label">Buildable Area</span>
-                `;
-                legendContent.appendChild(buildableAreaItem);
-            }
-            buildableAreaItem.style.display = 'flex';
-        } else if (buildableAreaItem) {
-            buildableAreaItem.style.display = 'none';
-        }
-    }
-
-    clearDependentMapLayers() {
-        try {
-            this.clearSetbackVisualization();
-
-            const layersToRemove = [
-                'setback-fill', 'setback-stroke', 'setback-visualization',
-                'buildable-area-fill', 'buildable-area-stroke', 'buildable-area-dimension-labels',
-                'structure-fill', 'structure-stroke', 'structure-dimension-labels'
-            ];
-
-            const sourcesToRemove = [
-                'setback-visualization', 'buildable-area', 'buildable-area-dimensions',
-                'structure-footprint', 'structure-dimensions'
-            ];
-
-            layersToRemove.forEach(layerId => {
-                if (this.core.map.getLayer(layerId)) {
-                    this.core.map.removeLayer(layerId);
-                }
-            });
-
-            sourcesToRemove.forEach(sourceId => {
+        sourceIds.forEach(sourceId => {
+            try {
                 if (this.core.map.getSource(sourceId)) {
                     this.core.map.removeSource(sourceId);
                 }
+            } catch (error) {
+                // Source might not exist, which is fine
+            }
+        });
+    }
+
+    clearDependentMapLayers() {
+        this.info('Clearing dependent map layers');
+        
+        try {
+            this.clearBuildableAreaLayers();
+            
+            // Clear other dependent layers
+            const dependentLayers = [
+                'setback-lines',
+                'setback-labels',
+                'dimension-lines',
+                'dimension-labels'
+            ];
+
+            dependentLayers.forEach(layerId => {
+                try {
+                    if (this.core.map.getLayer(layerId)) {
+                        this.core.map.removeLayer(layerId);
+                    }
+                    
+                    const sourceId = `${layerId}-source`;
+                    if (this.core.map.getSource(sourceId)) {
+                        this.core.map.removeSource(sourceId);
+                    }
+                } catch (error) {
+                    // Layer/source might not exist
+                }
             });
 
-            this.info('Dependent map layers cleared');
+            this.info('✅ Dependent layers cleared');
         } catch (error) {
-            this.error('Error clearing dependent map layers:', error);
+            this.error('Failed to clear dependent layers:', error);
         }
     }
 
     showMapError(message) {
+        this.error('Map error:', message);
+        
         const mapContainer = document.getElementById('inspectorMap');
         if (mapContainer) {
             mapContainer.innerHTML = `
-                <div style="
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center; 
-                    height: 100%; 
-                    background: #f5f5f5;
-                    color: #666;
-                    font-family: Arial, sans-serif;
-                    flex-direction: column;
-                    text-align: center;
-                    padding: 20px;
-                ">
-                    <div style="font-size: 48px; margin-bottom: 16px;">🗺️</div>
-                    <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Map Failed to Load</div>
-                    <div style="font-size: 14px; max-width: 400px;">${message}</div>
-                    <button onclick="location.reload()" style="
-                        margin-top: 16px; 
-                        padding: 8px 16px; 
-                        background: #007cbf; 
-                        color: white; 
-                        border: none; 
-                        border-radius: 4px; 
-                        cursor: pointer;
-                    ">Retry</button>
+                <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f8f9fa; color: #666; flex-direction: column; text-align: center; padding: 20px;">
+                    <h3 style="margin-bottom: 10px; color: #d32f2f;">⚠️ Map Error</h3>
+                    <p style="margin-bottom: 15px; max-width: 400px;">${message}</p>
+                    <button onclick="location.reload()" style="padding: 10px 20px; background: #007cbf; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 5px;">
+                        Refresh Page
+                    </button>
+                    <button onclick="window.siteInspectorCore && window.siteInspectorCore.diagnoseMapState()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 5px;">
+                        Show Diagnostics
+                    </button>
                 </div>
             `;
+        }
+    }
+
+    showLoadingState(message = 'Loading map...') {
+        const mapContainer = document.getElementById('inspectorMap');
+        if (mapContainer) {
+            mapContainer.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f8f9fa; color: #666; flex-direction: column;">
+                    <div style="width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top: 4px solid #007cbf; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px;"></div>
+                    <p>${message}</p>
+                </div>
+                <style>
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                </style>
+            `;
+        }
+    }
+
+    hideLoadingState() {
+        const mapLoading = document.getElementById('mapLoading');
+        if (mapLoading) {
+            mapLoading.style.display = 'none';
         }
     }
 }

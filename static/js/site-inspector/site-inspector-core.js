@@ -267,26 +267,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('[SiteInspectorCore] DOM loaded, initializing modular site inspector...');
 
     try {
-        // Check for required dependencies with timeout
-        if (typeof BaseManager === 'undefined') {
-            console.log('[SiteInspectorCore] Waiting for core dependencies...');
-            await new Promise((resolve, reject) => {
-                let attempts = 0;
-                const maxAttempts = 100; // 10 seconds timeout
-                
-                const checkDeps = () => {
-                    attempts++;
-                    if (typeof BaseManager !== 'undefined') {
-                        resolve();
-                    } else if (attempts >= maxAttempts) {
-                        reject(new Error('Core dependencies failed to load within timeout'));
-                    } else {
-                        setTimeout(checkDeps, 100);
-                    }
-                };
-                checkDeps();
-            });
-        }
+        // Wait for all required dependencies to load
+        await waitForDependencies();
 
         // Check if map container exists
         const mapContainer = document.getElementById('inspectorMap');
@@ -303,7 +285,9 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         }
 
+        // Create and initialize the core
         if (!window.siteInspectorCore) {
+            console.log('[SiteInspectorCore] Creating SiteInspectorCore instance...');
             window.siteInspectorCore = new SiteInspectorCore();
             await window.siteInspectorCore.initialize();
         }
@@ -312,24 +296,66 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     } catch (error) {
         console.error('[SiteInspectorCore] ❌ Initialization failed:', error);
-
-        const mapContainer = document.getElementById('inspectorMap');
-        if (mapContainer) {
-            mapContainer.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f8f9fa; color: #666; flex-direction: column; text-align: center; padding: 20px;">
-                    <h3 style="margin-bottom: 10px;">Map Loading Error</h3>
-                    <p style="margin-bottom: 15px;">Unable to initialize the map. This could be due to network issues or missing dependencies.</p>
-                    <button onclick="location.reload()" style="padding: 10px 20px; background: #007cbf; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                        Refresh Page
-                    </button>
-                    <button onclick="window.siteInspectorCore && window.siteInspectorCore.diagnoseMapState()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                        Show Diagnostics
-                    </button>
-                    <p style="margin-top: 15px; font-size: 12px; color: #999;">Error: ${error.message}</p>
-                </div>
-            `;
-        }
+        showInitializationError(error);
     }
 });
+
+// Helper function to wait for all dependencies
+async function waitForDependencies() {
+    const requiredClasses = [
+        'BaseManager',
+        'SiteInspectorInitializer', 
+        'SiteInspectorDataManager',
+        'SiteInspectorEventHandlers',
+        'SiteInspectorVisualizationManager'
+    ];
+
+    console.log('[SiteInspectorCore] Waiting for dependencies:', requiredClasses);
+
+    return new Promise((resolve, reject) => {
+        let attempts = 0;
+        const maxAttempts = 150; // 15 seconds timeout
+        
+        const checkDeps = () => {
+            attempts++;
+            
+            const missingDeps = requiredClasses.filter(className => typeof window[className] === 'undefined');
+            
+            if (missingDeps.length === 0) {
+                console.log('[SiteInspectorCore] ✅ All dependencies loaded');
+                resolve();
+            } else if (attempts >= maxAttempts) {
+                reject(new Error(`Required dependencies failed to load: ${missingDeps.join(', ')}`));
+            } else {
+                if (attempts % 10 === 0) {
+                    console.log(`[SiteInspectorCore] Still waiting for: ${missingDeps.join(', ')} (attempt ${attempts})`);
+                }
+                setTimeout(checkDeps, 100);
+            }
+        };
+        
+        checkDeps();
+    });
+}
+
+// Helper function to show initialization error
+function showInitializationError(error) {
+    const mapContainer = document.getElementById('inspectorMap');
+    if (mapContainer) {
+        mapContainer.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f8f9fa; color: #666; flex-direction: column; text-align: center; padding: 20px;">
+                <h3 style="margin-bottom: 10px;">Map Loading Error</h3>
+                <p style="margin-bottom: 15px;">Unable to initialize the map. This could be due to network issues or missing dependencies.</p>
+                <button onclick="location.reload()" style="padding: 10px 20px; background: #007cbf; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                    Refresh Page
+                </button>
+                <button onclick="window.siteInspectorCore && window.siteInspectorCore.diagnoseMapState()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Show Diagnostics
+                </button>
+                <p style="margin-top: 15px; font-size: 12px; color: #999;">Error: ${error.message}</p>
+            </div>
+        `;
+    }
+}
 
 window.SiteInspectorCore = SiteInspectorCore;
