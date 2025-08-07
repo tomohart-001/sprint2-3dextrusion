@@ -1611,16 +1611,31 @@ class SiteBoundaryCore extends MapManagerBase {
 
     updateBuildableAreaDisplay(result, isPreview = false) {
         try {
-            if (!result.buildable_coords || result.buildable_coords.length === 0) return;
+            console.log('[SiteBoundaryCore] INFO:', 'Updating buildable area display with data:', result);
 
-            let coordinates = [...result.buildable_coords];
+            if (!result || (!result.buildable_coords && !result.coordinates)) {
+                console.log('[SiteBoundaryCore] INFO:', 'No buildable data provided');
+                this.clearBuildableAreaDisplay();
+                return;
+            }
 
-            // Coordinate format correction
+            // Handle different coordinate formats
+            let coords = result.buildable_coords || result.coordinates;
+            if (!coords || coords.length === 0) {
+                console.log('[SiteBoundaryCore] INFO:', 'No buildable coordinates to display');
+                this.clearBuildableAreaDisplay();
+                return;
+            }
+
+            // Clear existing buildable area
+            this.clearBuildableAreaDisplay();
+
+            // Coordinate format correction - the API returns [lat, lng] but we need [lng, lat] for GeoJSON
+            let coordinates = [...coords];
             coordinates = this.correctCoordinateFormat(coordinates);
-
-            // Ensure closed polygon
             coordinates = this.ensureClosedPolygon(coordinates);
 
+            // Update the buildable area source for Mapbox
             this.updateSource(this.sourceIds.buildableArea, {
                 type: 'geojson',
                 data: {
@@ -1638,10 +1653,15 @@ class SiteBoundaryCore extends MapManagerBase {
             });
 
             if (!isPreview) {
-                this.info(`Buildable area displayed on map with ${coordinates.length - 1} vertices`);
+                console.log('[SiteBoundaryCore] INFO:', `Buildable area displayed on map with ${coordinates.length - 1} vertices`);
             }
+
+            // Update legend
+            this.updateMapLegend();
+
         } catch (error) {
-            this.error('Error updating buildable area display:', error);
+            console.error('[SiteBoundaryCore] ERROR:', 'Error updating buildable area display:', error);
+            console.error('[SiteBoundaryCore] ERROR:', 'Error details:', error.message, error.stack);
         }
     }
 
@@ -1653,6 +1673,32 @@ class SiteBoundaryCore extends MapManagerBase {
             }
         }
         return coordinates;
+    }
+
+    clearBuildableAreaDisplay() {
+        try {
+            // Clear the buildable area source
+            const emptyFeatureCollection = {
+                type: 'FeatureCollection',
+                features: []
+            };
+            this.updateSource(this.sourceIds.buildableArea, emptyFeatureCollection);
+            console.log('[SiteBoundaryCore] INFO:', 'Buildable area display cleared');
+        } catch (error) {
+            console.error('[SiteBoundaryCore] ERROR:', 'Error clearing buildable area display:', error);
+        }
+    }
+
+    updateMapLegend() {
+        // Update legend to show buildable area if needed
+        try {
+            const siteInspectorCore = window.siteInspectorCore;
+            if (siteInspectorCore && siteInspectorCore.updateBuildableAreaLegend) {
+                siteInspectorCore.updateBuildableAreaLegend(true);
+            }
+        } catch (error) {
+            console.debug('[SiteBoundaryCore] DEBUG:', 'Could not update legend:', error.message);
+        }
     }
 
     clearBuildableArea() {
