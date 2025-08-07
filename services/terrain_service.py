@@ -314,11 +314,16 @@ class TerrainService(CacheableService):
             structure_data = None
             if site_data.get('structure_placement', {}).get('coordinates'):
                 structure_data = site_data['structure_placement']
-            elif hasattr(flask, 'session') and flask.session.get('structure_placement_data'):
+            else:
+                # Try to access Flask session if available
                 try:
+                    from flask import session
                     import json
-                    structure_data = json.loads(flask.session.get('structure_placement_data'))
-                except:
+                    structure_placement_data = session.get('structure_placement_data')
+                    if structure_placement_data:
+                        structure_data = json.loads(structure_placement_data)
+                except (ImportError, RuntimeError, ValueError):
+                    # Flask not available or outside application context, or JSON parsing failed
                     pass
             
             if structure_data and structure_data.get('coordinates'):
