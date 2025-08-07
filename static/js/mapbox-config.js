@@ -16,39 +16,45 @@ const MAP_CONFIG = {
     antialias: true
 };
 
-// Initialize Mapbox token
-async function initializeMapboxToken() {
-    try {
-        console.log('[MapboxConfig] Requesting Mapbox token...');
-        const response = await fetch('/api/mapbox-token');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        console.log('[MapboxConfig] Token response:', { success: data.success, hasToken: !!data.token });
-        
-        if (data.success && data.token) {
-            MAPBOX_TOKEN = data.token;
-            window.MAPBOX_TOKEN = data.token; // Also expose on window
+// Initialize Mapbox token with retry
+async function initializeMapboxToken(retries = 3) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            console.log(`[MapboxConfig] Requesting Mapbox token... (attempt ${attempt}/${retries})`);
+            const response = await fetch('/api/mapbox-token');
             
-            // Check if mapboxgl is available
-            if (typeof mapboxgl !== 'undefined') {
-                mapboxgl.accessToken = MAPBOX_TOKEN;
-                console.log('[MapboxConfig] Token loaded and set successfully');
-            } else {
-                console.warn('[MapboxConfig] mapboxgl not available, token stored for later use');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            return true;
-        } else {
-            console.error('[MapboxConfig] Failed to get Mapbox token:', data.error);
-            return false;
+            
+            const data = await response.json();
+            console.log('[MapboxConfig] Token response:', { success: data.success, hasToken: !!data.token });
+            
+            if (data.success && data.token) {
+                MAPBOX_TOKEN = data.token;
+                window.MAPBOX_TOKEN = data.token; // Also expose on window
+                
+                // Check if mapboxgl is available
+                if (typeof mapboxgl !== 'undefined') {
+                    mapboxgl.accessToken = MAPBOX_TOKEN;
+                    console.log('[MapboxConfig] Token loaded and set successfully');
+                } else {
+                    console.warn('[MapboxConfig] mapboxgl not available, token stored for later use');
+                }
+                return true;
+            } else {
+                console.error('[MapboxConfig] Failed to get Mapbox token:', data.error);
+                if (attempt === retries) return false;
+            }
+        } catch (error) {
+            console.error(`[MapboxConfig] Error fetching Mapbox token (attempt ${attempt}):`, error);
+            if (attempt === retries) return false;
+            
+            // Wait before retry
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         }
-    } catch (error) {
-        console.error('[MapboxConfig] Error fetching Mapbox token:', error);
-        return false;
     }
+    return false;
 }
 
 // Export configuration

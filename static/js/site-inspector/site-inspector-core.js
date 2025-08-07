@@ -34,7 +34,22 @@ class SiteInspectorCore extends BaseManager {
             return await this.initializer.initialize();
         } catch (error) {
             this.error('❌ Site Inspector initialization failed:', error);
-            this.showMapError(error.message || 'Unknown initialization error');
+            
+            // Enhanced error message based on error type
+            let errorMessage = 'Unknown initialization error';
+            if (error.message) {
+                if (error.message.includes('Mapbox') || error.message.includes('token')) {
+                    errorMessage = 'Map authentication failed. Please refresh the page.';
+                } else if (error.message.includes('network') || error.message.includes('fetch')) {
+                    errorMessage = 'Network connection issue. Please check your internet connection and refresh.';
+                } else if (error.message.includes('container')) {
+                    errorMessage = 'Map container not found. Please refresh the page.';
+                } else {
+                    errorMessage = error.message;
+                }
+            }
+            
+            this.showMapError(errorMessage);
             this.attemptRecovery();
         }
     }
@@ -140,6 +155,24 @@ class SiteInspectorCore extends BaseManager {
         return managerMap[managerName] || null;
     }
 
+    // Diagnostic function for debugging map issues
+    diagnoseMapState() {
+        const diagnostics = {
+            timestamp: new Date().toISOString(),
+            mapInstance: !!this.map,
+            mapLoaded: this.map ? this.map.loaded() : false,
+            mapContainer: !!document.getElementById('inspectorMap'),
+            mapboxToken: !!window.MAPBOX_TOKEN,
+            mapboxGL: typeof mapboxgl !== 'undefined',
+            isInitialized: this.isInitialized,
+            userAgent: navigator.userAgent,
+            url: window.location.href
+        };
+        
+        this.info('🔍 Map diagnostics:', diagnostics);
+        return diagnostics;
+    }
+
     isReady() {
         return this.isInitialized;
     }
@@ -149,12 +182,31 @@ class SiteInspectorCore extends BaseManager {
     attemptRecovery() {
         this.warn('Attempting recovery...');
 
-        setTimeout(() => {
+        // Try to reinitialize after a short delay
+        setTimeout(async () => {
             if (!this.isInitialized) {
-                this.warn('Recovery: Reloading page...');
-                location.reload();
+                this.warn('Recovery: Attempting reinitialization...');
+                try {
+                    // Clear any existing map instance
+                    if (this.map) {
+                        this.map.remove();
+                        this.map = null;
+                    }
+                    
+                    // Reinitialize
+                    await this.initialize();
+                } catch (retryError) {
+                    this.error('Recovery failed:', retryError);
+                    // Only reload as last resort
+                    setTimeout(() => {
+                        if (!this.isInitialized) {
+                            this.warn('Recovery: Reloading page...');
+                            location.reload();
+                        }
+                    }, 2000);
+                }
             }
-        }, 3000);
+        }, 2000);
     }
 
     destroy() {
@@ -215,18 +267,40 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('[SiteInspectorCore] DOM loaded, initializing modular site inspector...');
 
     try {
+        // Check for required dependencies with timeout
         if (typeof BaseManager === 'undefined') {
             console.log('[SiteInspectorCore] Waiting for core dependencies...');
-            await new Promise(resolve => {
+            await new Promise((resolve, reject) => {
+                let attempts = 0;
+                const maxAttempts = 100; // 10 seconds timeout
+                
                 const checkDeps = () => {
+                    attempts++;
                     if (typeof BaseManager !== 'undefined') {
                         resolve();
+                    } else if (attempts >= maxAttempts) {
+                        reject(new Error('Core dependencies failed to load within timeout'));
                     } else {
                         setTimeout(checkDeps, 100);
                     }
                 };
                 checkDeps();
             });
+        }
+
+        // Check if map container exists
+        const mapContainer = document.getElementById('inspectorMap');
+        if (!mapContainer) {
+            throw new Error('Map container element not found');
+        }
+
+        // Initialize Mapbox token first
+        if (!window.MAPBOX_TOKEN) {
+            console.log('[SiteInspectorCore] Initializing Mapbox token...');
+            const tokenLoaded = await initializeMapboxToken();
+            if (!tokenLoaded) {
+                throw new Error('Failed to load Mapbox authentication token');
+            }
         }
 
         if (!window.siteInspectorCore) {
@@ -244,9 +318,12 @@ document.addEventListener('DOMContentLoaded', async function() {
             mapContainer.innerHTML = `
                 <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f8f9fa; color: #666; flex-direction: column; text-align: center; padding: 20px;">
                     <h3 style="margin-bottom: 10px;">Map Loading Error</h3>
-                    <p style="margin-bottom: 15px;">Unable to initialize the map. Please refresh the page to try again.</p>
-                    <button onclick="location.reload()" style="padding: 10px 20px; background: #007cbf; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    <p style="margin-bottom: 15px;">Unable to initialize the map. This could be due to network issues or missing dependencies.</p>
+                    <button onclick="location.reload()" style="padding: 10px 20px; background: #007cbf; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
                         Refresh Page
+                    </button>
+                    <button onclick="window.siteInspectorCore && window.siteInspectorCore.diagnoseMapState()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Show Diagnostics
                     </button>
                     <p style="margin-top: 15px; font-size: 12px; color: #999;">Error: ${error.message}</p>
                 </div>
