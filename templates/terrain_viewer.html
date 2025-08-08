@@ -1987,6 +1987,12 @@
                             this.enableViewControls();
                             this.enableEarthworksControls();
                             this.enableBuildableAreaButton();
+                            
+                            // Refresh structure platform availability after terrain loads
+                            setTimeout(() => {
+                                this.checkStructurePlatformAvailability();
+                            }, 500);
+                            
                             this.showSuccess('3D Terrain Generated');
                             console.log('[TerrainViewer] Terrain generation completed successfully');
 
@@ -2728,6 +2734,9 @@
                     btn.textContent = 'No Buildable Area Available';
                     console.log('[TerrainViewer] Buildable area button disabled - no buildable area data');
                 }
+
+                // Also check structure platform availability
+                this.checkStructurePlatformAvailability();
             }
 
             checkBuildableAreaAvailability() {
@@ -2753,32 +2762,44 @@
             checkStructurePlatformAvailability() {
                 console.log('[TerrainViewer] Checking structure platform availability');
 
-                // Check session storage for structure placement data
+                // Check multiple sources for structure placement data
                 let structureData = null;
+                
+                // Check session storage for structure placement data
                 try {
                     const sessionData = sessionStorage.getItem('structure_placement_data');
-                    if (sessionData) {
+                    if (sessionData && sessionData !== 'undefined') {
                         structureData = JSON.parse(sessionData);
+                        console.log('[TerrainViewer] Found structure data in session storage');
                     }
                 } catch (error) {
-                    console.log('[TerrainViewer] No structure data in session:', error);
+                    console.log('[TerrainViewer] Error parsing session data:', error);
                 }
 
-                // Also check site data for structure placement
+                // Check site data for structure placement
                 if (!structureData && this.siteData && this.siteData.structure_placement) {
                     structureData = this.siteData.structure_placement;
+                    console.log('[TerrainViewer] Found structure data in site data');
+                }
+
+                // Check terrain data for structure overlays
+                if (!structureData && this.terrainData && this.terrainData.polygon_overlays && this.terrainData.polygon_overlays.structure_placement) {
+                    structureData = this.terrainData.polygon_overlays.structure_placement;
+                    console.log('[TerrainViewer] Found structure data in terrain overlays');
                 }
 
                 const btn = document.getElementById('loadPlatformBtn');
-                if (structureData && structureData.coordinates && structureData.coordinates.length > 0) {
-                    btn.disabled = false;
-                    const area = structureData.area_m2 || this.calculatePolygonArea(structureData.coordinates);
-                    btn.textContent = `Load Structure Platform (${area.toFixed(1)} m²)`;
-                    console.log('[TerrainViewer] Structure platform available:', area.toFixed(1), 'm²');
-                } else {
-                    btn.disabled = true;
-                    btn.textContent = 'No Structure Available';
-                    console.log('[TerrainViewer] No structure platform data available');
+                if (btn) {
+                    if (structureData && structureData.coordinates && structureData.coordinates.length > 0) {
+                        btn.disabled = false;
+                        const area = structureData.area_m2 || this.calculatePolygonArea(structureData.coordinates);
+                        btn.textContent = `Load Structure Platform (${area.toFixed(1)} m²)`;
+                        console.log('[TerrainViewer] Structure platform available:', area.toFixed(1), 'm²');
+                    } else {
+                        btn.disabled = true;
+                        btn.textContent = 'No Structure Available';
+                        console.log('[TerrainViewer] No structure platform data available');
+                    }
                 }
             }
 

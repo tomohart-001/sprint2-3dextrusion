@@ -53,8 +53,8 @@ if (typeof FloorplanManager === 'undefined') {
             }
 
             // Get UI elements with proper fallback - check multiple possible IDs
-            this.drawButton = document.getElementById('drawFloorplanButton') || 
-                             document.getElementById('drawStructureButton') || 
+            this.drawButton = document.getElementById('drawFloorplanButton') ||
+                             document.getElementById('drawStructureButton') ||
                              document.querySelector('[data-action="draw-structure"]') ||
                              document.querySelector('.draw-structure-btn');
             this.clearButton = document.getElementById('clearStructuresButton') ||
@@ -300,9 +300,9 @@ if (typeof FloorplanManager === 'undefined') {
             // Do NOT clear features that might be the site boundary
             if (this.draw && typeof this.draw.getAll === 'function') {
                 const allFeatures = this.draw.getAll();
-                const structureFeatures = allFeatures.features.filter(feature => 
-                    feature.properties && 
-                    (feature.properties.type === 'structure' || 
+                const structureFeatures = allFeatures.features.filter(feature =>
+                    feature.properties &&
+                    (feature.properties.type === 'structure' ||
                      feature.properties.name === 'Structure Footprint' ||
                      feature.properties.layer_type === 'structure_footprint')
                 );
@@ -547,10 +547,10 @@ if (typeof FloorplanManager === 'undefined') {
         try {
             // Remove independent structure layers
             const layersToRemove = [
-                'structure-footprint-fill-independent', 
+                'structure-footprint-fill-independent',
                 'structure-footprint-stroke-independent',
                 // Also remove old layer names for backwards compatibility
-                'structure-footprint-fill', 
+                'structure-footprint-fill',
                 'structure-footprint-stroke'
             ];
             const sourcesToRemove = [
@@ -851,11 +851,15 @@ if (typeof FloorplanManager === 'undefined') {
     }
 
     getProjectId() {
+        // Get project ID from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        let projectId = urlParams.get('project_id') || urlParams.get('project');
+        let projectId = urlParams.get('project_id') || urlParams.get('project') ||
+                       sessionStorage.getItem('current_project_id') ||
+                       sessionStorage.getItem('project_id');
 
-        if (!projectId) {
-            projectId = sessionStorage.getItem('current_project_id');
+        // Clean up malformed project IDs (remove any extra parameters)
+        if (projectId && typeof projectId === 'string' && projectId.includes('?')) {
+            projectId = projectId.split('?')[0];
         }
 
         return projectId;
