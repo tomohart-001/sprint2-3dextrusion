@@ -21,6 +21,35 @@
     visibility: visible;
 }
 
+/* Ensure delete modal is visible when displayed */
+#deleteProjectModal {
+    opacity: 1 !important;
+    visibility: visible !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+}
+
+#deleteProjectModal[style*="display: flex"] {
+    display: flex !important;
+}
+
+.modal {
+    background: white;
+    border-radius: 16px;
+    padding: 0;
+    max-width: 520px;
+    width: 90%;
+    position: relative;
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    z-index: 2001;
+}
+
+.modal-overlay.show .modal,
+#deleteProjectModal .modal {
+    transform: translateY(0);
+}
+
 .modal-content {
     background: white;
     border-radius: 16px;

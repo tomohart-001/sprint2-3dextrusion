@@ -462,16 +462,32 @@ class DashboardManager extends BaseManager {
 
         if (deleteNameSpan && modal) {
             deleteNameSpan.textContent = projectName;
+            
+            // Force display and positioning
             modal.style.display = 'flex';
-            modal.style.justifyContent = 'center';
-            modal.style.alignItems = 'center';
             modal.style.position = 'fixed';
             modal.style.top = '0';
             modal.style.left = '0';
-            modal.style.width = '100%';
-            modal.style.height = '100%';
-            modal.style.zIndex = '1000';
+            modal.style.width = '100vw';
+            modal.style.height = '100vh';
+            modal.style.zIndex = '9999';
+            modal.style.justifyContent = 'center';
+            modal.style.alignItems = 'center';
+            modal.style.background = 'rgba(0, 0, 0, 0.6)';
+            modal.style.opacity = '1';
+            modal.style.visibility = 'visible';
+            
+            // Add show class
             modal.classList.add('show');
+            
+            // Ensure the modal content is visible
+            const modalContent = modal.querySelector('.modal');
+            if (modalContent) {
+                modalContent.style.transform = 'translateY(0)';
+                modalContent.style.opacity = '1';
+                modalContent.style.zIndex = '10000';
+            }
+            
             this.info(`Showing delete confirmation modal for project: ${projectName}`);
         } else {
             this.error('Delete modal elements not found', { deleteNameSpan: !!deleteNameSpan, modal: !!modal });
@@ -493,7 +509,18 @@ class DashboardManager extends BaseManager {
             modal.style.width = '';
             modal.style.height = '';
             modal.style.zIndex = '';
+            modal.style.background = '';
+            modal.style.opacity = '';
+            modal.style.visibility = '';
             modal.classList.remove('show');
+            
+            // Reset modal content styles
+            const modalContent = modal.querySelector('.modal');
+            if (modalContent) {
+                modalContent.style.transform = '';
+                modalContent.style.opacity = '';
+                modalContent.style.zIndex = '';
+            }
         }
         this.pendingDeleteProjectId = null;
         this.pendingDeleteProjectName = null;
