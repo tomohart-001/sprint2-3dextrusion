@@ -563,12 +563,18 @@ class DashboardManager extends BaseManager {
                 }
             });
 
-            // Check if response is ok first, before trying to parse JSON
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
+            let data;
+            try {
+                // Check if response is ok first, before trying to parse JSON
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
 
-            const data = await response.json();
+                data = await response.json();
+            } catch (parseError) {
+                this.error(`Failed to parse delete response for project ${projectId}:`, parseError);
+                throw new Error('Failed to parse server response');
+            }
 
             if (data && data.success) {
                 this.info(`Project ${projectId} "${projectName}" deleted successfully from server`);
@@ -581,12 +587,12 @@ class DashboardManager extends BaseManager {
                 
                 this.info(`Project "${projectName}" deleted and UI updated`);
                 
-                // Show success message instead of error
+                // Show success message
                 this.debug(`Project "${projectName}" deletion completed successfully`);
+                return; // Exit early on success
             } else {
                 this.error(`Failed to delete project ${projectId}:`, data);
-                alert(`Failed to delete project "${projectName}": ${data.error || 'Unknown error'}`);
-                await this.refreshProjectLists();
+                throw new Error(data.error || 'Unknown server error');
             }
         } catch (error) {
             this.error(`Error deleting project ${projectId}:`, error);
