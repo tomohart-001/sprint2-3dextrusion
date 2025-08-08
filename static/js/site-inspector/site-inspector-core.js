@@ -929,12 +929,18 @@ class SiteInspectorCore extends BaseManager {
     updatePropertyBoundaryLegend(hasProperty) {
         // Update legend to show property boundary
         const legend = document.querySelector('.map-legend');
+        const propertyBoundaryItem = document.querySelector('.legend-property-boundary-item');
+        
         if (legend) {
             if (hasProperty) {
                 legend.classList.add('has-property-boundary');
             } else {
                 legend.classList.remove('has-property-boundary');
             }
+        }
+
+        if (propertyBoundaryItem) {
+            propertyBoundaryItem.style.display = hasProperty ? 'flex' : 'none';
         }
     }
 
