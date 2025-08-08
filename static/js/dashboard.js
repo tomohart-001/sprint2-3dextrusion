@@ -563,19 +563,23 @@ class DashboardManager extends BaseManager {
                 }
             });
 
+            // Check if response is ok first
+            if (!response.ok) {
+                const errorMessage = `Server error: ${response.status} ${response.statusText}`;
+                this.error(errorMessage);
+                throw new Error(errorMessage);
+            }
+
+            // Try to parse JSON response
             let data;
             try {
-                // Check if response is ok first, before trying to parse JSON
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
                 data = await response.json();
             } catch (parseError) {
                 this.error(`Failed to parse delete response for project ${projectId}:`, parseError);
                 throw new Error('Failed to parse server response');
             }
 
+            // Check if deletion was successful
             if (data && data.success) {
                 this.info(`Project ${projectId} "${projectName}" deleted successfully from server`);
                 
@@ -585,19 +589,27 @@ class DashboardManager extends BaseManager {
                 // Then refresh data from server to ensure consistency
                 await this.refreshProjectLists();
                 
-                this.info(`Project "${projectName}" deleted and UI updated`);
+                this.info(`Project "${projectName}" deleted and UI updated successfully`);
                 
-                // Show success message
-                this.debug(`Project "${projectName}" deletion completed successfully`);
-                return; // Exit early on success
+                // Success - no error modal should appear
+                return;
             } else {
-                this.error(`Failed to delete project ${projectId}:`, data);
-                throw new Error(data.error || 'Unknown server error');
+                // Server returned success=false
+                const errorMessage = data.error || 'Unknown server error';
+                this.error(`Server reported failure for project ${projectId}: ${errorMessage}`);
+                throw new Error(errorMessage);
             }
         } catch (error) {
+            // Only show error modal for actual errors
             this.error(`Error deleting project ${projectId}:`, error);
             alert(`Error deleting project "${projectName}". Please try again.`);
-            await this.refreshProjectLists();
+            
+            // Refresh to ensure UI consistency
+            try {
+                await this.refreshProjectLists();
+            } catch (refreshError) {
+                this.error('Failed to refresh after delete error:', refreshError);
+            }
         }
     }
 
@@ -631,25 +643,33 @@ class DashboardManager extends BaseManager {
      * Remove project from UI immediately
      */
     removeProjectFromUI(projectId) {
-        // Remove from table if table manager exists
-        if (window.dashboardTableManager) {
-            window.dashboardTableManager.removeProjectFromTable(projectId);
-        }
-        
-        // Remove from recent projects if it's there
-        const projectCards = document.querySelectorAll('.project-card');
-        projectCards.forEach(card => {
-            const cardTitle = card.querySelector('.project-card-title');
-            if (cardTitle) {
-                // Check if this card's onclick matches the project ID
-                const onclickAttr = card.getAttribute('onclick');
-                if (onclickAttr && onclickAttr.includes(`openProject(${projectId})`)) {
-                    card.remove();
-                }
+        try {
+            // Remove from table if table manager exists
+            if (window.dashboardTableManager && typeof window.dashboardTableManager.removeProjectFromTable === 'function') {
+                window.dashboardTableManager.removeProjectFromTable(projectId);
             }
-        });
-        
-        this.debug(`Removed project ${projectId} from UI immediately`);
+            
+            // Remove from recent projects if it's there
+            const projectCards = document.querySelectorAll('.project-card');
+            projectCards.forEach(card => {
+                try {
+                    const cardTitle = card.querySelector('.project-card-title');
+                    if (cardTitle) {
+                        // Check if this card's onclick matches the project ID
+                        const onclickAttr = card.getAttribute('onclick');
+                        if (onclickAttr && onclickAttr.includes(`openProject(${projectId})`)) {
+                            card.remove();
+                        }
+                    }
+                } catch (cardError) {
+                    this.warn(`Error removing project card: ${cardError.message}`);
+                }
+            });
+            
+            this.debug(`Removed project ${projectId} from UI immediately`);
+        } catch (error) {
+            this.error(`Error in removeProjectFromUI for project ${projectId}:`, error);
+        }
     }
 
     /**
