@@ -8,6 +8,7 @@
  * - User dropdown management
  * - Team management
  * - Core initialization
+ * - Project management and deletion
  */
 
 class DashboardManager extends BaseManager {
@@ -33,6 +34,7 @@ class DashboardManager extends BaseManager {
             this.setupUserDropdown();
             this.setupTeamManagement();
             this.setupEventListeners();
+            this.setupDeleteModal();
 
             this.initialized = true;
             this.info('Dashboard initialization complete');
@@ -296,6 +298,26 @@ class DashboardManager extends BaseManager {
     }
 
     /**
+     * Setup delete confirmation modal
+     */
+    setupDeleteModal() {
+        const modal = document.getElementById('deleteProjectModal');
+        if (!modal) {
+            this.warn('Delete project modal not found');
+            return;
+        }
+
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.closeDeleteModal();
+            }
+        });
+
+        this.debug('Delete modal functionality initialized');
+    }
+
+    /**
      * Setup additional event listeners
      */
     setupEventListeners() {
@@ -315,92 +337,6 @@ class DashboardManager extends BaseManager {
         });
 
         this.debug('Additional event listeners initialized');
-    }
-
-    /**
-     * Update project counter in sidebar
-     */
-    updateProjectCounter(count) {
-        const projectCounter = document.getElementById('projectCounter');
-        if (projectCounter) {
-            projectCounter.textContent = count;
-        }
-    }
-
-    /**
-     * Format date for display
-     */
-    formatDate(dateString) {
-        try {
-            const date = new Date(dateString);
-            if (isNaN(date.getTime())) {
-                return 'Unknown';
-            }
-            return date.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-        } catch (error) {
-            return 'Unknown';
-        }
-    }
-
-    /**
-     * Get project type CSS class
-     */
-    getProjectTypeClass(type) {
-        const typeMap = {
-            'structural': 'structural',
-            'structural-analyser': 'structural',
-            'structure-designer': 'structural',
-            'site': 'site',
-            'site-selection': 'site',
-            'site-inspector': 'site',
-            'terrain-analysis': 'site',
-            'building': 'building',
-            'residential': 'building',
-            'commercial': 'building',
-            'industrial': 'building'
-        };
-        return typeMap[type] || 'building';
-    }
-
-    /**
-     * Get project icon
-     */
-    getProjectIcon(type) {
-        const iconMap = {
-            'structural': '🏗️',
-            'structural-analyser': '⚙️',
-            'structure-designer': '🏗️',
-            'site': '🗺️',
-            'site-selection': '📍',
-            'site-inspector': '🔍',
-            'terrain-analysis': '🏔️',
-            'building': '🏢',
-            'residential': '🏠',
-            'commercial': '🏢',
-            'industrial': '🏭'
-        };
-        return iconMap[type] || '📋';
-    }
-
-    /**
-     * Get status text
-     */
-    getStatusText(status) {
-        const statusMap = {
-            'site-selection': 'Site Selection',
-            'site-inspector': 'Site Inspector',
-            'terrain-analysis': 'Terrain Analysis',
-            'structure-designer': 'Structure Designer',
-            'structural-analyser': 'Structural Analyser',
-            'active': 'Active',
-            'completed': 'Completed',
-            'pending': 'Pending'
-        };
-        return statusMap[status] || (status ? String(status).charAt(0).toUpperCase() + String(status).slice(1) : 'Active');
     }
 
     /**
@@ -456,18 +392,6 @@ class DashboardManager extends BaseManager {
     }
 
     /**
-     * Escape HTML to prevent XSS
-     */
-    escapeHtml(text) {
-        if (typeof text !== 'string') {
-            return String(text);
-        }
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    /**
      * Load projects from API
      */
     async loadAllProjects() {
@@ -495,7 +419,6 @@ class DashboardManager extends BaseManager {
      */
     async refreshProjectLists() {
         try {
-            // Force reload from API to ensure we get fresh data
             this.debug('Refreshing project lists from server...');
             const projects = await this.loadAllProjects();
 
@@ -504,7 +427,6 @@ class DashboardManager extends BaseManager {
 
             // Update table if dashboard table manager exists
             if (window.dashboardTableManager) {
-                // Force a complete refresh of the table data
                 await window.dashboardTableManager.loadInitialData();
             }
 
@@ -518,50 +440,200 @@ class DashboardManager extends BaseManager {
     }
 
     /**
-     * Remove a specific project from UI without full refresh
-     * Only use this after server confirmation of deletion
+     * Delete project functionality
      */
-    removeProjectFromUI(projectId) {
-        // Remove from recent projects
-        const recentProjectCard = document.querySelector(`.project-card[onclick*="${projectId}"]`);
-        if (recentProjectCard) {
-            recentProjectCard.remove();
+    async deleteProject(projectId) {
+        // Prevent multiple simultaneous delete requests
+        if (this.pendingDeleteProjectId === projectId) {
+            this.debug(`Delete already in progress for project ${projectId}`);
+            return;
         }
 
-        // Remove from table using table manager
-        if (window.dashboardTableManager) {
-            window.dashboardTableManager.removeProject(projectId);
-        }
+        this.debug(`Delete requested for project ${projectId}`);
+        const row = document.querySelector(`tr[data-project-id="${projectId}"]`);
+        const projectName = row ? row.querySelector('.project-name-cell a').textContent : 'this project';
 
-        // Check if recent projects section is now empty
-        const recentContainer = document.getElementById('recentProjectsContainer');
-        if (recentContainer) {
-            const remainingCards = recentContainer.querySelectorAll('.project-card');
-            if (remainingCards.length === 0) {
-                const noProjectsMessage = recentContainer.querySelector('.no-recent-projects');
-                if (noProjectsMessage) {
-                    noProjectsMessage.style.display = 'flex';
-                }
-            }
-        }
+        // Store the project details for the modal
+        this.pendingDeleteProjectId = projectId;
+        this.pendingDeleteProjectName = projectName;
 
-        this.debug(`Removed project ${projectId} from UI after server confirmation`);
+        // Update modal content and show it
+        const deleteNameSpan = document.getElementById('deleteProjectName');
+        const modal = document.getElementById('deleteProjectModal');
+        
+        if (deleteNameSpan && modal) {
+            deleteNameSpan.textContent = projectName;
+            modal.style.display = 'flex';
+        }
     }
 
     /**
-     * Delete a project (calls the global deleteProject function)
+     * Close delete modal
      */
-    deleteProject(projectId) {
-        // Call the global deleteProject function which handles the modal
-        if (typeof deleteProject === 'function') {
-            deleteProject(projectId);
-        } else {
-            this.error('deleteProject function not found');
+    closeDeleteModal() {
+        const modal = document.getElementById('deleteProjectModal');
+        if (modal) {
+            modal.style.display = 'none';
         }
+        this.pendingDeleteProjectId = null;
+        this.pendingDeleteProjectName = null;
+    }
+
+    /**
+     * Confirm project deletion
+     */
+    async confirmDeleteProject() {
+        if (!this.pendingDeleteProjectId) {
+            this.debug('No pending delete project ID');
+            return;
+        }
+
+        const projectId = this.pendingDeleteProjectId;
+        const projectName = this.pendingDeleteProjectName;
+
+        // Close modal and clear pending state immediately
+        this.closeDeleteModal();
+
+        try {
+            this.debug(`Confirming deletion of project ${projectId}`);
+
+            const response = await fetch(`/api/project/${projectId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+
+            if (response.ok && data && data.success) {
+                this.debug(`Project ${projectId} deleted successfully from server`);
+                await this.refreshProjectLists();
+                this.debug(`Project "${projectName}" deleted and UI refreshed`);
+            } else {
+                this.error(`Failed to delete project ${projectId}:`, data);
+                await this.refreshProjectLists();
+            }
+        } catch (error) {
+            this.error(`Error deleting project ${projectId}:`, error);
+            await this.refreshProjectLists();
+        }
+    }
+
+    /**
+     * Handle delete button clicks with debouncing
+     */
+    handleDeleteProject(projectId, buttonElement) {
+        // Disable the button to prevent multiple clicks
+        if (buttonElement) {
+            if (buttonElement.disabled || buttonElement.classList.contains('deleting')) {
+                return;
+            }
+            buttonElement.disabled = true;
+            buttonElement.classList.add('deleting');
+            buttonElement.textContent = '...';
+            
+            // Re-enable button after a delay in case modal is cancelled
+            setTimeout(() => {
+                if (buttonElement && !this.pendingDeleteProjectId) {
+                    buttonElement.disabled = false;
+                    buttonElement.classList.remove('deleting');
+                    buttonElement.textContent = 'Delete';
+                }
+            }, 5000);
+        }
+        
+        this.deleteProject(projectId);
+    }
+
+    /**
+     * Update project counter in sidebar
+     */
+    updateProjectCounter(count) {
+        const projectCounter = document.getElementById('projectCounter');
+        if (projectCounter) {
+            projectCounter.textContent = count;
+        }
+    }
+
+    /**
+     * Utility functions
+     */
+    escapeHtml(text) {
+        if (typeof text !== 'string') {
+            return String(text);
+        }
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    formatDate(dateString) {
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+                return 'Unknown';
+            }
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        } catch (error) {
+            return 'Unknown';
+        }
+    }
+
+    getProjectTypeClass(type) {
+        const typeMap = {
+            'structural': 'structural',
+            'structural-analyser': 'structural',
+            'structure-designer': 'structural',
+            'site': 'site',
+            'site-selection': 'site',
+            'site-inspector': 'site',
+            'terrain-analysis': 'site',
+            'building': 'building',
+            'residential': 'building',
+            'commercial': 'building',
+            'industrial': 'building'
+        };
+        return typeMap[type] || 'building';
+    }
+
+    getProjectIcon(type) {
+        const iconMap = {
+            'structural': '🏗️',
+            'structural-analyser': '⚙️',
+            'structure-designer': '🏗️',
+            'site': '🗺️',
+            'site-selection': '📍',
+            'site-inspector': '🔍',
+            'terrain-analysis': '🏔️',
+            'building': '🏢',
+            'residential': '🏠',
+            'commercial': '🏢',
+            'industrial': '🏭'
+        };
+        return iconMap[type] || '📋';
+    }
+
+    getStatusText(status) {
+        const statusMap = {
+            'site-selection': 'Site Selection',
+            'site-inspector': 'Site Inspector',
+            'terrain-analysis': 'Terrain Analysis',
+            'structure-designer': 'Structure Designer',
+            'structural-analyser': 'Structural Analyser',
+            'active': 'Active',
+            'completed': 'Completed',
+            'pending': 'Pending'
+        };
+        return statusMap[status] || (status ? String(status).charAt(0).toUpperCase() + String(status).slice(1) : 'Active');
     }
 }
 
-// Project action handlers (global functions needed by HTML)
+// Global functions needed by HTML
 function openProject(projectId) {
     console.log(`[Dashboard] Opening project ${projectId}`);
     window.location.href = `/project/${projectId}`;
@@ -581,124 +653,30 @@ function shareProject(projectId) {
     });
 }
 
-// Global variables for delete confirmation
-let pendingDeleteProjectId = null;
-let pendingDeleteProjectName = null;
-
-async function deleteProject(projectId) {
-    // Prevent multiple simultaneous delete requests
-    if (pendingDeleteProjectId === projectId) {
-        console.log(`[Dashboard] Delete already in progress for project ${projectId}`);
-        return;
-    }
-
-    console.log(`[Dashboard] Delete requested for project ${projectId}`);
-    const row = document.querySelector(`tr[data-project-id="${projectId}"]`);
-    const projectName = row ? row.querySelector('.project-name-cell a').textContent : 'this project';
-
-    // Store the project details for the modal
-    pendingDeleteProjectId = projectId;
-    pendingDeleteProjectName = projectName;
-
-    // Update modal content and show it
-    const deleteNameSpan = document.getElementById('deleteProjectName');
-    const modal = document.getElementById('deleteProjectModal');
-    
-    if (deleteNameSpan && modal) {
-        deleteNameSpan.textContent = projectName;
-        modal.style.display = 'flex';
+function deleteProject(projectId) {
+    if (window.dashboardManager) {
+        window.dashboardManager.deleteProject(projectId);
     }
 }
 
 function closeDeleteProjectModal() {
-    const modal = document.getElementById('deleteProjectModal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-    pendingDeleteProjectId = null;
-    pendingDeleteProjectName = null;
-}
-
-async function confirmDeleteProject() {
-    if (!pendingDeleteProjectId) {
-        console.log('[Dashboard] No pending delete project ID');
-        return;
-    }
-
-    const projectId = pendingDeleteProjectId;
-    const projectName = pendingDeleteProjectName;
-
-    // Close modal and clear pending state immediately to prevent duplicate calls
-    closeDeleteProjectModal();
-
-    try {
-        console.log(`[Dashboard] Confirming deletion of project ${projectId}`);
-
-        const response = await fetch(`/api/project/${projectId}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        const data = await response.json();
-
-        if (response.ok && data && data.success) {
-            console.log(`[Dashboard] Project ${projectId} deleted successfully from server`);
-
-            // Wait for server confirmation before updating UI
-            if (window.dashboardManager) {
-                // Force a complete refresh from server to ensure consistency
-                await window.dashboardManager.refreshProjectLists();
-            }
-
-            console.log(`[Dashboard] Project "${projectName}" deleted and UI refreshed`);
-        } else {
-            console.error(`[Dashboard] Failed to delete project ${projectId}:`, data);
-            console.error(`Delete failed: ${data?.error || 'Server returned failure'}`);
-            
-            // Refresh the project lists to restore accurate state
-            if (window.dashboardManager) {
-                await window.dashboardManager.refreshProjectLists();
-            }
-        }
-    } catch (error) {
-        console.error(`[Dashboard] Error deleting project ${projectId}:`, error);
-        console.error(`Delete error: ${error.message || 'Network or server error'}`);
-        
-        // Refresh the project lists to restore accurate state
-        if (window.dashboardManager) {
-            await window.dashboardManager.refreshProjectLists();
-        }
+    if (window.dashboardManager) {
+        window.dashboardManager.closeDeleteModal();
     }
 }
 
-// Global function to handle delete button clicks with debouncing
+function confirmDeleteProject() {
+    if (window.dashboardManager) {
+        window.dashboardManager.confirmDeleteProject();
+    }
+}
+
 function handleDeleteProject(projectId, buttonElement) {
-    // Disable the button to prevent multiple clicks
-    if (buttonElement) {
-        if (buttonElement.disabled || buttonElement.classList.contains('deleting')) {
-            return; // Already processing
-        }
-        buttonElement.disabled = true;
-        buttonElement.classList.add('deleting');
-        buttonElement.textContent = '...';
-        
-        // Re-enable button after a delay in case modal is cancelled
-        setTimeout(() => {
-            if (buttonElement && !pendingDeleteProjectId) {
-                buttonElement.disabled = false;
-                buttonElement.classList.remove('deleting');
-                buttonElement.textContent = 'Delete';
-            }
-        }, 5000);
+    if (window.dashboardManager) {
+        window.dashboardManager.handleDeleteProject(projectId, buttonElement);
     }
-    
-    // Call the actual delete function
-    deleteProject(projectId);
 }
 
-// Global function to refresh project lists
 async function refreshProjectLists() {
     if (window.dashboardManager) {
         await window.dashboardManager.refreshProjectLists();

@@ -1,3 +1,4 @@
+
 /**
  * Dashboard Table JavaScript Module
  * 
@@ -66,7 +67,10 @@ class DashboardTableManager extends BaseManager {
     async loadInitialData() {
         try {
             this.debug('Loading initial table data...');
-            const projects = await this.loadAllProjects();
+            // Use the shared project loading function from dashboard manager
+            const projects = window.dashboardManager ? 
+                await window.dashboardManager.loadAllProjects() : 
+                await this.loadAllProjects();
             this.debug(`Loaded ${projects.length} projects for table`);
 
             // Always try to populate, even with empty array
@@ -224,18 +228,6 @@ class DashboardTableManager extends BaseManager {
     }
 
     /**
-     * Escape HTML to prevent XSS
-     */
-    escapeHtml(text) {
-        if (typeof text !== 'string') {
-            return String(text);
-        }
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    /**
      * Update table height based on number of projects
      */
     updateTableHeight(projectCount) {
@@ -376,7 +368,7 @@ class DashboardTableManager extends BaseManager {
     }
 
     /**
-     * Load projects from API
+     * Load projects from API (fallback if dashboard manager not available)
      */
     async loadAllProjects() {
         try {
@@ -396,43 +388,6 @@ class DashboardTableManager extends BaseManager {
             this.error('Error loading projects from API', error);
             return [];
         }
-    }
-
-    /**
-     * Format date for display
-     */
-    formatDate(dateString) {
-        try {
-            const date = new Date(dateString);
-            if (isNaN(date.getTime())) {
-                return 'Unknown';
-            }
-            return date.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-        } catch (error) {
-            this.warn('Error formatting date:', dateString);
-            return 'Unknown';
-        }
-    }
-
-    /**
-     * Get status text
-     */
-    getStatusText(status) {
-        const statusMap = {
-            'site-selection': 'Site Selection',
-            'site-inspector': 'Site Inspector',
-            'terrain-analysis': 'Terrain Analysis',
-            'structure-designer': 'Structure Designer',
-            'structural-analyser': 'Structural Analyser',
-            'active': 'Active',
-            'completed': 'Completed',
-            'pending': 'Pending'
-        };
-        return statusMap[status] || (status ? String(status).charAt(0).toUpperCase() + String(status).slice(1) : 'Active');
     }
 
     /**
@@ -495,7 +450,9 @@ class DashboardTableManager extends BaseManager {
     async refreshTable() {
         try {
             this.info('Refreshing table data...');
-            const projects = await this.loadAllProjects();
+            const projects = window.dashboardManager ? 
+                await window.dashboardManager.loadAllProjects() : 
+                await this.loadAllProjects();
             const currentFilter = this.getCurrentFilter();
             this.populateFilesTable(projects, currentFilter);
             this.info('Table data refreshed successfully');
@@ -529,6 +486,61 @@ class DashboardTableManager extends BaseManager {
      */
     removeProject(projectId) {
         this.removeProjectFromTable(projectId);
+    }
+
+    /**
+     * Utility functions - use shared functions from dashboard manager if available
+     */
+    escapeHtml(text) {
+        if (window.dashboardManager && typeof window.dashboardManager.escapeHtml === 'function') {
+            return window.dashboardManager.escapeHtml(text);
+        }
+        
+        if (typeof text !== 'string') {
+            return String(text);
+        }
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    formatDate(dateString) {
+        if (window.dashboardManager && typeof window.dashboardManager.formatDate === 'function') {
+            return window.dashboardManager.formatDate(dateString);
+        }
+
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+                return 'Unknown';
+            }
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        } catch (error) {
+            this.warn('Error formatting date:', dateString);
+            return 'Unknown';
+        }
+    }
+
+    getStatusText(status) {
+        if (window.dashboardManager && typeof window.dashboardManager.getStatusText === 'function') {
+            return window.dashboardManager.getStatusText(status);
+        }
+
+        const statusMap = {
+            'site-selection': 'Site Selection',
+            'site-inspector': 'Site Inspector',
+            'terrain-analysis': 'Terrain Analysis',
+            'structure-designer': 'Structure Designer',
+            'structural-analyser': 'Structural Analyser',
+            'active': 'Active',
+            'completed': 'Completed',
+            'pending': 'Pending'
+        };
+        return statusMap[status] || (status ? String(status).charAt(0).toUpperCase() + String(status).slice(1) : 'Active');
     }
 }
 
