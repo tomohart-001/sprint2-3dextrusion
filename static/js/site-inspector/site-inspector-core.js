@@ -2068,7 +2068,7 @@ class SiteInspectorCore extends BaseManager {
         } catch (error) {
             this.error('Error loading property boundaries:', error);
         }
-    }
+    }</old_str>
 
     displayPropertyBoundaries(properties, containingProperty) {
         try {
@@ -2076,29 +2076,61 @@ class SiteInspectorCore extends BaseManager {
             const features = properties.map((property, index) => {
                 const isContaining = containingProperty && property.id === containingProperty.id;
 
+                // Convert coordinate format for Mapbox - property.coordinates is an array of polygons
+                let geometry;
+                if (property.coordinates && property.coordinates.length > 0) {
+                    // Handle multiple polygons (property.coordinates is array of coordinate arrays)
+                    if (property.coordinates.length === 1) {
+                        // Single polygon
+                        geometry = {
+                            type: 'Polygon',
+                            coordinates: property.coordinates
+                        };
+                    } else {
+                        // Multiple polygons
+                        geometry = {
+                            type: 'MultiPolygon',
+                            coordinates: property.coordinates.map(coords => [coords])
+                        };
+                    }
+                } else {
+                    this.warn('Property has no valid coordinates:', property);
+                    return null;
+                }
+
                 return {
                     type: 'Feature',
-                    geometry: property.geometry,
+                    geometry: geometry,
                     properties: {
                         id: property.id,
                         type: isContaining ? 'containing-property' : 'nearby-property',
-                        address: property.address || 'Unknown address',
-                        area: property.area || 'Unknown area'
+                        title: property.title || 'Unknown Title',
+                        area_ha: property.area_ha || 'Unknown area'
                     }
                 };
-            });
+            }).filter(feature => feature !== null);</old_str>
+
+            if (features.length === 0) {
+                this.info('No valid property features to display');
+                return;
+            }
+
+            // Remove existing property boundary layers if they exist
+            if (this.map.getLayer('property-boundaries-fill')) {
+                this.map.removeLayer('property-boundaries-fill');
+            }
+            if (this.map.getLayer('property-boundaries-stroke')) {
+                this.map.removeLayer('property-boundaries-stroke');
+            }
+            if (this.map.getSource('property-boundaries')) {
+                this.map.removeSource('property-boundaries');
+            }
 
             // Add property boundaries source
-            if (this.map.getSource('property-boundaries')) {
-                this.map.getSource('property-boundaries').setData({
-                    type: 'FeatureCollection',
-                    features: features
-                });
-            } else {
-                this.map.addSource('property-boundaries', {
-                    type: 'geojson',
-                    data: {
-                        type: 'FeatureCollection',
+            this.map.addSource('property-boundaries', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',</old_str>
                         features: features
                     }
                 });
@@ -2124,46 +2156,67 @@ class SiteInspectorCore extends BaseManager {
                     }
                 });
 
-                // Add stroke layer for property boundaries
-                this.map.addLayer({
-                    id: 'property-boundaries-stroke',
-                    type: 'line',
-                    source: 'property-boundaries',
-                    paint: {
-                        'line-color': [
-                            'case',
-                            ['==', ['get', 'type'], 'containing-property'],
-                            '#ff9500', // Orange for containing property
-                            '#4682b4'  // Steel blue for nearby properties
-                        ],
-                        'line-width': [
-                            'case',
-                            ['==', ['get', 'type'], 'containing-property'],
-                            3, // Thicker line for containing property
-                            2
-                        ],
-                        'line-dasharray': [
-                            'case',
-                            ['==', ['get', 'type'], 'containing-property'],
-                            [5, 5], // Dashed line for containing property
-                            [1, 0]  // Solid line for nearby properties
-                        ],
-                        'line-opacity': 0.8
-                    }
-                });
+                // Add fill layer for property boundaries
+            this.map.addLayer({
+                id: 'property-boundaries-fill',
+                type: 'fill',
+                source: 'property-boundaries',
+                paint: {
+                    'fill-color': [
+                        'case',
+                        ['==', ['get', 'type'], 'containing-property'],
+                        '#ff9500', // Orange for containing property
+                        '#87ceeb'  // Light blue for nearby properties
+                    ],
+                    'fill-opacity': [
+                        'case',
+                        ['==', ['get', 'type'], 'containing-property'],
+                        0.3, // More visible for containing property
+                        0.15 // More subtle for nearby properties
+                    ]
+                }
+            });
+
+            // Add stroke layer for property boundaries
+            this.map.addLayer({
+                id: 'property-boundaries-stroke',
+                type: 'line',
+                source: 'property-boundaries',
+                paint: {
+                    'line-color': [
+                        'case',
+                        ['==', ['get', 'type'], 'containing-property'],
+                        '#ff9500', // Orange for containing property
+                        '#4682b4'  // Steel blue for nearby properties
+                    ],
+                    'line-width': [
+                        'case',
+                        ['==', ['get', 'type'], 'containing-property'],
+                        3, // Thicker line for containing property
+                        2
+                    ],
+                    'line-dasharray': [
+                        'case',
+                        ['==', ['get', 'type'], 'containing-property'],
+                        [5, 5], // Dashed line for containing property
+                        [1, 0]  // Solid line for nearby properties
+                    ],
+                    'line-opacity': 0.8
+                }
+            });</old_str>);
             }
 
             this.info('Property boundaries displayed on map');
 
             // Show info about containing property if found
             if (containingProperty) {
-                this.info('Project address is within property:', containingProperty.address || 'Unknown address');
+                this.info('Project address is within property:', containingProperty.title || 'Unknown title');
             }
 
         } catch (error) {
             this.error('Error displaying property boundaries:', error);
         }
-    }
+    }</old_str>
 }
 
 // Global helper functions (for template compatibility)
