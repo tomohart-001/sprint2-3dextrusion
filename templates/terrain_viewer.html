@@ -1176,6 +1176,35 @@
                     No Buildable Area Available
                 </button>
 
+                <!-- Basic Earthworks Calculation -->
+                <div style="margin-top: 15px;">
+                    <button id="calculateEarthworksBtn" class="control-btn" disabled style="width: 100%;">
+                        Calculate Earthworks
+                    </button>
+                    <button id="clearPlatformBtn" class="control-btn" disabled style="width: 100%; margin-top: 8px; background: #dc3545;">
+                        Clear Platform
+                    </button>
+                    <button id="togglePlatformMoveBtn" class="control-btn" disabled style="width: 100%; margin-top: 8px; background: #6c757d;">
+                        Enable Platform Movement
+                    </button>
+                </div>
+
+                <!-- FFL Controls -->
+                <div class="ffl-controls" style="margin-top: 15px;">
+                    <label class="control-label">Finished Floor Level (FFL)</label>
+                    <div class="ffl-options">
+                        <div class="radio-option">
+                            <input type="radio" name="fflMode" value="optimize" id="optimizeFFL" checked>
+                            <label for="optimizeFFL">Optimize</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="fflMode" value="manual" id="manualFFL">
+                            <label for="manualFFL">Manual</label>
+                        </div>
+                    </div>
+                    <input type="number" id="manualFFL" placeholder="FFL (m)" disabled step="0.1" style="width: 100%; margin-top: 8px;">
+                </div>
+
                 <!-- Building Platform Container -->
                 <div class="platform-container" style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
                     <label class="control-label" style="font-weight: bold;">Building Platform</label>
@@ -1686,6 +1715,7 @@
                 // Earthworks controls
                 addListener('calculateEarthworksBtn', 'click', () => this.calculateEarthworks());
                 addListener('clearPlatformBtn', 'click', () => this.clearPlatform());
+                addListener('togglePlatformMoveBtn', 'click', () => this.togglePlatformMovement());
 
                 // FFL mode radio buttons
                 const fflRadios = document.querySelectorAll('input[name="fflMode"]');
@@ -2644,19 +2674,41 @@
             }
 
             enableViewControls() {
-                document.getElementById('resetViewBtn').disabled = false;
-                document.getElementById('topViewBtn').disabled = false;
-                document.getElementById('sideViewBtn').disabled = false;
-                document.getElementById('perspectiveViewBtn').disabled = false;
+                this.safeSetProperty('resetViewBtn', 'disabled', false);
+                this.safeSetProperty('topViewBtn', 'disabled', false);
+                this.safeSetProperty('sideViewBtn', 'disabled', false);
+                this.safeSetProperty('perspectiveViewBtn', 'disabled', false);
             }
 
             enableEarthworksControls() {
-                document.getElementById('calculateEarthworksBtn').disabled = false;
+                this.safeSetProperty('calculateEarthworksBtn', 'disabled', false);
+            }
+
+            safeSetProperty(elementId, property, value) {
+                try {
+                    const element = document.getElementById(elementId);
+                    if (element) {
+                        element[property] = value;
+                    } else {
+                        console.warn(`[TerrainViewer] Element ${elementId} not found, cannot set ${property}`);
+                    }
+                } catch (error) {
+                    console.error(`[TerrainViewer] Error setting ${property} on ${elementId}:`, error);
+                }
+            }
+
+            safeGetElement(elementId) {
+                try {
+                    return document.getElementById(elementId);
+                } catch (error) {
+                    console.error(`[TerrainViewer] Error getting element ${elementId}:`, error);
+                    return null;
+                }
             }
 
             enableBuildableAreaButton() {
                 console.log('[TerrainViewer] Enabling buildable area button');
-                const btn = document.getElementById('loadBuildableAreaBtn');
+                const btn = this.safeGetElement('loadBuildableAreaBtn');
                 if (!btn) {
                     console.error('[TerrainViewer] Load buildable area button not found');
                     return;
@@ -2668,11 +2720,11 @@
                     this.siteData.buildable_area.coordinates.length > 0) {
 
                     const area = this.siteData.buildable_area.area_m2 || this.calculatePolygonArea(this.siteData.buildable_area.coordinates);
-                    btn.disabled = false;
+                    this.safeSetProperty('loadBuildableAreaBtn', 'disabled', false);
                     btn.textContent = `Load Buildable Area (${area.toFixed(1)} m²)`;
                     console.log('[TerrainViewer] Buildable area available:', area.toFixed(1), 'm²');
                 } else {
-                    btn.disabled = true;
+                    this.safeSetProperty('loadBuildableAreaBtn', 'disabled', true);
                     btn.textContent = 'No Buildable Area Available';
                     console.log('[TerrainViewer] Buildable area button disabled - no buildable area data');
                 }
@@ -3022,26 +3074,35 @@
                 this.currentPlatformCoords = null;
 
                 // Clear results display
-                document.getElementById('earthworksResults').style.display = 'none';
+                const resultsElement = this.safeGetElement('earthworksResults');
+                if (resultsElement) resultsElement.style.display = 'none';
 
                 // Hide platform controls
-                document.getElementById('platformControls').style.display = 'none';
+                const controlsElement = this.safeGetElement('platformControls');
+                if (controlsElement) controlsElement.style.display = 'none';
 
                 // Clear platform position
                 this.currentPlatformCenter = { x: 0.5, y: 0.5 };
                 this.currentPlatformRotation = 0;
 
-                // Reset platform controls
-                document.getElementById('platformRotation').value = 0;
-                document.getElementById('platformRotationValue').value = 0;
-                document.getElementById('platformWidth').value = 10;
-                document.getElementById('platformLength').value = 10;
-                document.getElementById('platformCenterX').value = 0;
-                document.getElementById('platformCenterY').value = 0;
+                // Reset platform controls using safe methods
+                const resetValues = [
+                    ['platformRotation', 0],
+                    ['platformRotationValue', 0],
+                    ['platformWidth', 10],
+                    ['platformLength', 10],
+                    ['platformCenterX', 0],
+                    ['platformCenterY', 0]
+                ];
+
+                resetValues.forEach(([id, value]) => {
+                    const element = this.safeGetElement(id);
+                    if (element) element.value = value;
+                });
 
                 // Disable platform controls
-                document.getElementById('clearPlatformBtn').disabled = true;
-                document.getElementById('togglePlatformMoveBtn').disabled = true;
+                this.safeSetProperty('clearPlatformBtn', 'disabled', true);
+                this.safeSetProperty('togglePlatformMoveBtn', 'disabled', true);
 
                 // Re-check platform availability
                 this.checkStructurePlatformAvailability();
