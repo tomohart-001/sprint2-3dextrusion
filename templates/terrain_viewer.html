@@ -2759,6 +2759,19 @@
                 this.checkStructurePlatformAvailability();
             }
 
+            calculatePolygonArea(coordinates) {
+                if (!coordinates || coordinates.length < 3) return 0;
+                
+                let area = 0;
+                const n = coordinates.length;
+                for (let i = 0; i < n; i++) {
+                    const j = (i + 1) % n;
+                    area += coordinates[i][0] * coordinates[j][1];
+                    area -= coordinates[j][0] * coordinates[i][1];
+                }
+                return Math.abs(area) / 2 * 12365778903; // Convert to square meters (rough approximation)
+            }
+
             checkStructurePlatformAvailability() {
                 console.log('[TerrainViewer] Checking structure platform availability');
 
@@ -2792,7 +2805,7 @@
                 if (btn) {
                     if (structureData && structureData.coordinates && structureData.coordinates.length > 0) {
                         btn.disabled = false;
-                        const area = structureData.area_m2 || this.calculatePolygonArea(structureData.coordinates);
+                        const area = structureData.area_m2 || this.calculatePolygonArea(structureData.coordinates);ygonArea(structureData.coordinates);
                         btn.textContent = `Load Structure Platform (${area.toFixed(1)} m²)`;
                         console.log('[TerrainViewer] Structure platform available:', area.toFixed(1), 'm²');
                     } else {
@@ -2822,10 +2835,10 @@
                     try {
                         const sessionData = sessionStorage.getItem('structure_placement_data');
                         if (sessionData) {
-                            structureData = JSON.JSON.parse(sessionData);
+                            structureData = JSON.parse(sessionData);
                         }
                     } catch (error) {
-                        console.log('[TerrainViewer] No structure data in session');
+                        console.log('[TerrainViewer] Error parsing structure data from session:', error);
                     }
 
                     // Fallback to site data
