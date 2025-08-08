@@ -566,15 +566,24 @@ class DashboardManager extends BaseManager {
             const data = await response.json();
 
             if (response.ok && data && data.success) {
-                this.debug(`Project ${projectId} deleted successfully from server`);
+                this.info(`Project ${projectId} "${projectName}" deleted successfully from server`);
+                
+                // Immediately remove from UI before refreshing
+                this.removeProjectFromUI(projectId);
+                
+                // Then refresh data from server to ensure consistency
                 await this.refreshProjectLists();
-                this.debug(`Project "${projectName}" deleted and UI refreshed`);
+                
+                this.info(`Project "${projectName}" deleted and UI updated`);
             } else {
                 this.error(`Failed to delete project ${projectId}:`, data);
+                // Show user-friendly error message
+                alert(`Failed to delete project "${projectName}": ${data.error || 'Unknown error'}`);
                 await this.refreshProjectLists();
             }
         } catch (error) {
             this.error(`Error deleting project ${projectId}:`, error);
+            alert(`Error deleting project "${projectName}". Please try again.`);
             await this.refreshProjectLists();
         }
     }
@@ -603,6 +612,31 @@ class DashboardManager extends BaseManager {
         }
 
         this.deleteProject(projectId);
+    }
+
+    /**
+     * Remove project from UI immediately
+     */
+    removeProjectFromUI(projectId) {
+        // Remove from table if table manager exists
+        if (window.dashboardTableManager) {
+            window.dashboardTableManager.removeProjectFromTable(projectId);
+        }
+        
+        // Remove from recent projects if it's there
+        const projectCards = document.querySelectorAll('.project-card');
+        projectCards.forEach(card => {
+            const cardTitle = card.querySelector('.project-card-title');
+            if (cardTitle) {
+                // Check if this card's onclick matches the project ID
+                const onclickAttr = card.getAttribute('onclick');
+                if (onclickAttr && onclickAttr.includes(`openProject(${projectId})`)) {
+                    card.remove();
+                }
+            }
+        });
+        
+        this.debug(`Removed project ${projectId} from UI immediately`);
     }
 
     /**

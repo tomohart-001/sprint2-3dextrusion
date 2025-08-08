@@ -469,49 +469,83 @@ class DatabaseManager:
             app_logger.error(f"Error saving project: {e}")
             return None
 
-    def delete_project(self, project_id, user_id):
-        """Delete a project and all related data"""
+    def delete_project(self, project_id: int, user_id: int) -> bool:
+        """
+        Delete a project and all related data
+        """
         try:
-            # Use a separate connection for deletion to avoid conflicts
-            conn = sqlite3.connect(self.db.db_path, timeout=30.0)
-            conn.execute("PRAGMA foreign_keys=ON")
-            conn.execute("PRAGMA busy_timeout=30000")
-
-            try:
-                cursor = conn.cursor()
-
-                # Verify project exists and belongs to user before deletion
+            with self.db.get_cursor() as cursor:
+                # Verify project ownership first
                 cursor.execute('SELECT id FROM projects WHERE id = ? AND user_id = ?', (project_id, user_id))
                 if not cursor.fetchone():
-                    app_logger.warning(f"Project {project_id} not found or doesn't belong to user {user_id}")
+                    app_logger.error(f"Project {project_id} not found or access denied for user {user_id}")
                     return False
 
-                # Since foreign keys are enabled with CASCADE, deleting the project will automatically delete related records
-                cursor.execute('DELETE FROM projects WHERE id = ? AND user_id = ?', (project_id, user_id))
-                project_deleted = cursor.rowcount
+                # Start transaction
+                cursor.execute('BEGIN TRANSACTION')
 
-                if project_deleted > 0:
-                    conn.commit()
-                    app_logger.info(f"Project {project_id} and all related data deleted successfully")
+                try:
+                    # Delete in order to avoid foreign key constraint issues
+                    # Delete project snapshots first
+                    cursor.execute('DELETE FROM project_snapshots WHERE project_id = ?', (project_id,))
+                    snapshots_deleted = cursor.rowcount
 
-                    # Force WAL checkpoint after commit
-                    cursor.execute('PRAGMA wal_checkpoint(FULL)')
+                    # Delete project comments
+                    cursor.execute('DELETE FROM project_comments WHERE project_id = ?', (project_id,))
+                    comments_deleted = cursor.rowcount
 
-                    # Verify deletion
-                    cursor.execute('SELECT COUNT(*) FROM projects WHERE id = ?', (project_id,))
-                    remaining_count = cursor.fetchone()[0]
+                    # Delete project notes
+                    cursor.execute('DELETE FROM project_notes WHERE project_id = ?', (project_id,))
+                    notes_deleted = cursor.rowcount
 
-                    if remaining_count > 0:
-                        app_logger.error(f"Project {project_id} still exists after deletion")
+                    # Delete project history
+                    cursor.execute('DELETE FROM project_history WHERE project_id = ?', (project_id,))
+                    history_deleted = cursor.rowcount
+
+                    # Check for any other tables that might reference this project
+                    # Delete from any team_project_access if it exists
+                    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='team_project_access'")
+                    if cursor.fetchone():
+                        cursor.execute('DELETE FROM team_project_access WHERE project_id = ?', (project_id,))
+                        team_access_deleted = cursor.rowcount
+                    else:
+                        team_access_deleted = 0
+
+                    # Delete from any project_files if it exists
+                    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='project_files'")
+                    if cursor.fetchone():
+                        cursor.execute('DELETE FROM project_files WHERE project_id = ?', (project_id,))
+                        files_deleted = cursor.rowcount
+                    else:
+                        files_deleted = 0
+
+                    # Delete from any project_team_members if it exists
+                    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='project_team_members'")
+                    if cursor.fetchone():
+                        cursor.execute('DELETE FROM project_team_members WHERE project_id = ?', (project_id,))
+                        team_members_deleted = cursor.rowcount
+                    else:
+                        team_members_deleted = 0
+
+                    # Finally, delete the project itself
+                    cursor.execute('DELETE FROM projects WHERE id = ? AND user_id = ?', (project_id, user_id))
+                    project_deleted = cursor.rowcount
+
+                    if project_deleted == 0:
+                        cursor.execute('ROLLBACK')
+                        app_logger.error(f"Failed to delete project {project_id} - no rows affected")
                         return False
 
-                    return True
-                else:
-                    app_logger.warning(f"No project deleted for ID {project_id}")
-                    return False
+                    # Commit the transaction
+                    cursor.execute('COMMIT')
 
-            finally:
-                conn.close()
+                    app_logger.info(f"Project {project_id} deleted successfully. Related data deleted: {snapshots_deleted} snapshots, {comments_deleted} comments, {notes_deleted} notes, {history_deleted} history entries, {team_access_deleted} team access records, {files_deleted} files, {team_members_deleted} team members")
+                    return True
+
+                except Exception as e:
+                    cursor.execute('ROLLBACK')
+                    app_logger.error(f"Error in transaction while deleting project {project_id}: {e}")
+                    return False
 
         except Exception as e:
             app_logger.error(f"Error deleting project {project_id}: {e}")
