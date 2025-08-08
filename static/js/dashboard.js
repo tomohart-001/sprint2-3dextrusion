@@ -495,6 +495,8 @@ class DashboardManager extends BaseManager {
      */
     async refreshProjectLists() {
         try {
+            // Force reload from API to ensure we get fresh data
+            this.debug('Refreshing project lists from server...');
             const projects = await this.loadAllProjects();
 
             // Update recent projects
@@ -502,13 +504,14 @@ class DashboardManager extends BaseManager {
 
             // Update table if dashboard table manager exists
             if (window.dashboardTableManager) {
-                await window.dashboardTableManager.refreshTable();
+                // Force a complete refresh of the table data
+                await window.dashboardTableManager.loadInitialData();
             }
 
             // Update project counter
             this.updateProjectCounter(projects.length);
 
-            this.debug('Project lists refreshed successfully');
+            this.debug(`Project lists refreshed successfully with ${projects.length} projects`);
         } catch (error) {
             this.error('Failed to refresh project lists', error);
         }
@@ -542,6 +545,18 @@ class DashboardManager extends BaseManager {
         }
 
         this.debug(`Removed project ${projectId} from UI`);
+    }
+
+    /**
+     * Delete a project (calls the global deleteProject function)
+     */
+    deleteProject(projectId) {
+        // Call the global deleteProject function which handles the modal
+        if (typeof deleteProject === 'function') {
+            deleteProject(projectId);
+        } else {
+            this.error('deleteProject function not found');
+        }
     }
 }
 
@@ -612,6 +627,11 @@ async function confirmDeleteProject() {
             // Remove from UI immediately
             if (window.dashboardManager) {
                 window.dashboardManager.removeProjectFromUI(projectId);
+            }
+
+            // Also refresh the full project lists to ensure consistency
+            if (window.dashboardManager) {
+                await window.dashboardManager.refreshProjectLists();
             }
 
             alert(`Project "${projectName}" has been deleted successfully.`);

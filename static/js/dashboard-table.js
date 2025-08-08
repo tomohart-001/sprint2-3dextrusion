@@ -505,24 +505,30 @@ class DashboardTableManager extends BaseManager {
     }
 
     /**
-     * Remove project from table
+     * Remove project from table UI
      */
-    removeProject(projectId) {
-        // Remove from data arrays
-        this.allProjects = this.allProjects.filter(p => p.id !== projectId);
-        this.filteredProjects = this.filteredProjects.filter(p => p.id !== projectId);
-
-        // Remove from DOM
+    removeProjectFromTable(projectId) {
         const row = document.querySelector(`tr[data-project-id="${projectId}"]`);
         if (row) {
             row.remove();
+            this.debug(`Removed project ${projectId} from table`);
+
+            // Update pagination if needed
+            this.updatePagination();
+
+            // If current page is now empty, go to previous page
+            const tableBody = document.getElementById('projectsTableBody');
+            if (tableBody && tableBody.children.length === 0 && this.currentPage > 1) {
+                this.goToPage(this.currentPage - 1);
+            }
         }
+    }
 
-        // Refresh pagination if needed
-        const currentFilter = this.getCurrentFilter();
-        this.populateFilesTable(this.allProjects, currentFilter);
-
-        this.info(`Project ${projectId} removed from table`);
+    /**
+     * Alias for removeProjectFromTable for consistency
+     */
+    removeProject(projectId) {
+        this.removeProjectFromTable(projectId);
     }
 }
 
