@@ -1,4 +1,3 @@
-
 /**
  * Dashboard Core JavaScript Module
  * 
@@ -208,7 +207,7 @@ class DashboardManager extends BaseManager {
         try {
             const response = await fetch('/api/get-team-name');
             const data = await response.json();
-            
+
             const teamMenuText = document.getElementById('teamMenuText');
             const teamMenuItem = document.getElementById('teamMenuItem');
             const fileFilterSelect = document.getElementById('fileFilterSelect');
@@ -460,10 +459,22 @@ class DashboardManager extends BaseManager {
         // Update modal content and show it
         const deleteNameSpan = document.getElementById('deleteProjectName');
         const modal = document.getElementById('deleteProjectModal');
-        
+
         if (deleteNameSpan && modal) {
             deleteNameSpan.textContent = projectName;
             modal.style.display = 'flex';
+            modal.style.justifyContent = 'center';
+            modal.style.alignItems = 'center';
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+            modal.style.width = '100%';
+            modal.style.height = '100%';
+            modal.style.zIndex = '1000';
+            modal.classList.add('show');
+            this.info(`Showing delete confirmation modal for project: ${projectName}`);
+        } else {
+            this.error('Delete modal elements not found', { deleteNameSpan: !!deleteNameSpan, modal: !!modal });
         }
     }
 
@@ -474,6 +485,15 @@ class DashboardManager extends BaseManager {
         const modal = document.getElementById('deleteProjectModal');
         if (modal) {
             modal.style.display = 'none';
+            modal.style.justifyContent = '';
+            modal.style.alignItems = '';
+            modal.style.position = '';
+            modal.style.top = '';
+            modal.style.left = '';
+            modal.style.width = '';
+            modal.style.height = '';
+            modal.style.zIndex = '';
+            modal.classList.remove('show');
         }
         this.pendingDeleteProjectId = null;
         this.pendingDeleteProjectName = null;
@@ -503,7 +523,7 @@ class DashboardManager extends BaseManager {
                     'Content-Type': 'application/json'
                 }
             });
-            
+
             const data = await response.json();
 
             if (response.ok && data && data.success) {
@@ -532,7 +552,7 @@ class DashboardManager extends BaseManager {
             buttonElement.disabled = true;
             buttonElement.classList.add('deleting');
             buttonElement.textContent = '...';
-            
+
             // Re-enable button after a delay in case modal is cancelled
             setTimeout(() => {
                 if (buttonElement && !this.pendingDeleteProjectId) {
@@ -542,7 +562,7 @@ class DashboardManager extends BaseManager {
                 }
             }, 5000);
         }
-        
+
         this.deleteProject(projectId);
     }
 
@@ -681,7 +701,7 @@ async function refreshProjectLists() {
     if (window.dashboardManager) {
         await window.dashboardManager.refreshProjectLists();
     }
-    
+
     // Re-enable all delete buttons after refresh
     document.querySelectorAll('.action-btn.delete.deleting').forEach(btn => {
         btn.disabled = false;
