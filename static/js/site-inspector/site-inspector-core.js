@@ -102,13 +102,13 @@ class SiteInspectorCore extends BaseManager {
         try {
             const urlParams = new URLSearchParams(window.location.search);
             let projectId = urlParams.get('project_id') || urlParams.get('project');
-            
+
             // Clean up malformed project IDs (remove any extra query parameters)
             if (projectId && projectId.includes('?')) {
                 projectId = projectId.split('?')[0];
                 this.info('Cleaned malformed project ID from URL:', projectId);
             }
-            
+
             // Also check session storage
             if (!projectId) {
                 projectId = sessionStorage.getItem('project_id') || sessionStorage.getItem('current_project_id');
@@ -180,13 +180,13 @@ class SiteInspectorCore extends BaseManager {
             if (window.projectData && window.projectData.address && window.projectData.address.trim() !== '') {
                 this.siteData.project_address = window.projectData.address;
                 this.info('✅ Using project address from template:', window.projectData.address);
-                
+
                 // Store in session for future use
                 sessionStorage.setItem('current_project_address', window.projectData.address);
                 if (projectId) {
                     sessionStorage.setItem('current_project_id', projectId);
                 }
-                
+
                 return await this.geocodeProjectAddress(window.projectData.address);
             }
 
@@ -374,7 +374,7 @@ class SiteInspectorCore extends BaseManager {
                     this.setupMapControls();
                     this.setup3DTerrain();
                     this.info('Map loaded successfully');
-                    
+
                     // If we don't have coordinates yet, try to geocode the project address
                     if (!this.siteData.center && this.siteData.project_address) {
                         this.info('📍 Attempting to geocode project address after map load:', this.siteData.project_address);
@@ -388,7 +388,12 @@ class SiteInspectorCore extends BaseManager {
                             this.info('✅ Map recentered to project location after geocoding');
                         }
                     }
-                    
+
+                    // Load property boundaries if we have a center location
+                    if (this.siteData.center) {
+                        await this.loadPropertyBoundaries(this.siteData.center.lat, this.siteData.center.lng);
+                    }
+
                     resolve();
                 });
 
@@ -517,21 +522,21 @@ class SiteInspectorCore extends BaseManager {
 
             // Add Draw control to map with comprehensive error handling
             this.info('Adding Draw control to map...');
-            
+
             try {
                 // Wait a moment for any remaining map operations to complete
                 await new Promise(resolve => setTimeout(resolve, 100));
-                
+
                 // Check if map is still valid before adding control
                 if (!this.map || !this.map.getContainer()) {
                     throw new Error('Map is no longer valid');
                 }
-                
+
                 this.map.addControl(this.draw);
-                
+
                 // Wait for draw control to be fully initialized
                 await new Promise(resolve => setTimeout(resolve, 200));
-                
+
                 this.info('✅ Draw control added successfully');
             } catch (addControlError) {
                 this.error('Failed to add MapboxDraw control to map:', addControlError);
@@ -907,10 +912,10 @@ class SiteInspectorCore extends BaseManager {
     async handleBuildableAreaPreview(data) {
         try {
             this.info('Handling buildable area preview with data:', data);
-            
+
             // Use the unified core's preview method
             const result = await this.siteBoundaryCore.previewBuildableArea(data);
-            
+
             // If the preview returns a result, display it
             if (result && result.buildable_coords) {
                 this.updateBuildableAreaDisplay(result, true);
@@ -966,10 +971,6 @@ class SiteInspectorCore extends BaseManager {
         this.clearSetbackVisualization();
 
         try {
-            // Create visual lines for front and back setbacks
-            const frontEdge = data.selectedEdges.front;
-            const backEdge = data.selectedEdges.back;
-
             // Create line features
             const features = [];
 
@@ -1064,7 +1065,7 @@ class SiteInspectorCore extends BaseManager {
 
     handleSiteBoundaryCreated(data) {
         this.info('Site boundary created, updating site data');
-        
+
         // Update site data with complete structure
         this.siteData.coordinates = data.coordinates;
         this.siteData.area = data.area;
@@ -1075,13 +1076,13 @@ class SiteInspectorCore extends BaseManager {
         this.siteData.type = data.type || 'residential';
         this.siteData.perimeter = data.perimeter;
         this.siteData.terrainBounds = data.terrainBounds;
-        
+
         this.info('Site data updated with complete structure:', this.siteData);
     }
 
     handleSiteBoundaryLoaded(data) {
         this.info('Site boundary loaded, updating site data');
-        
+
         // Update site data with complete structure from loaded boundary
         this.siteData.coordinates = data.coordinates;
         this.siteData.area = data.area;
@@ -1394,7 +1395,7 @@ class SiteInspectorCore extends BaseManager {
     // Public methods for UI integration
     getSiteData() {
         const boundaryData = this.siteBoundaryCore.getSiteData();
-        
+
         // Merge with existing site data, ensuring all required fields are present
         const siteData = {
             ...this.siteData,
@@ -1405,14 +1406,14 @@ class SiteInspectorCore extends BaseManager {
         if (!siteData.type) {
             siteData.type = 'residential';
         }
-        
+
         if (!siteData.center && siteData.center_lng && siteData.center_lat) {
             siteData.center = {
                 lng: siteData.center_lng,
                 lat: siteData.center_lat
             };
         }
-        
+
         if (!siteData.area_m2 && siteData.area) {
             siteData.area_m2 = siteData.area;
         }
@@ -2033,6 +2034,42 @@ class SiteInspectorCore extends BaseManager {
         }
 
         super.destroy();
+    }
+
+    /**
+     * Loads property boundaries from the API and displays them on the map.
+     * @param {number} lat - Latitude of the project location.
+     * @param {number} lng - Longitude of the project location.
+     */
+    async loadPropertyBoundaries(lat, lng) {
+        if (!this.siteBoundaryCore) {
+            this.warn('SiteBoundaryCore not initialized, cannot load property boundaries.');
+            return;
+        }
+
+        this.info(`Loading property boundaries for location: Lat=${lat}, Lng=${lng}`);
+
+        try {
+            const boundaryData = await this.siteBoundaryCore.fetchPropertyBoundaries(lat, lng);
+
+            if (!boundaryData || !boundaryData.features || boundaryData.features.length === 0) {
+                this.info('No property boundaries found for this location.');
+                return;
+            }
+
+            this.info(`Found ${boundaryData.features.length} property boundaries.`);
+
+            // Add the boundary data to the map
+            await this.siteBoundaryCore.addBoundaryToMap(boundaryData);
+            this.info('Property boundaries added to the map.');
+
+            // Trigger an event to indicate boundaries are loaded
+            window.eventBus.emit('property-boundaries-loaded', boundaryData);
+
+        } catch (error) {
+            this.error('Failed to load or display property boundaries:', error);
+            // Optionally show a user-facing error or warning
+        }
     }
 }
 
