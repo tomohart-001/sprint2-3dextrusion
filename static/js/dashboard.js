@@ -463,7 +463,8 @@ class DashboardManager extends BaseManager {
         if (deleteNameSpan && modal) {
             deleteNameSpan.textContent = projectName;
             
-            // Force display and positioning
+            // Show modal with proper overlay class
+            modal.classList.add('modal-overlay', 'show');
             modal.style.display = 'flex';
             modal.style.position = 'fixed';
             modal.style.top = '0';
@@ -477,15 +478,19 @@ class DashboardManager extends BaseManager {
             modal.style.opacity = '1';
             modal.style.visibility = 'visible';
             
-            // Add show class
-            modal.classList.add('show');
-            
-            // Ensure the modal content is visible
+            // Force modal content to be visible
             const modalContent = modal.querySelector('.modal');
             if (modalContent) {
+                modalContent.style.display = 'block';
                 modalContent.style.transform = 'translateY(0)';
                 modalContent.style.opacity = '1';
-                modalContent.style.zIndex = '10000';
+                modalContent.style.zIndex = '10001';
+                modalContent.style.position = 'relative';
+                modalContent.style.background = 'white';
+                modalContent.style.borderRadius = '16px';
+                modalContent.style.maxWidth = '520px';
+                modalContent.style.width = '90%';
+                modalContent.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.15)';
             }
             
             this.info(`Showing delete confirmation modal for project: ${projectName}`);
@@ -512,14 +517,21 @@ class DashboardManager extends BaseManager {
             modal.style.background = '';
             modal.style.opacity = '';
             modal.style.visibility = '';
-            modal.classList.remove('show');
+            modal.classList.remove('show', 'modal-overlay');
             
             // Reset modal content styles
             const modalContent = modal.querySelector('.modal');
             if (modalContent) {
+                modalContent.style.display = '';
                 modalContent.style.transform = '';
                 modalContent.style.opacity = '';
                 modalContent.style.zIndex = '';
+                modalContent.style.position = '';
+                modalContent.style.background = '';
+                modalContent.style.borderRadius = '';
+                modalContent.style.maxWidth = '';
+                modalContent.style.width = '';
+                modalContent.style.boxShadow = '';
             }
         }
         this.pendingDeleteProjectId = null;
