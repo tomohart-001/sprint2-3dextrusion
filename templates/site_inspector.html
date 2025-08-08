@@ -845,10 +845,10 @@
         .edge-selection-btn:hover {
             background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%);
             transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(84, 123, 247, 0.3);
+            box-shadow: 0 4px 16px rgba(84, 123, 247, 0.3);```python
         }
 
-        .edge-selection-btn.active {
+        .        .edge-selection-btn.active {
             background: linear-gradient(135deg, #28a745 0%, #20923a 100%);
         }
 
@@ -1777,7 +1777,8 @@
         .dimensions-control-independent {
             position: relative;
             z-index: 1100;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(```python
+255, 255, 255, 0.95);
             border: 1px solid rgba(0, 0, 0, 0.08);
             border-radius: 8px;
             backdrop-filter: blur(20px);
@@ -2273,7 +2274,7 @@
 
         /* Collapsed state for all cards */
         .boundary-controls.collapsed .boundary-content,
-        .boundary-controls.collapsed .setbacks-content,
+        .boundary-controls.collapsed .setback-content,
         .boundary-controls.collapsed .floorplan-content,
         .boundary-controls.collapsed .site-boundary-content,
         .floorplan-upload.collapsed .floorplan-content,
@@ -2500,22 +2501,15 @@
             </div>
         </div>
 
-        <!-- Dimensions Control -->
-        <div id="dimensionsControl" class="map-control dimensions-control">
-            <button class="dimensions-toggle-btn active" title="Toggle dimension labels">
-                <span>📐</span>
-                <div class="dimensions-toggle-switch">
-                    <input type="checkbox" checked>
-                    <span class="dimensions-toggle-slider"></span>
-                </div>
+        <!-- Dimensions Control Button -->
+        <div class="dimensions-control-independent" id="dimensionsControl" style="margin-bottom: 8px;">
+            <button class="dimensions-toggle-btn">
+                Dimensions
             </button>
-        </div>
-
-        <!-- Property Boundary Control -->
-        <div class="map-control">
-            <button id="propertyBoundaryToggle" class="map-control-btn active" title="Toggle legal property boundary">
-                📍 Property
-            </button>
+            <label class="dimensions-toggle-switch">
+                <input type="checkbox" checked>
+                <span class="toggle-slider"></span>
+            </label>
         </div>
     </div>
 

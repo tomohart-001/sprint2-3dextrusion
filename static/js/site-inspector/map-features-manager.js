@@ -100,14 +100,6 @@ class MapFeaturesManager extends BaseManager {
                 }
             });
         }
-
-        // Property boundary toggle
-        const propertyBoundaryBtn = document.getElementById('propertyBoundaryToggle');
-        if (propertyBoundaryBtn) {
-            propertyBoundaryBtn.addEventListener('click', () => {
-                this.togglePropertyBoundary();
-            });
-        }
     }
 
     setup3DBuildingsControl() {
@@ -1307,53 +1299,6 @@ class MapFeaturesManager extends BaseManager {
         }
 
         return false;
-    }
-
-    togglePropertyBoundary() {
-        const propertyBoundaryBtn = document.getElementById('propertyBoundaryToggle');
-        
-        if (!propertyBoundaryBtn) {
-            this.warn('Property boundary button not found');
-            return;
-        }
-
-        const isVisible = this.isPropertyBoundaryVisible();
-        
-        if (isVisible) {
-            this.hidePropertyBoundary();
-            propertyBoundaryBtn.classList.remove('active');
-            this.info('Property boundary hidden');
-        } else {
-            this.showPropertyBoundary();
-            propertyBoundaryBtn.classList.add('active');
-            this.info('Property boundary shown');
-        }
-    }
-
-    isPropertyBoundaryVisible() {
-        const fillLayer = this.map.getLayer('property-boundary-fill');
-        if (!fillLayer) return false;
-        
-        const visibility = this.map.getLayoutProperty('property-boundary-fill', 'visibility');
-        return visibility !== 'none';
-    }
-
-    showPropertyBoundary() {
-        if (this.map.getLayer('property-boundary-fill')) {
-            this.map.setLayoutProperty('property-boundary-fill', 'visibility', 'visible');
-        }
-        if (this.map.getLayer('property-boundary-stroke')) {
-            this.map.setLayoutProperty('property-boundary-stroke', 'visibility', 'visible');
-        }
-    }
-
-    hidePropertyBoundary() {
-        if (this.map.getLayer('property-boundary-fill')) {
-            this.map.setLayoutProperty('property-boundary-fill', 'visibility', 'none');
-        }
-        if (this.map.getLayer('property-boundary-stroke')) {
-            this.map.setLayoutProperty('property-boundary-stroke', 'visibility', 'none');
-        }
     }
 }
 

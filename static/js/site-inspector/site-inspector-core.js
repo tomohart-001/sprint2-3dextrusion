@@ -99,238 +99,152 @@ class SiteInspectorCore extends BaseManager {
     }
 
     async loadProjectAddress() {
-        // Get project ID from URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        let projectId = urlParams.get('project_id') || urlParams.get('project');
-
-        // Also check for current project data in session storage
-        const currentProjectAddress = sessionStorage.getItem('current_project_address');
-        const currentProjectId = sessionStorage.getItem('current_project_id');
-
-        // If we have current project data in session, use it
-        if (!projectId && currentProjectId) {
-            projectId = currentProjectId;
-            this.info('Using current project ID from session:', projectId);
-        }
-
-        // If we have the address already in session, use it directly
-        if (currentProjectAddress && currentProjectAddress !== 'undefined' && currentProjectAddress.trim() !== '') {
-            this.info('✅ Using current project address from session:', currentProjectAddress);
-            this.siteData.project_address = currentProjectAddress;
-            const result = await this.geocodeProjectAddress(currentProjectAddress);
-            if (result && this.siteData.center) {
-                await this.loadPropertyBoundary(this.siteData.center.lat, this.siteData.center.lng);
-            }
-            return result;
-        }
-
-        // Validate and clean project ID
-        if (!projectId || !/^\d+$/.test(String(projectId).trim())) {
-            this.info('No valid project ID found');
-            return false;
-        }
-
-        projectId = String(projectId).trim();
-        this.info('Loading project address for project ID:', projectId);
-
-        // Try to get project address directly first
         try {
-            const response = await fetch(`/api/project-address?project_id=${projectId}`);
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success && data.site_address && data.site_address.trim() !== '') {
-                    this.siteData.project_address = data.site_address;
-                    this.info('✅ Project address loaded from API:', data.site_address);
+            const urlParams = new URLSearchParams(window.location.search);
+            let projectId = urlParams.get('project_id') || urlParams.get('project');
+            
+            // Clean up malformed project IDs (remove any extra query parameters)
+            if (projectId && projectId.includes('?')) {
+                projectId = projectId.split('?')[0];
+                this.info('Cleaned malformed project ID from URL:', projectId);
+            }
+            
+            // Also check session storage
+            if (!projectId) {
+                projectId = sessionStorage.getItem('project_id') || sessionStorage.getItem('current_project_id');
+            }
 
-                    // Store in session for future use
-                    sessionStorage.setItem('current_project_address', data.site_address);
-                    sessionStorage.setItem('current_project_id', projectId);
+            // Also check for current project data in session storage
+            const currentProjectAddress = sessionStorage.getItem('current_project_address');
+            const currentProjectId = sessionStorage.getItem('current_project_id');
 
-                    // Check if we have coordinates in the response
-                    if (data.location && data.location.lat && data.location.lng) {
-                        this.siteData.center = {
-                            lat: parseFloat(data.location.lat),
-                            lng: parseFloat(data.location.lng)
-                        };
-                        this.info('✅ Project coordinates available from API:', this.siteData.center);
+            // If we have current project data in session, use it
+            if (!projectId && currentProjectId) {
+                projectId = currentProjectId;
+                this.info('Using current project ID from session:', projectId);
+            }
 
-                        // Load property boundary for the coordinates
-                        await this.loadPropertyBoundary(this.siteData.center.lat, this.siteData.center.lng);
-                        return true;
-                    } else {
-                        // Geocode the address
-                        this.info('🌍 Geocoding project address from API:', data.site_address);
-                        const result = await this.geocodeProjectAddress(data.site_address);
-                        if (result && this.siteData.center) {
-                            await this.loadPropertyBoundary(this.siteData.center.lat, this.siteData.center.lng);
+            // If we have the address already in session, use it directly
+            if (currentProjectAddress && currentProjectAddress !== 'undefined' && currentProjectAddress.trim() !== '') {
+                this.info('✅ Using current project address from session:', currentProjectAddress);
+                this.siteData.project_address = currentProjectAddress;
+                return await this.geocodeProjectAddress(currentProjectAddress);
+            }
+
+            // Validate and clean project ID
+            if (!projectId || !/^\d+$/.test(String(projectId).trim())) {
+                this.info('No valid project ID found');
+                return false;
+            }
+
+            projectId = String(projectId).trim();
+            this.info('Loading project address for project ID:', projectId);
+
+            // Try to get project address directly first
+            try {
+                const response = await fetch(`/api/project-address?project_id=${projectId}`);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.site_address && data.site_address.trim() !== '') {
+                        this.siteData.project_address = data.site_address;
+                        this.info('✅ Project address loaded from API:', data.site_address);
+
+                        // Store in session for future use
+                        sessionStorage.setItem('current_project_address', data.site_address);
+                        sessionStorage.setItem('current_project_id', projectId);
+
+                        if (data.location && data.location.lat && data.location.lng) {
+                            this.siteData.center = {
+                                lat: parseFloat(data.location.lat),
+                                lng: parseFloat(data.location.lng)
+                            };
+                            this.info('✅ Project coordinates available from API:', this.siteData.center);
+                            return true;
+                        } else {
+                            // Geocode the address
+                            this.info('🌍 Geocoding project address from API:', data.site_address);
+                            return await this.geocodeProjectAddress(data.site_address);
                         }
-                        return result;
+                    } else {
+                        this.warn('No valid site address in API response:', data);
                     }
                 } else {
-                    this.warn('No valid site address in API response:', data);
+                    this.warn('Failed to fetch project address, status:', response.status);
                 }
-            } else {
-                this.warn('Failed to fetch project address, status:', response.status);
+            } catch (error) {
+                this.warn('Failed to fetch project address directly:', error.message);
             }
+
+            // If project data is available in template, use it
+            if (window.projectData && window.projectData.address && window.projectData.address.trim() !== '') {
+                this.siteData.project_address = window.projectData.address;
+                this.info('✅ Using project address from template:', window.projectData.address);
+                
+                // Store in session for future use
+                sessionStorage.setItem('current_project_address', window.projectData.address);
+                if (projectId) {
+                    sessionStorage.setItem('current_project_id', projectId);
+                }
+                
+                return await this.geocodeProjectAddress(window.projectData.address);
+            }
+
+            this.warn('No project address found from any source');
+            return false;
         } catch (error) {
-            this.warn('Failed to fetch project address directly:', error.message);
-        }
-
-        this.warn('⚠️ Project address could not be loaded, proceeding with default location', '');
-    }
-
-    async geocodeProjectAddress(projectAddress) {
-        if (!projectAddress || projectAddress.trim() === '') {
-            this.warn('No project address to geocode');
+            this.error('Error loading project address:', error);
             return false;
         }
-
-        try {
-            this.info(`🌍 Geocoding project address: ${projectAddress}`);
-
-            const response = await window.apiClient.post('/geocode-location', {
-                query: projectAddress
-            });
-
-            if (response.success && response.location) {
-                const coords = [response.location.lng, response.location.lat];
-                this.siteData.center = {
-                    lat: response.location.lat,
-                    lng: response.location.lng
-                };
-                this.info(`✅ Project geocoded successfully to: ${coords}`, '');
-                this.map.flyTo({
-                    center: coords,
-                    zoom: 16,
-                    essential: true
-                });
-                return true;
-            }
-        } catch (error) {
-            this.warn(`Geocoding failed for project address: ${error.message}`, '');
-        }
-
-        this.warn('⚠️ Project address could not be loaded, proceeding with default location', '');
-        return false;
     }
 
-    async loadPropertyBoundary(lat, lng) {
+    async geocodeProjectAddress(address) {
         try {
-            this.info(`📍 Loading property boundary for coordinates: ${lat}, ${lng}`);
+            this.info('🌍 Geocoding project address:', address);
 
-            const response = await fetch('/api/property-boundaries', {
+            // Check geocode cache
+            const geocodeCacheKey = `geocode_${btoa(address)}`;
+            const cached = this.getFromCache(geocodeCacheKey);
+            if (cached && cached.timestamp > Date.now() - 86400000) { // 24 hour cache for geocoding
+                this.info('✅ Using cached geocoding result');
+                this.siteData.center = cached.center;
+                return true;
+            }
+
+            const response = await fetch('/api/geocode-location', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ lat, lng })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: address })
             });
+
+            if (!response.ok) {
+                this.warn(`Geocoding API returned ${response.status} ${response.statusText}`);
+                return false;
+            }
 
             const data = await response.json();
 
-            if (data.success && data.containing_property) {
-                this.displayPropertyBoundary(data.containing_property);
-                this.info(`✅ Property boundary loaded: ${data.containing_property.title}`);
-            } else if (data.success && data.total_count === 0) {
-                this.info('ℹ️ No property boundary found for this location');
+            if (data.success && data.location && data.location.lat && data.location.lng) {
+                this.siteData.center = {
+                    lat: parseFloat(data.location.lat),
+                    lng: parseFloat(data.location.lng)
+                };
+
+                // Cache the geocoding result
+                this.setCache(geocodeCacheKey, {
+                    center: this.siteData.center,
+                    timestamp: Date.now()
+                });
+
+                this.info('✅ Project address geocoded successfully:', this.siteData.center);
+                return true;
             } else {
-                this.warn(`Property boundary loading failed: ${data.error}`);
+                this.warn('Geocoding failed - no valid coordinates returned:', data.error || 'Unknown error');
+                return false;
             }
         } catch (error) {
-            this.error('Error loading property boundary:', error);
-        }
-    }
-
-    displayPropertyBoundary(property) {
-        try {
-            // Remove existing property boundary if any
-            if (this.map.getSource('property-boundary')) {
-                this.map.removeLayer('property-boundary-fill');
-                this.map.removeLayer('property-boundary-stroke');
-                this.map.removeSource('property-boundary');
-            }
-
-            // Process coordinates - LINZ returns nested coordinate arrays
-            const coordinates = property.coordinates;
-            if (!coordinates || coordinates.length === 0) {
-                this.warn('No coordinates found in property data');
-                return;
-            }
-
-            // Use the first polygon if multiple polygons exist
-            const polygonCoords = coordinates[0];
-
-            // Add source
-            this.map.addSource('property-boundary', {
-                type: 'geojson',
-                data: {
-                    type: 'Feature',
-                    geometry: {
-                        type: 'Polygon',
-                        coordinates: [polygonCoords]
-                    },
-                    properties: {
-                        title: property.title,
-                        area_ha: property.area_ha,
-                        survey_area: property.survey_area,
-                        territorial_authority: property.territorial_authority
-                    }
-                }
-            });
-
-            // Add fill layer
-            this.map.addLayer({
-                id: 'property-boundary-fill',
-                type: 'fill',
-                source: 'property-boundary',
-                paint: {
-                    'fill-color': '#ff6b35',
-                    'fill-opacity': 0.1
-                }
-            });
-
-            // Add stroke layer
-            this.map.addLayer({
-                id: 'property-boundary-stroke',
-                type: 'line',
-                source: 'property-boundary',
-                paint: {
-                    'line-color': '#ff6b35',
-                    'line-width': 2,
-                    'line-opacity': 0.8,
-                    'line-dasharray': [5, 5]
-                }
-            });
-
-            // Add click handler for property info
-            this.map.on('click', 'property-boundary-fill', (e) => {
-                const props = e.features[0].properties;
-                new mapboxgl.Popup()
-                    .setLngLat(e.lngLat)
-                    .setHTML(`
-                        <div style="font-family: Arial, sans-serif; max-width: 250px;">
-                            <h4 style="margin: 0 0 8px 0; color: #333;">Legal Property Boundary</h4>
-                            <p style="margin: 4px 0; font-size: 13px;"><strong>Title:</strong> ${props.title}</p>
-                            ${props.area_ha ? `<p style="margin: 4px 0; font-size: 13px;"><strong>Area:</strong> ${props.area_ha} ha</p>` : ''}
-                            ${props.territorial_authority ? `<p style="margin: 4px 0; font-size: 13px;"><strong>Authority:</strong> ${props.territorial_authority}</p>` : ''}
-                        </div>
-                    `)
-                    .addTo(this.map);
-            });
-
-            // Change cursor on hover
-            this.map.on('mouseenter', 'property-boundary-fill', () => {
-                this.map.getCanvas().style.cursor = 'pointer';
-            });
-
-            this.map.on('mouseleave', 'property-boundary-fill', () => {
-                this.map.getCanvas().style.cursor = '';
-            });
-
-            this.info(`✅ Property boundary displayed on map: ${property.title}`);
-
-        } catch (error) {
-            this.error('Error displaying property boundary:', error);
+            this.error('Error geocoding project address:', error);
+            return false;
         }
     }
 
@@ -460,7 +374,7 @@ class SiteInspectorCore extends BaseManager {
                     this.setupMapControls();
                     this.setup3DTerrain();
                     this.info('Map loaded successfully');
-
+                    
                     // If we don't have coordinates yet, try to geocode the project address
                     if (!this.siteData.center && this.siteData.project_address) {
                         this.info('📍 Attempting to geocode project address after map load:', this.siteData.project_address);
@@ -474,7 +388,7 @@ class SiteInspectorCore extends BaseManager {
                             this.info('✅ Map recentered to project location after geocoding');
                         }
                     }
-
+                    
                     resolve();
                 });
 
@@ -603,21 +517,21 @@ class SiteInspectorCore extends BaseManager {
 
             // Add Draw control to map with comprehensive error handling
             this.info('Adding Draw control to map...');
-
+            
             try {
                 // Wait a moment for any remaining map operations to complete
                 await new Promise(resolve => setTimeout(resolve, 100));
-
+                
                 // Check if map is still valid before adding control
                 if (!this.map || !this.map.getContainer()) {
                     throw new Error('Map is no longer valid');
                 }
-
+                
                 this.map.addControl(this.draw);
-
+                
                 // Wait for draw control to be fully initialized
                 await new Promise(resolve => setTimeout(resolve, 200));
-
+                
                 this.info('✅ Draw control added successfully');
             } catch (addControlError) {
                 this.error('Failed to add MapboxDraw control to map:', addControlError);
@@ -993,10 +907,10 @@ class SiteInspectorCore extends BaseManager {
     async handleBuildableAreaPreview(data) {
         try {
             this.info('Handling buildable area preview with data:', data);
-
+            
             // Use the unified core's preview method
             const result = await this.siteBoundaryCore.previewBuildableArea(data);
-
+            
             // If the preview returns a result, display it
             if (result && result.buildable_coords) {
                 this.updateBuildableAreaDisplay(result, true);
@@ -1150,7 +1064,7 @@ class SiteInspectorCore extends BaseManager {
 
     handleSiteBoundaryCreated(data) {
         this.info('Site boundary created, updating site data');
-
+        
         // Update site data with complete structure
         this.siteData.coordinates = data.coordinates;
         this.siteData.area = data.area;
@@ -1161,13 +1075,13 @@ class SiteInspectorCore extends BaseManager {
         this.siteData.type = data.type || 'residential';
         this.siteData.perimeter = data.perimeter;
         this.siteData.terrainBounds = data.terrainBounds;
-
+        
         this.info('Site data updated with complete structure:', this.siteData);
     }
 
     handleSiteBoundaryLoaded(data) {
         this.info('Site boundary loaded, updating site data');
-
+        
         // Update site data with complete structure from loaded boundary
         this.siteData.coordinates = data.coordinates;
         this.siteData.area = data.area;
@@ -1362,9 +1276,9 @@ class SiteInspectorCore extends BaseManager {
 
                     // Add terrain layer with moderate exaggeration
                     try {
-                        this.map.setTerrain({
-                            'source': 'mapbox-dem',
-                            'exaggeration': 1.2
+                        this.map.setTerrain({ 
+                            'source': 'mapbox-dem', 
+                            'exaggeration': 1.2 
                         });
                     } catch (terrainError) {
                         this.warn('Failed to set terrain:', terrainError.message);
@@ -1406,7 +1320,7 @@ class SiteInspectorCore extends BaseManager {
                 } catch (terrainError) {
                     // Check if it's the known source conflict error
                     if (terrainError.message && (
-                        terrainError.message.includes('mapbox-gl-draw-cold') ||
+                        terrainError.message.includes('mapbox-gl-draw-cold') || 
                         terrainError.message.includes('already exists') ||
                         terrainError.message.includes('There is already a source')
                     )) {
@@ -1480,7 +1394,7 @@ class SiteInspectorCore extends BaseManager {
     // Public methods for UI integration
     getSiteData() {
         const boundaryData = this.siteBoundaryCore.getSiteData();
-
+        
         // Merge with existing site data, ensuring all required fields are present
         const siteData = {
             ...this.siteData,
@@ -1491,14 +1405,14 @@ class SiteInspectorCore extends BaseManager {
         if (!siteData.type) {
             siteData.type = 'residential';
         }
-
+        
         if (!siteData.center && siteData.center_lng && siteData.center_lat) {
             siteData.center = {
                 lng: siteData.center_lng,
                 lat: siteData.center_lat
             };
         }
-
+        
         if (!siteData.area_m2 && siteData.area) {
             siteData.area_m2 = siteData.area;
         }
@@ -1994,33 +1908,15 @@ class SiteInspectorCore extends BaseManager {
                 this.floorplanManager.clearAllStructures();
             }
 
-            // Clear any remaining map layers
-            const layersToRemove = [
-                'measure-points', 'measure-lines', 'measure-live',
-                'buildable-area-fill', 'buildable-area-stroke',
-                'structure-fill', 'structure-stroke',
-                'property-boundary-fill', 'property-boundary-stroke'
-            ];
+            // Clear any remaining map layers that depend on site boundary
+            this.clearDependentMapLayers();
 
-            layersToRemove.forEach(layerId => {
-                if (this.map.getLayer(layerId)) {
-                    this.map.removeLayer(layerId);
-                }
-            });
-
-            const sourcesToRemove = [
-                'measure-points', 'measure-lines', 'measure-live',
-                'buildable-area', 'structures', 'property-boundary'
-            ];
-
-            sourcesToRemove.forEach(sourceId => {
-                if (this.map.getSource(sourceId)) {
-                    this.map.removeSource(sourceId);
-                }
-            });
+            // Reset UI panel states
+            if (this.uiPanelManager) {
+                this.uiPanelManager.resetAllPanelStates();
+            }
 
             this.info('Comprehensive clearing completed');
-
         } catch (error) {
             this.error('Error during comprehensive clearing:', error);
         }
@@ -2035,14 +1931,12 @@ class SiteInspectorCore extends BaseManager {
             const layersToRemove = [
                 'setback-fill', 'setback-stroke', 'setback-visualization',
                 'buildable-area-fill', 'buildable-area-stroke', 'buildable-area-dimension-labels',
-                'structure-fill', 'structure-stroke',
-                'property-boundary-fill', 'property-boundary-stroke'
+                'structure-fill', 'structure-stroke', 'structure-dimension-labels'
             ];
 
             const sourcesToRemove = [
                 'setback-visualization', 'buildable-area', 'buildable-area-dimensions',
-                'structure-footprint', 'structure-dimensions',
-                'property-boundary'
+                'structure-footprint', 'structure-dimensions'
             ];
 
             layersToRemove.forEach(layerId => {
@@ -2067,10 +1961,10 @@ class SiteInspectorCore extends BaseManager {
         if (mapContainer) {
             mapContainer.innerHTML = `
                 <div style="
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    height: 100%;
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    height: 100%; 
                     background: #f5f5f5;
                     color: #666;
                     font-family: Arial, sans-serif;
@@ -2082,12 +1976,12 @@ class SiteInspectorCore extends BaseManager {
                     <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Map Failed to Load</div>
                     <div style="font-size: 14px; max-width: 400px;">${message}</div>
                     <button onclick="location.reload()" style="
-                        margin-top: 16px;
-                        padding: 8px 16px;
-                        background: #007cbf;
-                        color: white;
-                        border: none;
-                        border-radius: 4px;
+                        margin-top: 16px; 
+                        padding: 8px 16px; 
+                        background: #007cbf; 
+                        color: white; 
+                        border: none; 
+                        border-radius: 4px; 
                         cursor: pointer;
                     ">Retry</button>
                 </div>
