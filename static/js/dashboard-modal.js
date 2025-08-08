@@ -1,4 +1,3 @@
-
 /**
  * Dashboard Modal JavaScript Module
  * 
@@ -211,18 +210,18 @@ class DashboardModalManager extends BaseManager {
                 this.info('Project created successfully, preparing redirect');
                 this.info('Project ID for redirect:', response.project.id);
 
-                // Store the project address in session for site inspector
-                const siteAddress = document.getElementById('siteAddress').value;
-                if (siteAddress) {
-                    sessionStorage.setItem('current_project_address', siteAddress);
-                    sessionStorage.setItem('current_project_id', response.project.id);
-                }
+                // Store project info in session storage for site inspector
+                sessionStorage.setItem('project_id', response.project.id);
+                sessionStorage.setItem('current_project_id', response.project.id);
+                sessionStorage.setItem('project_name', response.project.name);
+                sessionStorage.setItem('project_site_address', response.project.address);
+                sessionStorage.setItem('current_project_address', response.project.address);
+                sessionStorage.setItem('selectedProjectId', response.project.id);
 
-                // Close modal
-                this.closeAddProjectModal();
+                this.info('Session storage updated, redirecting to site inspector');
 
-                // Navigate to site inspector
-                this.navigateToSiteInspector(response.project.id);
+                // Redirect to site inspector with project ID in URL
+                window.location.href = `/site-inspector?project_id=${response.project.id}`;
             } else {
                 this.error('Project creation failed', response);
                 alert('Error creating project: ' + (response.error || 'Unknown error'));

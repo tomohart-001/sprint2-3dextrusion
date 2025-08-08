@@ -109,38 +109,42 @@ class SiteInspectorCore extends BaseManager {
                 this.info('Cleaned malformed project ID from URL:', projectId);
             }
 
-            // Also check session storage
+            // Also check session storage for project ID
             if (!projectId) {
-                projectId = sessionStorage.getItem('project_id') || sessionStorage.getItem('current_project_id');
+                projectId = sessionStorage.getItem('project_id') || 
+                           sessionStorage.getItem('current_project_id') || 
+                           sessionStorage.getItem('selectedProjectId');
             }
 
-            // Also check for current project data in session storage
-            const currentProjectAddress = sessionStorage.getItem('current_project_address');
-            const currentProjectId = sessionStorage.getItem('current_project_id');
-
-            // If we have current project data in session, use it
-            if (!projectId && currentProjectId) {
-                projectId = currentProjectId;
-                this.info('Using current project ID from session:', projectId);
-            }
-
-            // If we have the address already in session, use it directly
-            if (currentProjectAddress && currentProjectAddress !== 'undefined' && currentProjectAddress.trim() !== '') {
-                this.info('✅ Using current project address from session:', currentProjectAddress);
-                this.siteData.project_address = currentProjectAddress;
-                return await this.geocodeProjectAddress(currentProjectAddress);
+            // Check for project address in session storage first
+            const sessionProjectAddress = sessionStorage.getItem('current_project_address') || 
+                                         sessionStorage.getItem('project_site_address');
+            
+            // If we have the address in session and it's valid, use it directly
+            if (sessionProjectAddress && sessionProjectAddress !== 'undefined' && sessionProjectAddress.trim() !== '') {
+                this.info('✅ Using project address from session:', sessionProjectAddress);
+                this.siteData.project_address = sessionProjectAddress;
+                return await this.geocodeProjectAddress(sessionProjectAddress);
             }
 
             // Validate and clean project ID
             if (!projectId || !/^\d+$/.test(String(projectId).trim())) {
-                this.info('No valid project ID found');
+                this.info('No valid project ID found, checking for other sources...');
+                
+                // Check if project data is available in template
+                if (window.projectData && window.projectData.address && window.projectData.address.trim() !== '') {
+                    this.siteData.project_address = window.projectData.address;
+                    this.info('✅ Using project address from template:', window.projectData.address);
+                    return await this.geocodeProjectAddress(window.projectData.address);
+                }
+                
                 return false;
             }
 
             projectId = String(projectId).trim();
             this.info('Loading project address for project ID:', projectId);
 
-            // Try to get project address directly first
+            // Try to get project address from API
             try {
                 const response = await fetch(`/api/project-address?project_id=${projectId}`);
 
@@ -173,13 +177,13 @@ class SiteInspectorCore extends BaseManager {
                     this.warn('Failed to fetch project address, status:', response.status);
                 }
             } catch (error) {
-                this.warn('Failed to fetch project address directly:', error.message);
+                this.warn('Failed to fetch project address from API:', error.message);
             }
 
-            // If project data is available in template, use it
+            // Fallback: check template data
             if (window.projectData && window.projectData.address && window.projectData.address.trim() !== '') {
                 this.siteData.project_address = window.projectData.address;
-                this.info('✅ Using project address from template:', window.projectData.address);
+                this.info('✅ Using project address from template fallback:', window.projectData.address);
 
                 // Store in session for future use
                 sessionStorage.setItem('current_project_address', window.projectData.address);
