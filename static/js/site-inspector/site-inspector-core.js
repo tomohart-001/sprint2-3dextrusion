@@ -1277,9 +1277,9 @@ class SiteInspectorCore extends BaseManager {
 
                     // Add terrain layer with moderate exaggeration
                     try {
-                        this.map.setTerrain({ 
-                            'source': 'mapbox-dem', 
-                            'exaggeration': 1.2 
+                        this.map.setTerrain({
+                            'source': 'mapbox-dem',
+                            'exaggeration': 1.2
                         });
                     } catch (terrainError) {
                         this.warn('Failed to set terrain:', terrainError.message);
@@ -1321,7 +1321,7 @@ class SiteInspectorCore extends BaseManager {
                 } catch (terrainError) {
                     // Check if it's the known source conflict error
                     if (terrainError.message && (
-                        terrainError.message.includes('mapbox-gl-draw-cold') || 
+                        terrainError.message.includes('mapbox-gl-draw-cold') ||
                         terrainError.message.includes('already exists') ||
                         terrainError.message.includes('There is already a source')
                     )) {
@@ -1962,10 +1962,10 @@ class SiteInspectorCore extends BaseManager {
         if (mapContainer) {
             mapContainer.innerHTML = `
                 <div style="
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center; 
-                    height: 100%; 
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100%;
                     background: #f5f5f5;
                     color: #666;
                     font-family: Arial, sans-serif;
@@ -1977,12 +1977,12 @@ class SiteInspectorCore extends BaseManager {
                     <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Map Failed to Load</div>
                     <div style="font-size: 14px; max-width: 400px;">${message}</div>
                     <button onclick="location.reload()" style="
-                        margin-top: 16px; 
-                        padding: 8px 16px; 
-                        background: #007cbf; 
-                        color: white; 
-                        border: none; 
-                        border-radius: 4px; 
+                        margin-top: 16px;
+                        padding: 8px 16px;
+                        background: #007cbf;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
                         cursor: pointer;
                     ">Retry</button>
                 </div>
@@ -2068,7 +2068,7 @@ class SiteInspectorCore extends BaseManager {
         } catch (error) {
             this.error('Error loading property boundaries:', error);
         }
-    }</old_str>
+    }
 
     displayPropertyBoundaries(properties, containingProperty) {
         try {
@@ -2108,7 +2108,7 @@ class SiteInspectorCore extends BaseManager {
                         area_ha: property.area_ha || 'Unknown area'
                     }
                 };
-            }).filter(feature => feature !== null);</old_str>
+            }).filter(feature => feature !== null);
 
             if (features.length === 0) {
                 this.info('No valid property features to display');
@@ -2130,33 +2130,12 @@ class SiteInspectorCore extends BaseManager {
             this.map.addSource('property-boundaries', {
                 type: 'geojson',
                 data: {
-                    type: 'FeatureCollection',</old_str>
-                        features: features
-                    }
-                });
+                    type: 'FeatureCollection',
+                    features: features
+                }
+            });
 
-                // Add fill layer for property boundaries
-                this.map.addLayer({
-                    id: 'property-boundaries-fill',
-                    type: 'fill',
-                    source: 'property-boundaries',
-                    paint: {
-                        'fill-color': [
-                            'case',
-                            ['==', ['get', 'type'], 'containing-property'],
-                            '#ff9500', // Orange for containing property
-                            '#87ceeb'  // Light blue for nearby properties
-                        ],
-                        'fill-opacity': [
-                            'case',
-                            ['==', ['get', 'type'], 'containing-property'],
-                            0.3, // More visible for containing property
-                            0.15 // More subtle for nearby properties
-                        ]
-                    }
-                });
-
-                // Add fill layer for property boundaries
+            // Add fill layer for property boundaries
             this.map.addLayer({
                 id: 'property-boundaries-fill',
                 type: 'fill',
@@ -2203,8 +2182,7 @@ class SiteInspectorCore extends BaseManager {
                     ],
                     'line-opacity': 0.8
                 }
-            });</old_str>);
-            }
+            });
 
             this.info('Property boundaries displayed on map');
 
@@ -2216,7 +2194,7 @@ class SiteInspectorCore extends BaseManager {
         } catch (error) {
             this.error('Error displaying property boundaries:', error);
         }
-    }</old_str>
+    }
 }
 
 // Global helper functions (for template compatibility)
