@@ -937,7 +937,7 @@
             </div>
         </div>
         <div class="header-right">
-            <a href="/site-developer{% if project_data and project_data.get('id') %}?project_id={{ project_data.get('id') }}{% endif %}" class="header-cta-btn">FormLab</a></old_str>
+            <a href="/site-developer{% if project_data and project_data.get('id') %}?project_id={{ project_data.get('id') }}{% endif %}" class="header-cta-btn">FormLab</a>
         </div>
     </div>
 
@@ -1041,9 +1041,6 @@
                 </div></div>
             </div>
         </div>
-    </div></old_str>
-            </div>
-        </div>
     </div>
 
     <div class="main-content">
@@ -1125,12 +1122,12 @@
                 </div>
             </div>
 
-            
+
 
             <!-- Visualisation Settings -->
             <div class="control-section">
                 <div class="section-title">Visualisation Settings</div>
-                
+
                 <div class="platform-controls">
                     <label class="control-label">Terrain Opacity</label>
                     <div class="input-row">
@@ -1178,54 +1175,58 @@
                 <button id="loadBuildableAreaBtn" class="control-btn" disabled style="width: 100%;">
                     No Buildable Area Available
                 </button>
-                <!-- Platform Definition -->
+
+                <!-- Building Platform Container -->
+                <div class="platform-container" style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                    <label class="control-label" style="font-weight: bold;">Building Platform</label>
+                    <button id="loadPlatformBtn" class="control-btn" disabled style="width: 100%; margin-top: 8px;">
+                        Load Structure Polygon
+                    </button>
+
+                    <!-- Platform Controls (hidden initially) -->
+                    <div id="platformControls" style="display: none; margin-top: 10px;">
+                        <label class="control-label">Platform Dimensions (m)</label>
+                        <div class="input-row">
+                            <input type="number" id="platformWidth" placeholder="Width" value="10" min="5" max="50" step="0.5">
+                            <input type="number" id="platformLength" placeholder="Length" value="10" min="5" max="50" step="0.5">
+                        </div>
+
+                        <label class="control-label" style="margin-top: 8px;">Platform Position</label>
+                        <div class="input-row">
+                            <input type="number" id="platformCenterX" placeholder="Center X" value="0" step="0.1" style="flex: 1;">
+                            <input type="number" id="platformCenterY" placeholder="Center Y" value="0" step="0.1" style="flex: 1; margin-left: 8px;">
+                        </div>
+
+                        <label class="control-label" style="margin-top: 8px;">Platform Rotation</label>
+                        <div class="input-row">
+                            <input type="range" id="platformRotation" min="0" max="360" value="0" step="5" style="flex: 2;">
+                            <input type="number" id="platformRotationValue" value="0" min="0" max="360" step="5" style="flex: 1; margin-left: 8px;">
+                        </div>
+
+                        <div class="input-row" style="margin-top: 10px;">
+                            <button id="resetPlatformBtn" class="control-btn" style="background: #6c757d; flex: 1;">Reset</button>
+                            <button id="confirmPlatformBtn" class="control-btn" style="flex: 2; margin-left: 8px;">Calculate Earthworks</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Platform Definition (legacy - keep for compatibility) -->
                 <div class="platform-controls" style="display: none;">
                     <label class="control-label">Platform Size (m)</label>
                     <div class="input-row">
-                        <input type="number" id="platformWidth" placeholder="Width" value="10" min="5" max="50" step="1">
-                        <input type="number" id="platformLength" placeholder="Length" value="10" min="5" max="50" step="1">
+                        <input type="number" id="platformWidthLegacy" placeholder="Width" value="10" min="5" max="50" step="1">
+                        <input type="number" id="platformLengthLegacy" placeholder="Length" value="10" min="5" max="50" step="1">
                     </div>
                 </div>
 
-                <!-- Platform Rotation -->
+                <!-- Platform Rotation (legacy - keep for compatibility) -->
                 <div class="platform-controls" style="display: none;">
                     <label class="control-label">Platform Rotation</label>
                     <div class="input-row">
-                        <input type="range" id="platformRotation" min="0" max="360" value="0" step="5" style="flex: 2;">
-                        <input type="number" id="platformRotationValue" value="0" min="0" max="360" step="5" style="flex: 1; margin-left: 8px;">
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #888; margin-top: 4px;">
-                        <span>0°</span>
-                        <span>180°</span>
-                        <span>360°</span>
+                        <input type="range" id="platformRotationLegacy" min="0" max="360" value="0" step="5" style="flex: 2;">
+                        <input type="number" id="platformRotationValueLegacy" value="0" min="0" max="360" step="5" style="flex: 1; margin-left: 8px;">
                     </div>
                 </div>
-
-                <!-- FFL Controls -->
-                <div class="ffl-controls">
-                    <label class="control-label">Finished Floor Level</label>
-                    <div class="ffl-options">
-                        <label class="radio-option">
-                            <input type="radio" name="fflMode" value="optimize" checked>
-                            <span>Auto-optimize</span>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="fflMode" value="manual">
-                            <span>Manual input</span>
-                        </label>
-                    </div>
-                    <input type="number" id="manualFFL" placeholder="FFL (m above base)" step="0.1" disabled>
-                </div>
-
-                <button id="calculateEarthworksBtn" class="control-btn" disabled style="width: 100%;">
-                    Calculate Earthworks
-                </button>
-                <button id="togglePlatformMoveBtn" class="control-btn" disabled style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); display: none;">
-                    🔒 Platform Movement: OFF
-                </button>
-                <button id="clearPlatformBtn" class="control-btn" disabled style="display: none;">
-                    Clear Platform
-                </button>
             </div>
 
             <!-- Earthworks Results -->
@@ -1302,11 +1303,16 @@
                 ];
                 this.currentProgress = 0;
 
+                // Structure platform data
+                this.structurePlatformData = null;
+                this.currentPlatformCoords = null;
+                this.earthworksData = null; // To store calculated earthworks
+
                 this.initializeEventListeners();
-            this.showWelcomeMessage();
+                this.showWelcomeMessage();
 
             // Auto-load site data and generate terrain on initialization
-            this.autoInitializeTerrainGeneration();
+                this.autoInitializeTerrainGeneration();
 
             // Listen for site boundary events if available
                 if (window.eventBus) {
@@ -1423,7 +1429,7 @@
             showGenerateTerrainButton() {
                 // Check if we have a project address to generate terrain from
                 const hasProjectAddress = this.siteData && (this.siteData.address || this.siteData.project_address);
-                
+
                 if (hasProjectAddress) {
                     document.getElementById('generateTerrainSection').style.display = 'block';
                     this.showMessage('Click "Generate 3D Terrain" to create elevation data from the project address.', 'info');
@@ -1442,7 +1448,7 @@
                     // Hide the generate button and show progress
                     document.getElementById('generateTerrainSection').style.display = 'none';
                     this.showLoading(true);
-                    
+
                     // Use the address to geocode and create site boundary
                     const address = this.siteData.address || this.siteData.project_address;
                     console.log('[TerrainViewer] Generating terrain from address:', address);
@@ -1643,16 +1649,68 @@
                 // Platform movement toggle
                 document.getElementById('togglePlatformMoveBtn').addEventListener('click', () => this.togglePlatformMovement());
 
-                
+                // Building Platform controls
+                document.getElementById('loadPlatformBtn').addEventListener('click', () => {
+                    this.loadStructurePlatform();
+                });
 
-                // Visualization controls
-                document.getElementById('terrainOpacity').addEventListener('input', (e) => this.updateTerrainOpacity(e.target.value));
-                document.getElementById('verticalScale').addEventListener('input', (e) => this.updateVerticalScale(e.target.value));
-                document.getElementById('colorSchemeSelect').addEventListener('change', (e) => this.updateColorScheme(e.target.value));
-                document.getElementById('gridToggle').addEventListener('change', (e) => this.toggleGrid(e.target.checked));
-                document.getElementById('autoRotateToggle').addEventListener('change', (e) => this.toggleAutoRotate(e.target.checked));
+                document.getElementById('resetPlatformBtn').addEventListener('click', () => {
+                    this.resetPlatform();
+                });
 
-                this.updateFflMode(); // Initialize FFL mode
+                document.getElementById('confirmPlatformBtn').addEventListener('click', () => {
+                    this.calculatePlatformEarthworks();
+                });
+
+                // Platform position controls
+                document.getElementById('platformCenterX').addEventListener('input', () => {
+                    this.updatePlatformPosition();
+                });
+
+                document.getElementById('platformCenterY').addEventListener('input', () => {
+                    this.updatePlatformPosition();
+                });
+
+                // Dimension controls
+                ['platformWidth', 'platformLength'].forEach(id => {
+                    document.getElementById(id).addEventListener('input', () => {
+                        this.updatePlatformDimensions();
+                    });
+                });
+
+                // Manual FFL input
+                document.getElementById('manualFFL').addEventListener('input', () => {
+                    this.updateEarthworksDisplay();
+                });
+
+                // FFL mode radio buttons
+                document.querySelectorAll('input[name="fflMode"]').forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        const isManual = document.querySelector('input[name="fflMode"][value="manual"]').checked;
+                        document.getElementById('manualFFL').disabled = !isManual;
+                        this.updateEarthworksDisplay();
+                    });
+                });
+
+                // Buildable area loading
+                document.getElementById('loadBuildableAreaBtn').addEventListener('click', () => {
+                    this.loadBuildableAreaAsPlatform();
+                });
+
+                // Platform clearing
+                document.getElementById('clearPlatformBtn').addEventListener('click', () => {
+                    this.clearPlatform();
+                });
+
+                // Calculate earthworks
+                document.getElementById('calculateEarthworksBtn').addEventListener('click', () => {
+                    this.calculateEarthworks();
+                });
+
+                // Platform movement toggle
+                document.getElementById('togglePlatformMoveBtn').addEventListener('click', () => {
+                    this.togglePlatformMovement();
+                });
             }
 
 
@@ -2216,27 +2274,27 @@
                     // Get the terrain bounds from the data
                     const terrainWidth = data.width_m || 50;
                     const terrainLength = data.length_m || 50;
-                    
+
                     // If we have x_coords and y_coords arrays, use them to determine the mapping
                     if (data.x_coords && data.y_coords && data.x_coords.length > 0 && data.y_coords.length > 0) {
                         // Get the min/max from the coordinate grids
                         const xCoords = data.x_coords.flat();
                         const yCoords = data.y_coords.flat();
-                        
+
                         const minX = Math.min(...xCoords);
                         const maxX = Math.max(...xCoords);
                         const minY = Math.min(...yCoords);
                         const maxY = Math.max(...yCoords);
-                        
+
                         // For now, use a simple linear mapping based on terrain bounds
                         // This is a simplified approach - in a real implementation you'd need proper coordinate transformation
                         const relativeX = (lng - data.coordinates.lng) * 111320 * Math.cos(data.coordinates.lat * Math.PI / 180);
                         const relativeY = (lat - data.coordinates.lat) * 111320;
-                        
+
                         // Map to terrain coordinate system
                         const terrainX = (terrainWidth / 2) + relativeX;
                         const terrainY = (terrainLength / 2) + relativeY;
-                        
+
                         return {
                             x: Math.max(0, Math.min(terrainWidth, terrainX)),
                             y: Math.max(0, Math.min(terrainLength, terrainY))
@@ -2438,39 +2496,22 @@
             }
 
             enableBuildableAreaButton() {
+                console.log('[TerrainViewer] Enabling buildable area button');
                 const btn = document.getElementById('loadBuildableAreaBtn');
                 if (!btn) {
                     console.error('[TerrainViewer] Load buildable area button not found');
                     return;
                 }
 
-                // Check if buildable area data exists
-                if (this.siteData && this.siteData.buildable_area) {
-                    const buildableArea = this.siteData.buildable_area;
+                // Check if site data has buildable area
+                if (this.siteData && this.siteData.buildable_area && 
+                    this.siteData.buildable_area.coordinates && 
+                    this.siteData.buildable_area.coordinates.length > 0) {
 
-                    // Check for coordinates in different possible formats
-                    const hasCoords = buildableArea.coordinates || 
-                                    buildableArea.buildable_coords || 
-                                    (buildableArea.area_m2 && buildableArea.area_m2 > 0);
-
-                    console.log('[TerrainViewer] Buildable area validation:', {
-                        hasCoords,
-                        coordinates: buildableArea.coordinates,
-                        buildable_coords: buildableArea.buildable_coords,
-                        area_m2: buildableArea.area_m2,
-                        buildable_area_m2: buildableArea.buildable_area_m2
-                    });
-
-                    if (hasCoords) {
-                        btn.disabled = false;
-                        const area = buildableArea.area_m2 || buildableArea.buildable_area_m2 || 0;
-                        btn.textContent = 'Use Buildable Area';
-                        console.log('[TerrainViewer] Buildable area button enabled with area:', area);
-                    } else {
-                        btn.disabled = true;
-                        btn.textContent = 'No Buildable Area Available';
-                        console.log('[TerrainViewer] Buildable area button disabled - no coordinates found');
-                    }
+                    const area = this.siteData.buildable_area.area_m2 || this.calculatePolygonArea(this.siteData.buildable_area.coordinates);
+                    btn.disabled = false;
+                    btn.textContent = `Load Buildable Area (${area.toFixed(1)} m²)`;
+                    console.log('[TerrainViewer] Buildable area available:', area.toFixed(1), 'm²');
                 } else {
                     btn.disabled = true;
                     btn.textContent = 'No Buildable Area Available';
@@ -2478,441 +2519,297 @@
                 }
             }
 
-            async loadBuildableAreaAsPlatform() {
+            checkBuildableAreaAvailability() {
+                console.log('[TerrainViewer] Checking buildable area availability');
+
+                // Check if site data has buildable area
+                if (this.siteData && this.siteData.buildable_area && 
+                    this.siteData.buildable_area.coordinates && 
+                    this.siteData.buildable_area.coordinates.length > 0) {
+
+                    const btn = document.getElementById('loadBuildableAreaBtn');
+                    btn.disabled = false;
+                    btn.textContent = `Load Buildable Area (${this.siteData.buildable_area.area_m2.toFixed(1)} m²)`;
+                    console.log('[TerrainViewer] Buildable area available:', this.siteData.buildable_area.area_m2.toFixed(1), 'm²');
+                } else {
+                    console.log('[TerrainViewer] Buildable area button disabled - no buildable area data');
+                }
+
+                // Check for structure placement data
+                this.checkStructurePlatformAvailability();
+            }
+
+            checkStructurePlatformAvailability() {
+                console.log('[TerrainViewer] Checking structure platform availability');
+
+                // Check session storage for structure placement data
+                let structureData = null;
+                try {
+                    const sessionData = sessionStorage.getItem('structure_placement_data');
+                    if (sessionData) {
+                        structureData = JSON.parse(sessionData);
+                    }
+                } catch (error) {
+                    console.log('[TerrainViewer] No structure data in session:', error);
+                }
+
+                // Also check site data for structure placement
+                if (!structureData && this.siteData && this.siteData.structure_placement) {
+                    structureData = this.siteData.structure_placement;
+                }
+
+                const btn = document.getElementById('loadPlatformBtn');
+                if (structureData && structureData.coordinates && structureData.coordinates.length > 0) {
+                    btn.disabled = false;
+                    const area = structureData.area_m2 || this.calculatePolygonArea(structureData.coordinates);
+                    btn.textContent = `Load Structure Platform (${area.toFixed(1)} m²)`;
+                    console.log('[TerrainViewer] Structure platform available:', area.toFixed(1), 'm²');
+                } else {
+                    btn.disabled = true;
+                    btn.textContent = 'No Structure Available';
+                    console.log('[TerrainViewer] No structure platform data available');
+                }
+            }
+
+            async loadStructurePlatform() {
+                console.log('[TerrainViewer] Loading structure platform...');
+
                 if (!this.terrainData) {
                     this.showError('Please generate terrain data first');
                     return;
                 }
 
-                const buildableArea = this.siteData.buildable_area;
-                const buildableCoords = buildableArea.coordinates || buildableArea.buildable_coords;
-                
-                if (!this.siteData || !buildableArea || !buildableCoords) {
-                    this.showError('No buildable area data available. Please create buildable area in Site Inspector first.');
-                    console.log('[TerrainViewer] Missing buildable area data:', {
-                        hasSiteData: !!this.siteData,
-                        hasBuildableArea: !!buildableArea,
-                        hasBuildableCoords: !!buildableCoords,
-                        buildableAreaKeys: buildableArea ? Object.keys(buildableArea) : []
-                    });
-                    return;
-                }
+                const btn = document.getElementById('loadPlatformBtn');
+                const originalText = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = 'Loading...';
 
                 try {
-                    this.clearMessages();
-                    const btn = document.getElementById('loadBuildableAreaBtn');
-                    const originalText = btn.textContent;
-                    btn.disabled = true;
-                    btn.textContent = 'Loading...';
+                    // Get structure placement data
+                    let structureData = null;
+                    try {
+                        const sessionData = sessionStorage.getItem('structure_placement_data');
+                        if (sessionData) {
+                            structureData = JSON.JSON.parse(sessionData);
+                        }
+                    } catch (error) {
+                        console.log('[TerrainViewer] No structure data in session');
+                    }
 
-                    // Get buildable area coordinates (already extracted above)
-                    // const buildableCoords is already defined above
+                    // Fallback to site data
+                    if (!structureData && this.siteData && this.siteData.structure_placement) {
+                        structureData = this.siteData.structure_placement;
+                    }
 
-                    console.log('[TerrainViewer] Loading buildable area as platform:', {
-                        coords: buildableCoords,
-                        area: this.siteData.buildable_area.buildable_area_m2
-                    });
+                    if (!structureData || !structureData.coordinates || structureData.coordinates.length < 3) {
+                        throw new Error('No valid structure placement data found');
+                    }
 
-                    // Convert buildable area coordinates to platform format
-                    // The buildable_coords are in [lat, lng] format, we need [lng, lat] for platform_coords
-                    const platformCoords = buildableCoords.map(coord => {
-                        if (Array.isArray(coord) && coord.length >= 2) {
-                            return { x: coord[1], y: coord[0] }; // Convert [lat, lng] to {x: lng, y: lat}
+                    console.log('[TerrainViewer] Structure data loaded:', structureData);
+
+                    // Convert coordinates to platform format
+                    const platformCoords = structureData.coordinates.map(coord => {
+                        if (Array.isArray(coord)) {
+                            return { x: coord[0], y: coord[1] };
                         }
                         return coord;
                     });
 
-                    // Set platform movement center to buildable area center
-                    this.currentPlatformCenter = this.calculatePolygonCenter(platformCoords);
-                    this.currentPlatformRotation = 0; // Reset rotation
+                    // Calculate platform center and dimensions
+                    const bounds = this.calculatePolygonBounds(platformCoords);
+                    const center = {
+                        x: (bounds.minX + bounds.maxX) / 2,
+                        y: (bounds.minY + bounds.maxY) / 2
+                    };
+                    const width = Math.abs(bounds.maxX - bounds.minX);
+                    const length = Math.abs(bounds.maxY - bounds.minY);
 
-                    // Get FFL parameters
-                    const optimizeFfl = document.querySelector('input[name="fflMode"][value="optimize"]').checked;
-                    const manualFfl = optimizeFfl ? null : parseFloat(document.getElementById('manualFFL').value);
+                    // Store platform data
+                    this.structurePlatformData = {
+                        coordinates: platformCoords,
+                        center: center,
+                        width: width,
+                        length: length,
+                        area: structureData.area_m2 || this.calculatePolygonArea(platformCoords),
+                        originalData: structureData
+                    };
 
-                    console.log('[TerrainViewer] Calculating earthworks with buildable area...', {
-                        platformCoords,
-                        optimizeFfl,
-                        manualFfl
-                    });
+                    // Update UI controls
+                    document.getElementById('platformWidth').value = width.toFixed(1);
+                    document.getElementById('platformLength').value = length.toFixed(1);
+                    document.getElementById('platformCenterX').value = center.x.toFixed(6);
+                    document.getElementById('platformCenterY').value = center.y.toFixed(6);
+                    document.getElementById('platformRotation').value = 0;
+                    document.getElementById('platformRotationValue').value = 0;
 
-                    const response = await fetch('/api/calculate-earthworks', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            terrain_data: this.terrainData,
-                            platform_coords: platformCoords,
-                            ffl: manualFfl,
-                            optimize_ffl: optimizeFfl
-                        })
-                    });
+                    // Show platform controls
+                    document.getElementById('platformControls').style.display = 'block';
 
-                    const result = await response.json();
+                    // Initialize platform visualization
+                    this.currentPlatformCoords = platformCoords;
+                    this.currentPlatformCenter = center;
+                    this.currentPlatformRotation = 0;
 
-                    if (result.success) {
-                        this.earthworksData = result;
-                        this.displayEarthworksResults(result);
-                        this.renderTerrainWithPlatform();
-                        this.showSuccess(`Buildable area loaded as platform (${result.platform_area_m2.toFixed(1)} m²) - earthworks calculated successfully`);
-                        document.getElementById('clearPlatformBtn').disabled = false;
-                        document.getElementById('togglePlatformMoveBtn').disabled = false;
-                    } else {
-                        this.showError(result.error || 'Failed to calculate earthworks for buildable area');
-                    }
+                    this.showSuccess(`Structure platform loaded (${this.structurePlatformData.area.toFixed(1)} m²)`);
 
                 } catch (error) {
-                    this.showError(`Error: ${error.message}`);
-                    console.error('[TerrainViewer] Buildable area loading error:', error);
+                    this.showError(`Error loading structure platform: ${error.message}`);
+                    console.error('[TerrainViewer] Structure platform loading error:', error);
                 } finally {
-                    const btn = document.getElementById('loadBuildableAreaBtn');
                     btn.disabled = false;
                     btn.textContent = originalText;
                 }
             }
 
-            calculatePolygonCenter(coords) {
-                // Calculate the centroid of the polygon
-                let centerX = 0;
-                let centerY = 0;
+            calculatePolygonBounds(coords) {
+                let minX = Infinity, maxX = -Infinity;
+                let minY = Infinity, maxY = -Infinity;
 
-                for (const coord of coords) {
-                    if (coord.x !== undefined && coord.y !== undefined) {
-                        centerX += coord.x;
-                        centerY += coord.y;
-                    }
-                }
-
-                centerX /= coords.length;
-                centerY /= coords.length;
-
-                // Convert to relative coordinates (0-1 range) within terrain bounds
-                if (this.terrainData) {
-                    const terrainWidth = this.terrainData.width_m || 50;
-                    const terrainLength = this.terrainData.length_m || 50;
-
-                    // This is a simplified conversion - in practice, you'd need proper coordinate transformation
-                    return {
-                        x: 0.5, // Center for now - would need proper lat/lng to local coordinate conversion
-                        y: 0.5
-                    };
-                }
-
-                return { x: 0.5, y: 0.5 };
-            }
-
-            async togglePlatformMovement() {
-                this.platformMovementEnabled = !this.platformMovementEnabled;
-                const btn = document.getElementById('togglePlatformMoveBtn');
-
-                if (this.platformMovementEnabled) {
-                    btn.textContent = '🔓 Platform Movement: ON';
-                    btn.style.background = 'linear-gradient(135deg, #dc3545 0%, #fd7e14 100%)';
-                    this.showSuccess('Platform movement enabled - hover over platform to move it');
-                } else {
-                    btn.textContent = '🔒 Platform Movement: OFF';
-                    btn.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
-                    this.showSuccess('Platform movement disabled - map navigation enabled');
-
-                    // Reset any dragging state
-                    if (this.isDragging) {
-                        this.endDrag(document.getElementById('terrainCanvas'));
-                    }
-
-                    // Reset cursor and visual feedback
-                    const plotlyDiv = document.getElementById('terrainCanvas').querySelector('.plotly-graph-div');
-                    if (plotlyDiv) {
-                        plotlyDiv.style.cursor = 'default';
-                    }
-                    this.updatePlatformVisualFeedback(false);
-                }
-
-                console.log('[TerrainViewer] Platform movement toggled:', this.platformMovementEnabled);
-            }
-
-            resetView() {
-                if (this.plot) {
-                    Plotly.relayout(this.plot, {
-                        'scene.camera': {
-                            eye: { x: 0, y: -2.0, z: 1.2 }
-                        }
-                    });
-                }
-            }
-
-            setTopView() {
-                if (this.plot) {
-                    Plotly.relayout(this.plot, {
-                        'scene.camera': {
-                            eye: { x: 0, y: 0, z: 2.5 }
-                        }
-                    });
-                }
-            }
-
-            setSideView() {
-                if (this.plot) {
-                    Plotly.relayout(this.plot, {
-                        'scene.camera': {
-                            eye: { x: 2.5, y: 0, z: 0 }
-                        }
-                    });
-                }
-            }
-
-            setPerspectiveView() {
-                if (this.plot) {
-                    Plotly.relayout(this.plot, {
-                        'scene.camera': {
-                            eye: { x: 0, y: -2.0, z: 1.2 }
-                        }
-                    });
-                }
-            }
-
-            showMessage(message, type = 'info') {
-                this.clearMessages();
-                
-                if (type === 'error') {
-                    this.showError(message);
-                } else if (type === 'success') {
-                    this.showSuccess(message);
-                } else {
-                    // Info message - you can add a specific info message element if needed
-                    console.log('[TerrainViewer] Info:', message);
-                }
-            }
-
-            clearMessages() {
-                const errorElement = document.getElementById('errorMessage');
-                const successElement = document.getElementById('successMessage');
-                
-                if (errorElement) {
-                    errorElement.style.display = 'none';
-                    errorElement.textContent = '';
-                }
-                
-                if (successElement) {
-                    successElement.style.display = 'none';
-                    successElement.textContent = '';
-                }
-            }
-
-            showLoading(show) {
-                const progressContainer = document.getElementById('progressContainer');
-                const spinner = document.getElementById('loadingSpinner');
-
-                if (show) {
-                    if (progressContainer) {
-                        progressContainer.style.display = 'block';
-                        progressContainer.style.visibility = 'visible';
-                    }
-                    if (spinner) {
-                        spinner.classList.remove('active');
-                    }
-                    this.initializeProgress();
-                    console.log('[TerrainViewer] Progress container shown');
-                } else {
-                    if (progressContainer) {
-                        progressContainer.style.display = 'none';
-                    }
-                    if (spinner) {
-                        spinner.classList.remove('active');
-                    }
-                    this.resetProgress();
-                    console.log('[TerrainViewer] Progress container hidden');
-                }
-            }
-
-            initializeProgress() {
-                this.currentProgress = 0;
-                this.updateProgressBar(0);
-                this.updateProgressStatus('Initializing terrain generation...');
-
-                // Reset all steps
-                const steps = document.querySelectorAll('.progress-step');
-                steps.forEach(step => {
-                    step.classList.remove('active', 'completed', 'error');
+                coords.forEach(coord => {
+                    const x = coord.x || coord[0];
+                    const y = coord.y || coord[1];
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
                 });
+
+                return { minX, maxX, minY, maxY };
             }
 
-            resetProgress() {
-                this.currentProgress = 0;
-                this.updateProgressBar(0);
-                this.updateProgressStatus('');
+            calculatePolygonArea(coords) {
+                if (coords.length < 3) return 0;
 
-                // Reset all steps
-                const steps = document.querySelectorAll('.progress-step');
-                steps.forEach(step => {
-                    step.classList.remove('active', 'completed', 'error');
-                });
-            }
-
-            updateProgress(stepId, status = 'active') {
-                const step = this.progressSteps.find(s => s.id === stepId);
-                if (!step) return;
-
-                // Update current step visual state
-                const stepElement = document.querySelector(`.progress-step[data-step="${stepId}"]`);
-                if (stepElement) {
-                    stepElement.classList.remove('active', 'completed', 'error');
-                    stepElement.classList.add(status);
+                let area = 0;
+                for (let i = 0; i < coords.length; i++) {
+                    const j = (i + 1) % coords.length;
+                    const xi = coords[i].x || coords[i][0];
+                    const yi = coords[i].y || coords[i][1];
+                    const xj = coords[j].x || coords[j][0];
+                    const yj = coords[j].y || coords[j][1];
+                    area += xi * yj;
+                    area -= xj * yi;
                 }
+                return Math.abs(area / 2);
+            }
 
-                // Update progress bar
-                if (status === 'completed') {
-                    this.currentProgress = step.weight;
+            updatePlatformPosition() {
+                if (!this.structurePlatformData) return;
 
-                    // Mark previous steps as completed
-                    for (let i = 1; i < stepId; i++) {
-                        const prevStep = document.querySelector(`.progress-step[data-step="${i}"]`);
-                        if (prevStep) {
-                            prevStep.classList.remove('active', 'error');
-                            prevStep.classList.add('completed');
-                        }
+                const centerX = parseFloat(document.getElementById('platformCenterX').value);
+                const centerY = parseFloat(document.getElementById('platformCenterY').value);
+
+                this.currentPlatformCenter = { x: centerX, y: centerY };
+                this.updatePlatformVisualization();
+            }
+
+            updatePlatformVisualization() {
+                if (!this.structurePlatformData) return;
+
+                const width = parseFloat(document.getElementById('platformWidth').value);
+                const length = parseFloat(document.getElementById('platformLength').value);
+                const rotation = parseFloat(document.getElementById('platformRotation').value);
+
+                // Calculate new coordinates based on center, dimensions, and rotation
+                this.currentPlatformCoords = this.calculateRotatedPlatformCoords(
+                    this.currentPlatformCenter,
+                    width,
+                    length,
+                    this.terrainData.width_m,
+                    this.terrainData.length_m,
+                    rotation
+                );
+
+                // Update visualization if terrain is displayed
+                if (this.plot) {
+                    this.updatePlatformTrace();
+                }
+            }
+
+            updatePlatformTrace() {
+                if (!this.plot || !this.currentPlatformCoords) return;
+
+                // Find existing platform trace
+                const data = this.plot.data;
+                let platformTraceIndex = -1;
+
+                for (let i = 0; i < data.length; i++) {
+                    if (data[i].name && data[i].name.includes('Building Platform')) {
+                        platformTraceIndex = i;
+                        break;
                     }
-                } else if (status === 'active') {
-                    // Mark previous steps as completed
-                    for (let i = 1; i < stepId; i++) {
-                        const prevStep = document.querySelector(`.progress-step[data-step="${i}"]`);
-                        if (prevStep && !prevStep.classList.contains('error')) {
-                            prevStep.classList.remove('active');
-                            prevStep.classList.add('completed');
-                        }
-                    }
                 }
 
-                this.updateProgressBar(this.currentProgress);
-                this.updateProgressStatus(step.name);
-            }
+                // Create platform coordinates for 3D visualization
+                const platformX = this.currentPlatformCoords.map(coord => coord.x * this.terrainData.width_m);
+                const platformY = this.currentPlatformCoords.map(coord => coord.y * this.terrainData.length_m);
+                const platformZ = platformX.map(() => 0); // Will be updated with FFL when calculated
 
-            updateProgressBar(percentage) {
-                const progressBar = document.getElementById('progressBar');
-                const progressPercent = document.getElementById('progressPercent');
+                const platformTrace = {
+                    x: [...platformX, platformX[0]], // Close the polygon
+                    y: [...platformY, platformY[0]],
+                    z: [...platformZ, platformZ[0]],
+                    mode: 'lines',
+                    type: 'scatter3d',
+                    line: {
+                        color: '#ff6b35',
+                        width: 8
+                    },
+                    name: 'Building Platform',
+                    showlegend: true
+                };
 
-                if (progressBar) {
-                    progressBar.style.width = `${percentage}%`;
-                }
-                if (progressPercent) {
-                    progressPercent.textContent = `${Math.round(percentage)}%`;
-                }
-            }
-
-            updateProgressStatus(status) {
-                const statusElement = document.getElementById('progressStatus');
-                if (statusElement) {
-                    statusElement.textContent = status;
-                }
-            }
-
-            showError(message, errorData = null) {
-                const errorDiv = document.getElementById('errorMessage');
-                if (errorDiv) {
-                    // Check if this is a location not supported error
-                    if (errorData && errorData.error_type === 'location_not_supported') {
-                        const region = errorData.detected_location?.region || 'an international location';
-                        errorDiv.innerHTML = `
-                            <div class="location-error">
-                                <h4>🌍 Location Not Supported</h4>
-                                <p><strong>This location appears to be in ${region}.</strong></p>
-                                <p>3D terrain visualisation is currently only available for New Zealand locations.</p>
-                                <div class="error-details">
-                                    <p><strong>Why?</strong> Our elevation data is sourced from Land Information New Zealand (LINZ) and covers New Zealand only.</p>
-                                    <p><strong>Coming Soon:</strong> We're working on expanding coverage to Australia and other regions.</p>
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        errorDiv.textContent = message || 'An error occurred';
-                    }
-                    errorDiv.style.display = 'block';
+                if (platformTraceIndex >= 0) {
+                    // Update existing trace
+                    Plotly.restyle(this.plot, platformTrace, [platformTraceIndex]);
                 } else {
-                    console.warn('[TerrainViewer] Error message div not found, logging to console only');
-                }
-                console.error('[TerrainViewer]', message, errorData);
-            }
-
-            showSuccess(message) {
-                const successDiv = document.getElementById('successMessage');
-                successDiv.textContent = message;
-                successDiv.style.display = 'block';
-            }
-
-            clearMessages() {
-                document.getElementById('errorMessage').style.display = 'none';
-                document.getElementById('successMessage').style.display = 'none';
-            }
-
-            updateFflMode() {
-                const manualMode = document.querySelector('input[name="fflMode"][value="manual"]').checked;
-                const manualFflInput = document.getElementById('manualFFL');
-                manualFflInput.disabled = !manualMode;
-            }
-
-            updateRotation(rotation) {
-                this.currentPlatformRotation = parseFloat(rotation) || 0;
-
-                // Sync both rotation controls
-                document.getElementById('platformRotation').value = this.currentPlatformRotation;
-                document.getElementById('platformRotationValue').value = this.currentPlatformRotation;
-
-                console.log('[TerrainViewer] Platform rotation updated to:', this.currentPlatformRotation);
-
-                // Throttle recalculation if earthworks data exists
-                if (this.earthworksData) {
-                    this.throttleRotationUpdate();
+                    // Add new trace
+                    Plotly.addTraces(this.plot, [platformTrace]);
                 }
             }
 
-            throttleRotationUpdate() {
-                if (this.rotationUpdateTimeout) {
-                    clearTimeout(this.rotationUpdateTimeout);
-                }
-                this.rotationUpdateTimeout = setTimeout(() => {
-                    this.recalculateEarthworks();
-                    this.rotationUpdateTimeout = null;
-                }, 300);
+            resetPlatform() {
+                if (!this.structurePlatformData) return;
+
+                // Reset to original values
+                const original = this.structurePlatformData;
+                document.getElementById('platformWidth').value = original.width.toFixed(1);
+                document.getElementById('platformLength').value = original.length.toFixed(1);
+                document.getElementById('platformCenterX').value = original.center.x.toFixed(6);
+                document.getElementById('platformCenterY').value = original.center.y.toFixed(6);
+                document.getElementById('platformRotation').value = 0;
+                document.getElementById('platformRotationValue').value = 0;
+
+                this.currentPlatformCenter = { ...original.center };
+                this.currentPlatformRotation = 0;
+                this.updatePlatformVisualization();
+
+                this.showSuccess('Platform reset to original values');
             }
 
-            async calculateEarthworks() {
-                if (!this.terrainData) {
-                    this.showError('Please generate terrain data first');
+            async calculatePlatformEarthworks() {
+                if (!this.structurePlatformData || !this.terrainData) {
+                    this.showError('Platform and terrain data required');
                     return;
                 }
 
+                const btn = document.getElementById('confirmPlatformBtn');
+                const originalText = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = 'Calculating...';
+
                 try {
-                    this.clearMessages();
-                    const btn = document.getElementById('calculateEarthworksBtn');
-                    btn.disabled = true;
-                    btn.textContent = 'Calculating...';
-
-                    // Initialize platform center at terrain center
-                    this.currentPlatformCenter = { x: 0.5, y: 0.5 };
-
-                    // Get platform parameters
-                    const width = parseFloat(document.getElementById('platformWidth').value) || 15;
-                    const length = parseFloat(document.getElementById('platformLength').value) || 20;
-
-                    // Create platform coordinates (centered in terrain) with rotation
-                    const terrainWidth = this.terrainData.width_m;
-                    const terrainLength = this.terrainData.length_m;
-
-                    const platformCoords = this.calculateRotatedPlatformCoords(
-                        this.currentPlatformCenter, 
-                        width, 
-                        length, 
-                        terrainWidth, 
-                        terrainLength, 
-                        this.currentPlatformRotation
-                    );
+                    // Get current platform coordinates
+                    const platformCoords = this.currentPlatformCoords.map(coord => ({
+                        x: coord.x,
+                        y: coord.y
+                    }));
 
                     // Get FFL parameters
                     const optimizeFfl = document.querySelector('input[name="fflMode"][value="optimize"]').checked;
-                    const manualFfl = optimizeFfl ? null :parseFloat(document.getElementById('manualFFL').value);
+                    const manualFfl = optimizeFfl ? null : parseFloat(document.getElementById('manualFFL').value);
 
-                    console.log('[TerrainViewer] Calculating earthworks...', {
-                        platformCenter: this.currentPlatformCenter,
+                    console.log('[TerrainViewer] Calculating earthworks for platform...', {
                         platformCoords,
                         optimizeFfl,
                         manualFfl
@@ -2937,553 +2834,64 @@
                         this.earthworksData = result;
                         this.displayEarthworksResults(result);
                         this.renderTerrainWithPlatform();
-                        this.showSuccess('Earthworks calculated successfully - hover over the platform to see it highlight, then click and drag to move it');
+                        this.showSuccess(`Platform earthworks calculated successfully (${result.platform_area_m2.toFixed(1)} m²)`);
+
+                        // Enable other controls
                         document.getElementById('clearPlatformBtn').disabled = false;
                         document.getElementById('togglePlatformMoveBtn').disabled = false;
                     } else {
-                        this.showError(result.error || 'Failed to calculate earthworks');
+                        this.showError(result.error || 'Failed to calculate platform earthworks');
                     }
 
                 } catch (error) {
                     this.showError(`Error: ${error.message}`);
-                    console.error('[TerrainViewer] Earthworks calculation error:', error);
+                    console.error('[TerrainViewer] Platform earthworks calculation error:', error);
                 } finally {
-                    const btn = document.getElementById('calculateEarthworksBtn');
                     btn.disabled = false;
-                    btn.textContent = 'Calculate Earthworks';
+                    btn.textContent = originalText;
                 }
             }
-
-            displayEarthworksResults(result) {
-                document.getElementById('cutVolume').textContent = `${result.cut_volume_m3.toFixed(1)} m³`;
-                document.getElementById('fillVolume').textContent = `${result.fill_volume_m3.toFixed(1)} m³`;
-
-                const netValue = document.getElementById('netEarthwork');
-                const netAmount = result.net_earthwork_m3;
-                netValue.textContent = `${Math.abs(netAmount).toFixed(1)} m³ ${netAmount > 0 ? 'net cut' : 'net fill'}`;
-                netValue.className = `result-value ${netAmount > 0 ? 'positive' : 'negative'}`;
-
-                document.getElementById('platformArea').textContent = `${result.platform_area_m2.toFixed(1)} m²`;
-                document.getElementById('finalFFL').textContent = `${result.ffl.toFixed(2)} m`;
-
-                document.getElementById('earthworksResults').style.display = 'block';
-            }
-
-            renderTerrainWithPlatform() {
-                if (!this.terrainData || !this.earthworksData) return;
-
-                const data = this.terrainData;
-                const earthworks = this.earthworksData;
-                const canvas = document.getElementById('terrainCanvas');
-
-                // Create main terrain surface with earthworks modifications
-                const traces = [];
-
-                // Create modified elevation data incorporating cut/fill
-                const terrainMod = this.createModifiedTerrain(data.elevation_data, earthworks);
-                const modifiedElevation = terrainMod.elevation;
-                const cutFillMask = terrainMod.cutFillMask;
-
-                // Create terrain surface colors that preserve original colors for unchanged areas
-                let terrainColors = null;
-                if (cutFillMask) {
-                    // First, normalize the original elevation data to 0.3-0.7 range for terrain colors
-                    const minElev = Math.min(...data.elevation_data.flat());
-                    const maxElev = Math.max(...data.elevation_data.flat());
-                    const elevRange = maxElev - minElev;
-
-                    terrainColors = data.elevation_data.map((row, i) => 
-                        row.map((elevation, j) => {
-                            const cutFillValue = cutFillMask[i][j];
-
-                            // If no earthworks (value = 0), use original terrain elevation for coloring
-                            if (cutFillValue === 0) {
-                                // Map original elevation to middle range (0.3-0.7) for original terrain colors
-                                if (elevRange > 0) {
-                                    const normalizedElev = (elevation - minElev) / elevRange;
-return 0.3 + (normalizedElev * 0.4); // Range 0.3-0.7 for original terrain
-                                }
-                                return 0.5; // Default middle value
-                            }
-
-                            // For cut/fill areas, map to red/green spectrum
-                            if (cutFillValue > 0) {
-                                // Cut areas - map to red values (0.0 to 0.29)
-                                const intensity = Math.min(Math.abs(cutFillValue) / 4, 1); // Normalize to max 4m cut
-                                return 0.02 + (intensity * 0.27); // Range 0.02-0.29 for reds
-                            } else if (cutFillValue < 0) {
-                                // Fill areas - map to green values (0.71 to 1.0)
-                                const intensity = Math.min(Math.abs(cutFillValue) / 4, 1); // Normalize to max 4m fill
-                                return 0.71 + (intensity * 0.29); // Range 0.71-1.0 for greens
-                            }
-
-                            // Platform level areas (minimal cut/fill)
-                            return 0.5;
-                        })
-                    );
-                }
-
-                // Main terrain surface with original colors preserved and cut/fill highlighted
-                traces.push({
-                    type: 'surface',
-                    z: modifiedElevation,
-                    x: data.x_coords,
-                    y: data.y_coords,
-                    surfacecolor: terrainColors,
-                    colorscale: [
-                        // Warm spectrum for cuts (0.0 - 0.29) - muted oranges/browns
-                        [0, '#3d2914'],      // Deep brown (heavy cut)
-                        [0.1, '#5c3317'],    // Dark chocolate brown
-                        [0.2, '#8b4513'],    // Saddle brown  
-                        [0.29, '#cd853f'],   // Peru/sandy brown (light cut)
-
-                        // Original terrain colors (0.3 - 0.7)
-                        [0.3, '#0d1421'],    // Deep navy (lowest elevation)
-                        [0.37, '#1a2332'],   // Dark blue-grey
-                        [0.44, '#2d4a5a'],   // Medium blue-grey
-                        [0.51, '#547bf7'],   // EngineRoom blue
-                        [0.57, '#6287ff'],   // Bright blue
-                        [0.62, '#84a7f7'],   // Light blue
-                        [0.66, '#a3c4f3'],   // Very light blue
-                        [0.7, '#e8f2ff'],    // Almost white blue
-
-                        // Cool spectrum for fills (0.71 - 1.0) - deeper blues/teals
-                        [0.71, '#4a6fa5'],   // Steel blue (minimal fill)
-                        [0.8, '#2e5984'],    // Darker blue
-                        [0.9, '#1e3a5f'],    // Deep blue
-                        [1, '#0f1d2e']       // Very deep blue (heavy fill)
-                    ],
-                    opacity: 1.0,
-                    name: 'Terrain with Earthworks',
-                    showscale: true,
-                    colorbar: {
-                        title: 'Terrain & Earthworks',
-                        titlefont: { color: 'white', size: 12 },
-                        tickfont: { color: 'white', size: 10 },
-                        tickvals: [0.15, 0.5, 85],
-                        ticktext: ['Excavation', 'Natural Terrain', 'Fill Areas'],
-                        len: 0.8,
-                        thickness: 25,
-                        x: 1.02,
-                        bgcolor: 'rgba(0,0,0,0.5)',
-                        bordercolor: 'rgba(255,255,255,0.3)',
-                        borderwidth: 1
-                    },
-                    contours: {
-                        z: {
-                            show: true,
-                            usecolormap: false,
-                            color: 'rgba(255, 255, 255, 0.3)',
-                            width: 1,
-                            project: { z: true }
-                        }
-                    },
-                    lighting: {
-                        ambient: 0.9,
-                        diffuse: 0.5,
-                        specular: 0.02,
-                        roughness: 0.8,
-                        fresnel: 0.1
-                    }
-                });
-
-                // Base level
-                traces.push({
-                    type: 'surface',
-                    z: Array(data.elevation_data.length).fill(null).map(() => 
-                        Array(data.elevation_data[0].length).fill(data.base_level)
-                    ),
-                    x: data.x_coords,
-                    y: data.y_coords,
-                    colorscale: [[0, 'rgba(13, 20, 33, 0.8)'], [1, 'rgba(13, 20, 33, 0.8)']],
-                    showscale: false,
-                    opacity: 0.4,
-                    name: 'Base Level',
-                    showlegend: true
-                });
-
-                // Property boundary is hidden by default in earthworks view
-                // (Property boundary trace removed to keep terrain view clean)
-                // Add polygon overlays to the plot if available
-                if (data.polygon_overlays) {
-                    console.log('[TerrainViewer] Adding polygon overlays:', Object.keys(data.polygon_overlays));
-
-                    Object.entries(data.polygon_overlays).forEach(([key, overlay]) => {
-                        if (overlay.coordinates && overlay.coordinates.length > 0) {
-                            console.log(`[TerrainViewer] Adding ${key} overlay with ${overlay.coordinates.length} coordinates`);
-
-                            // Convert coordinates to x, y arrays for plotting
-                            const overlayX = [];
-                            const overlayY = [];
-
-                            overlay.coordinates.forEach(coord => {
-                                if (Array.isArray(coord) && coord.length >= 2) {
-                                    // Convert from [lng, lat] to projected coordinates
-                                    const projectedCoord = this.convertToProjectedCoords(coord[0], coord[1], data);
-                                    overlayX.push(projectedCoord.x);
-                                    overlayY.push(projectedCoord.y);
-                                }
-                            });
-
-                            // Close the polygon by adding the first point at the end
-                            if (overlayX.length > 0) {
-                                overlayX.push(overlayX[0]);
-                                overlayY.push(overlayY[0]);
-                            }
-
-                            // Determine line style and width based on overlay type
-                            let lineWidth = 8;
-                            let lineDash = 'solid';
-                            let zOffset = 0.5;
-
-                            if (key === 'site_boundary') {
-                                lineWidth = 10;
-                                zOffset = 0.8;
-                            } else if (key === 'buildable_area') {
-                                lineWidth = 6;
-                                lineDash = 'dash';
-                                zOffset = 0.6;
-                            } else if (key === 'structure_placement') {
-                                lineWidth = 8;
-                                lineDash = 'dot';
-                                zOffset = 1.0;
-                            }
-
-                            // Add to plot
-                            traces.push({
-                                type: 'scatter3d',
-                                x: overlayX,
-                                y: overlayY,
-                                z: Array(overlayX.length).fill(data.base_level + zOffset),
-                                mode: 'lines',
-                                line: { 
-                                    color: overlay.color || '#007cbf', 
-                                    width: lineWidth,
-                                    dash: lineDash
-                                },
-                                name: overlay.name || key,
-                                showlegend: true,
-                                opacity: 0.9
-                            });
-
-                            // Add area information to legend if available
-                            if (overlay.area_m2) {
-                                const lastTrace = traces[traces.length - 1];
-                                lastTrace.name += ` (${overlay.area_m2.toFixed(1)} m²)`;
-                            }
-                        }
-                    });
-
-                    // Log overlay summary
-                    const overlayTypes = Object.keys(data.polygon_overlays);
-                    console.log(`[TerrainViewer] Successfully added ${overlayTypes.length} polygon overlays: ${overlayTypes.join(', ')}`);
-                }
-
-                // Calculate appropriate scaling for terrain visualisation
-                const maxX = data.width_m || 50;
-                const maxY = data.length_m || 50;
-                const elevationRange = Math.max(...data.elevation_data.flat()) - Math.min(...data.elevation_data.flat());
-
-                // Use a reasonable elevation scale - typically 2-3x the elevation range for good visibility
-                const elevationScale = Math.max(elevationRange * 2.5, maxX * 0.3); // At least 30% of horizontal scale
-                const maxDimension = Math.max(maxX, maxY);
-
-                const layout = {
-                    scene: {
-                        aspectmode: 'manual',
-                        aspectratio: { 
-                            x: 1, 
-                            y: maxY / maxX, 
-                            z: elevationScale / maxDimension 
-                        },
-                        xaxis: { 
-                            title: 'Width (m)',
-                            titlefont: { color: 'white', size: 14 },
-                            tickformat: '.0f',
-                            tickfont: { color: 'white', size: 12 },
-                            showgrid: true,
-                            gridcolor: 'rgba(255, 255, 255, 0.3)',
-                            gridwidth: 2,
-                            color: 'white',
-                            showbackground: true,
-                            backgroundcolor: 'rgba(13, 20, 33, 0.5)',
-                            range: [0, maxX]
-                        },
-                        yaxis: { 
-                            title: 'Length (m)',
-                            titlefont: { color: 'white', size: 14 },
-                            tickformat: '.0f',
-                            tickfont: { color: 'white', size: 12 },
-                            showgrid: true,
-                            gridcolor: 'rgba(255, 255, 255, 0.3)',
-                            gridwidth: 2,
-                            color: 'white',
-                            showbackground: true,
-                            backgroundcolor: 'rgba(13, 20, 33, 0.5)',
-                            range: [0, maxY]
-                        },
-                        zaxis: { 
-                            title: 'Elevation (m)',
-                            titlefont: { color: 'white', size: 14 },
-                            tickformat: '.1f',
-                            tickfont: { color: 'white', size: 12 },
-                            showgrid: true,
-                            gridcolor: 'rgba(255, 255, 255, 0.4)',
-                            gridwidth: 2,
-                            color: 'white',
-                            showbackground: true,
-                            backgroundcolor: 'rgba(13, 20, 33, 0.5)',
-                            range: [Math.min(...data.elevation_data.flat()) - 1, Math.max(...data.elevation_data.flat()) + 2]
-                        },
-                        camera: {
-                            eye: { x: 0, y: -2.0, z: 1.2 },
-                            center: { x: 0, y: 0, z: 0 },
-                            up: { x: 0, y: 0, z: 1 }
-                        }
-                    },
-                    margin: { l: 0, r: 100, b: 0, t: 50 },
-                    paper_bgcolor: '#0d1421',
-                    plot_bgcolor: '#0d1421',
-                    font: { color: 'white', family: 'Inter, sans-serif' }
-                };
-
-                const config = {
-                    responsive: true,
-                    displayModeBar: true,
-                    modeBarButtonsToRemove: ['pan2d', 'select2d', 'lasso2d'],
-                    displaylogo: false
-                };
-
-                Plotly.newPlot(canvas, traces, layout, config);
-                this.plot = canvas;
-            }
-
-            createModifiedTerrain(originalElevation, earthworksData) {
-                // Create a copy of the original elevation data
-                const modifiedElevation = originalElevation.map(row => row.slice());
-
-                if (!earthworksData.visualisation_data || !earthworksData.platform_local_coords) {
-                    return { elevation: modifiedElevation, cutFillMask: null };
-                }
-
-                const ffl = earthworksData.ffl;
-                const platformBounds = earthworksData.platform_local_coords;
-
-                // Get terrain dimensions
-                const rows = originalElevation.length;
-                const cols = originalElevation[0].length;
-                const terrainData = this.terrainData;
-
-                // Create cut/fill mask for color coding with more granular levels
-                const cutFillMask = Array(rows).fill(null).map(() => Array(cols).fill(0));
-
-                // Get coordinate ranges
-                const xCoords = terrainData.x_coords;
-                const yCoords = terrainData.y_coords;
-
-                if (!platformBounds || platformBounds.length < 3) {
-                    return { elevation: modifiedElevation, cutFillMask: cutFillMask };
-                }
-
-                // Create platform polygon bounds
-                const platformXCoords = platformBounds.map(p => p[0]);
-                const platformYCoords = platformBounds.map(p => p[1]);
-                const platformXMin = Math.min(...platformXCoords);
-                const platformXMax = Math.max(...platformXCoords);
-                const platformYMin = Math.min(...platformYCoords);
-                const platformYMax = Math.max(...platformYCoords);
-
-                // Apply earthworks modifications with engineering slopes
-                for (let row = 0; row < rows; row++) {
-                    for (let col = 0; col < cols; col++) {
-                        const x = xCoords[row][col];
-                        const y = yCoords[row][col];
-                        const originalZ = originalElevation[row][col];
-
-                        // Check if point is within or near platform
-                        const distanceToPlatform = this.distanceToPolygon([x, y], platformBounds);
-                        const isInsidePlatform = this.pointInPolygon([x, y], platformBounds);
-
-                        if (isInsidePlatform) {
-                            // Inside platform - set to FFL
-                            const cutFillDepth = originalZ - ffl;
-                            modifiedElevation[row][col] = ffl;
-
-                            // Set color coding based on cut/fill amount (only for significant changes)
-                            if (Math.abs(cutFillDepth) > 0.1) { // Only mark as earthworks if change > 10cm
-                                if (cutFillDepth > 0) {
-                                    // Cut required
-                                    cutFillMask[row][col] = cutFillDepth; // Positive for cut
-                                } else {
-                                    // Fill required  
-                                    cutFillMask[row][col] = cutFillDepth; // Negative for fill
-                                }
-                            } else {
-                                // Minimal change - keep as original terrain
-                                cutFillMask[row][col] = 0;
-                            }
-
-                        } else if (distanceToPlatform <= 5.0) {
-                            // Transition zone - apply 3:1 engineering slopes
-                            const transitionFactor = Math.max(0, 1 - (distanceToPlatform / 5.0));
-
-                            if (transitionFactor > 0.1) {
-                                // Calculate what the elevation should be at platform edge
-                                const platformEdgeElevation = this.getClosestPlatformElevation([x, y], platformBounds, ffl);
-                                const elevationDiff = originalZ - platformEdgeElevation;
-
-                                // Apply 3:1 slope (33% grade) - rise over run
-                                const maxSlope = distanceToPlatform / 3.0; // 3:1 slope ratio
-                                const slopeAdjustment = Math.min(Math.abs(elevationDiff), maxSlope) * Math.sign(elevationDiff);
-
-                                const targetElevation = platformEdgeElevation + slopeAdjustment;
-                                const blendedElevation = originalZ + transitionFactor * (targetElevation - originalZ);
-
-                                modifiedElevation[row][col] = blendedElevation;
-
-                                // Color code transition areas (only if significant change)
-                                const cutFillDepth = originalZ - blendedElevation;
-                                if (Math.abs(cutFillDepth) > 0.2) { // Only mark significant transitions
-                                    cutFillMask[row][col] = cutFillDepth; // Use actual depth for coloring
-                                } else {
-                                    cutFillMask[row][col] = 0; // Keep as original terrain
-                                }
-                            }
-                        }
-                    }
-                }
-
-                return { elevation: modifiedElevation, cutFillMask: cutFillMask };
-            }
-
-            getClosestPlatformElevation(point, platformBounds, ffl) {
-                // For simplicity, return FFL since platform is flat
-                // In a more sophisticated implementation, this could interpolate 
-                // elevation along the platform edge
-                return ffl;
-            }
-
-            pointInPolygon(point, polygon) {
-                const [x, y] = point;
-                let inside = false;
-
-                for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-                    const [xi, yi] = polygon[i];
-                    const [xj, yj] = polygon[j];
-
-                    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
-                        inside = !inside;
-                    }
-                }
-
-                return inside;
-            }
-
-            distanceToPolygon(point, polygon) {
-                const [px, py] = point;
-                let minDistance = Infinity;
-
-                // Check if point is inside polygon first
-                if (this.pointInPolygon(point, polygon)) {
-                    return 0;
-                }
-
-                // Calculate distance to each edge
-                for (let i = 0; i < polygon.length; i++) {
-                    const [x1, y1] = polygon[i];
-                    const [x2, y2] = polygon[(i + 1) % polygon.length];
-
-                    const distance = this.distancePointToLineSegment([px, py], [x1, y1], [x2, y2]);
-                    minDistance = Math.min(minDistance, distance);
-                }
-
-                return minDistance;
-            }
-
-            distancePointToLineSegment(point, lineStart, lineEnd) {
-                const [px, py] = point;
-                const [x1, y1] = lineStart;
-                const [x2, y2] = lineEnd;
-
-                const A = px - x1;
-                const B = py - y1;
-                const C = x2 - x1;
-                const D = y2 - y1;
-
-                const dot = A * C + B * D;
-                const lenSq = C * C + D * D;
-
-                if (lenSq === 0) {
-                    return Math.sqrt(A * A + B * B);
-                }
-
-                let param = dot / lenSq;
-                param = Math.max(0, Math.min(1, param));
-
-                const xx = x1 + param * C;
-                const yy = y1 + param * D;
-
-                const dx = px - xx;
-                const dy = py - yy;
-
-                return Math.sqrt(dx * dx + dy * dy);
-            }
-
-            calculateRotatedPlatformCoords(center, width, length, terrainWidth, terrainLength, rotation) {
-                // Convert rotation to radians
-                const rotationRad = (rotation * Math.PI) / 180;
-
-                // Calculate half dimensions in relative coordinates
-                const halfWidth = width / (2 * terrainWidth);
-                const halfLength = length / (2 * terrainLength);
-
-                // Define the four corners of the rectangle relative to center (before rotation)
-                const corners = [
-                    { x: -halfWidth, y: -halfLength }, // Bottom-left
-                    { x: halfWidth, y: -halfLength },  // Bottom-right
-                    { x: halfWidth, y: halfLength },   // Top-right
-                    { x: -halfWidth, y: halfLength }   // Top-left
-                ];
-
-                // Rotate each corner around the center and convert to absolute coordinates
-                const rotatedCoords = corners.map(corner => {
-                    // Apply rotation matrix
-                    const rotatedX = corner.x * Math.cos(rotationRad) - corner.y * Math.sin(rotationRad);
-                    const rotatedY = corner.x * Math.sin(rotationRad) + corner.y * Math.cos(rotationRad);
-
-                    // Translate to actual position
-                    return {
-                        x: center.x + rotatedX,
-                        y: center.y + rotatedY
-                    };
-                });
-
-                console.log('[TerrainViewer] Calculated rotated platform coords:', {
-                    center,
-                    rotation,
-                    dimensions: { width, length },
-                    coords: rotatedCoords
-                });
-
-                return rotatedCoords;
-            }
-
-
 
             clearPlatform() {
-                this.earthworksData = null;
-                this.platformMovementEnabled = false;
+                this.clearMessages();
 
+                // Clear earthworks data
+                this.earthworksData = null;
+
+                // Clear structure platform data
+                this.structurePlatformData = null;
+                this.currentPlatformCoords = null;
+
+                // Clear results display
                 document.getElementById('earthworksResults').style.display = 'none';
+
+                // Hide platform controls
+                document.getElementById('platformControls').style.display = 'none';
+
+                // Clear platform position
+                this.currentPlatformCenter = { x: 0.5, y: 0.5 };
+                this.currentPlatformRotation = 0;
+
+                // Reset platform controls
+                document.getElementById('platformRotation').value = 0;
+                document.getElementById('platformRotationValue').value = 0;
+                document.getElementById('platformWidth').value = 10;
+                document.getElementById('platformLength').value = 10;
+                document.getElementById('platformCenterX').value = 0;
+                document.getElementById('platformCenterY').value = 0;
+
+                // Disable platform controls
                 document.getElementById('clearPlatformBtn').disabled = true;
                 document.getElementById('togglePlatformMoveBtn').disabled = true;
 
-                // Reset toggle button appearance
-                const toggleBtn = document.getElementById('togglePlatformMoveBtn');
-                toggleBtn.textContent = '🔒 Platform Movement: OFF';
-                toggleBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+                // Re-check platform availability
+                this.checkStructurePlatformAvailability();
 
-                this.renderTerrain(); // Re-render without platform
+                // Re-render terrain without platform
+                if (this.terrainData) {
+                    this.renderTerrain(this.terrainData);
+                }
+
                 this.showSuccess('Platform cleared');
             }
 
@@ -3542,12 +2950,12 @@ return 0.3 + (normalizedElev * 0.4); // Range 0.3-0.7 for original terrain
                         const update = { visible: visible };
                         Plotly.restyle(this.plot, update, traceIndices);
                         console.log(`[TerrainViewer] Toggled ${layerType} layer: ${visible ? 'visible' : 'hidden'} (${traceIndices.length} traces affected)`);
-                        
+
                         // Force plot refresh
                         Plotly.redraw(this.plot);
                     } else {
                         console.warn(`[TerrainViewer] No traces found for ${layerType} layer - available traces:`, currentData.map(t => t.name));
-                        
+
                         // Debug: log all trace names to help identify the issue
                         console.log(`[TerrainViewer] All available traces for ${layerType}:`, 
                             currentData.map((trace, index) => `${index}: ${trace.name || 'unnamed'}`));
@@ -3578,13 +2986,13 @@ return 0.3 + (normalizedElev * 0.4); // Range 0.3-0.7 for original terrain
                         };
                         Plotly.restyle(this.plot, update, terrainTraceIndices);
                         console.log(`[TerrainViewer] Contours ${visible ? 'enabled' : 'disabled'} for ${terrainTraceIndices.length} terrain surfaces`);
-                        
+
                         // Force plot refresh  
                         Plotly.redraw(this.plot);
                     } else {
                         console.warn(`[TerrainViewer] No terrain surface traces found for contour toggle`);
                         console.log(`[TerrainViewer] Available surface traces:`, 
-                            currentData.filter(t => t.type === 'surface').map((t, i) => `${i}: ${t.name}`));
+                            currentData.filter(t => t.type === 'surface').map(t => t.name));
                     }
                 } catch (error) {
                     console.error('[TerrainViewer] Error toggling contours:', error);
@@ -3612,7 +3020,7 @@ return 0.3 + (normalizedElev * 0.4); // Range 0.3-0.7 for original terrain
                         const update = { opacity: opacityValue };
                         Plotly.restyle(this.plot, update, terrainTraceIndices);
                         console.log(`[TerrainViewer] Updated terrain opacity to ${opacityValue} for ${terrainTraceIndices.length} terrain surfaces`);
-                        
+
                         // Force plot refresh
                         Plotly.redraw(this.plot);
                     } else {
@@ -3689,7 +3097,7 @@ return 0.3 + (normalizedElev * 0.4); // Range 0.3-0.7 for original terrain
                         const update = { colorscale: colorScales[scheme] };
                         Plotly.restyle(this.plot, update, terrainTraceIndices);
                         console.log(`[TerrainViewer] Updated color scheme to ${scheme} for ${terrainTraceIndices.length} terrain surfaces`);
-                        
+
                         // Force plot refresh
                         Plotly.redraw(this.plot);
                     } else {
@@ -3729,11 +3137,11 @@ return 0.3 + (normalizedElev * 0.4); // Range 0.3-0.7 for original terrain
                             if (this.plot && this.plot.layout && this.plot.layout.scene && this.plot.layout.scene.camera) {
                                 const camera = this.plot.layout.scene.camera;
                                 const eye = camera.eye;
-                                
+
                                 // Calculate new position for slow rotation
                                 const angle = Date.now() * 0.0005; // Slow rotation
                                 const radius = Math.sqrt(eye.x * eye.x + eye.y * eye.y);
-                                
+
                                 const newEye = {
                                     x: radius * Math.cos(angle),
                                     y: radius * Math.sin(angle),
@@ -3820,7 +3228,7 @@ return 0.3 + (normalizedElev * 0.4); // Range 0.3-0.7 for original terrain
             // Set authenticated class on body for ADAM widget
             document.body.classList.add('authenticated');
 
-            // Initialize ADAM widget if not already initialized
+            // Initialize ADAM chat widget if not already initialized
             if (typeof ADAMChatWidget !== 'undefined' && !window.adamChat) {
                 try {
                     window.adamChat = new ADAMChatWidget();
