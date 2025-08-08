@@ -16,7 +16,7 @@ class PropertyService(BaseService):
     def __init__(self):
         super().__init__("PropertyService")
         # LINZ API configuration
-        self.linz_api_key = os.getenv('PROPERTY_API_KEY')  # Your API key
+        self.linz_api_key = os.getenv('LINZ_API_KEY')  # Your API key
         self.property_titles_layer = 50772  # NZ Property Titles layer
         self.linz_base_url = "https://data.linz.govt.nz/services/query/v1/vector.json"
 
