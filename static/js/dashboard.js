@@ -563,9 +563,14 @@ class DashboardManager extends BaseManager {
                 }
             });
 
+            // Check if response is ok first, before trying to parse JSON
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
             const data = await response.json();
 
-            if (response.ok && data && data.success) {
+            if (data && data.success) {
                 this.info(`Project ${projectId} "${projectName}" deleted successfully from server`);
                 
                 // Immediately remove from UI before refreshing
@@ -575,9 +580,11 @@ class DashboardManager extends BaseManager {
                 await this.refreshProjectLists();
                 
                 this.info(`Project "${projectName}" deleted and UI updated`);
+                
+                // Show success message instead of error
+                this.debug(`Project "${projectName}" deletion completed successfully`);
             } else {
                 this.error(`Failed to delete project ${projectId}:`, data);
-                // Show user-friendly error message
                 alert(`Failed to delete project "${projectName}": ${data.error || 'Unknown error'}`);
                 await this.refreshProjectLists();
             }
