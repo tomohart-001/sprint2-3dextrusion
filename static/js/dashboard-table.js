@@ -216,7 +216,7 @@ class DashboardTableManager extends BaseManager {
                 <td>
                     <div class="project-actions">
                         <button class="action-btn share" onclick="shareProject(${projectId})" title="Share project">Share</button>
-                        <button class="action-btn delete" onclick="deleteProject(${projectId})" title="Delete project">Delete</button>
+                        <button class="action-btn delete delete-btn-${projectId}" onclick="handleDeleteProject(${projectId}, this)" title="Delete project">Delete</button>
                     </div>
                 </td>
             </tr>

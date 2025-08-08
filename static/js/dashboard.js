@@ -519,6 +519,7 @@ class DashboardManager extends BaseManager {
 
     /**
      * Remove a specific project from UI without full refresh
+     * Only use this after server confirmation of deletion
      */
     removeProjectFromUI(projectId) {
         // Remove from recent projects
@@ -544,7 +545,7 @@ class DashboardManager extends BaseManager {
             }
         }
 
-        this.debug(`Removed project ${projectId} from UI`);
+        this.debug(`Removed project ${projectId} from UI after server confirmation`);
     }
 
     /**
@@ -585,6 +586,12 @@ let pendingDeleteProjectId = null;
 let pendingDeleteProjectName = null;
 
 async function deleteProject(projectId) {
+    // Prevent multiple simultaneous delete requests
+    if (pendingDeleteProjectId === projectId) {
+        console.log(`[Dashboard] Delete already in progress for project ${projectId}`);
+        return;
+    }
+
     console.log(`[Dashboard] Delete requested for project ${projectId}`);
     const row = document.querySelector(`tr[data-project-id="${projectId}"]`);
     const projectName = row ? row.querySelector('.project-name-cell a').textContent : 'this project';
@@ -594,58 +601,101 @@ async function deleteProject(projectId) {
     pendingDeleteProjectName = projectName;
 
     // Update modal content and show it
-    document.getElementById('deleteProjectName').textContent = projectName;
-    document.getElementById('deleteProjectModal').style.display = 'flex';
+    const deleteNameSpan = document.getElementById('deleteProjectName');
+    const modal = document.getElementById('deleteProjectModal');
+    
+    if (deleteNameSpan && modal) {
+        deleteNameSpan.textContent = projectName;
+        modal.style.display = 'flex';
+    }
 }
 
 function closeDeleteProjectModal() {
-    document.getElementById('deleteProjectModal').style.display = 'none';
+    const modal = document.getElementById('deleteProjectModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
     pendingDeleteProjectId = null;
     pendingDeleteProjectName = null;
 }
 
 async function confirmDeleteProject() {
-    if (!pendingDeleteProjectId) return;
+    if (!pendingDeleteProjectId) {
+        console.log('[Dashboard] No pending delete project ID');
+        return;
+    }
 
     const projectId = pendingDeleteProjectId;
     const projectName = pendingDeleteProjectName;
 
-    // Close modal immediately
+    // Close modal and clear pending state immediately to prevent duplicate calls
     closeDeleteProjectModal();
 
     try {
         console.log(`[Dashboard] Confirming deletion of project ${projectId}`);
 
         const response = await fetch(`/api/project/${projectId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
         });
+        
         const data = await response.json();
 
-        if (data && data.success) {
-            console.log(`[Dashboard] Project ${projectId} deleted successfully`);
+        if (response.ok && data && data.success) {
+            console.log(`[Dashboard] Project ${projectId} deleted successfully from server`);
 
-            // Remove from UI immediately
+            // Wait for server confirmation before updating UI
             if (window.dashboardManager) {
-                window.dashboardManager.removeProjectFromUI(projectId);
-            }
-
-            // Also refresh the full project lists to ensure consistency
-            if (window.dashboardManager) {
+                // Force a complete refresh from server to ensure consistency
                 await window.dashboardManager.refreshProjectLists();
             }
 
-            console.log(`[Dashboard] Project "${projectName}" deleted successfully`);
+            console.log(`[Dashboard] Project "${projectName}" deleted and UI refreshed`);
         } else {
             console.error(`[Dashboard] Failed to delete project ${projectId}:`, data);
-            // Show error message without alert to prevent modal reappearance
-            const errorMsg = data?.error || 'Unknown error occurred';
-            console.error(`Delete failed: ${errorMsg}`);
+            console.error(`Delete failed: ${data?.error || 'Server returned failure'}`);
+            
+            // Refresh the project lists to restore accurate state
+            if (window.dashboardManager) {
+                await window.dashboardManager.refreshProjectLists();
+            }
         }
     } catch (error) {
         console.error(`[Dashboard] Error deleting project ${projectId}:`, error);
-        // Show error message without alert to prevent modal reappearance  
         console.error(`Delete error: ${error.message || 'Network or server error'}`);
+        
+        // Refresh the project lists to restore accurate state
+        if (window.dashboardManager) {
+            await window.dashboardManager.refreshProjectLists();
+        }
     }
+}
+
+// Global function to handle delete button clicks with debouncing
+function handleDeleteProject(projectId, buttonElement) {
+    // Disable the button to prevent multiple clicks
+    if (buttonElement) {
+        if (buttonElement.disabled || buttonElement.classList.contains('deleting')) {
+            return; // Already processing
+        }
+        buttonElement.disabled = true;
+        buttonElement.classList.add('deleting');
+        buttonElement.textContent = '...';
+        
+        // Re-enable button after a delay in case modal is cancelled
+        setTimeout(() => {
+            if (buttonElement && !pendingDeleteProjectId) {
+                buttonElement.disabled = false;
+                buttonElement.classList.remove('deleting');
+                buttonElement.textContent = 'Delete';
+            }
+        }, 5000);
+    }
+    
+    // Call the actual delete function
+    deleteProject(projectId);
 }
 
 // Global function to refresh project lists
@@ -653,6 +703,13 @@ async function refreshProjectLists() {
     if (window.dashboardManager) {
         await window.dashboardManager.refreshProjectLists();
     }
+    
+    // Re-enable all delete buttons after refresh
+    document.querySelectorAll('.action-btn.delete.deleting').forEach(btn => {
+        btn.disabled = false;
+        btn.classList.remove('deleting');
+        btn.textContent = 'Delete';
+    });
 }
 
 // Export for module environments
