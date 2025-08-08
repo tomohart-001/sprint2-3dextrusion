@@ -55,8 +55,12 @@ class TerrainRoutes:
 
             # If no valid project ID from URL, try session storage as fallback
             if not project_id:
-                project_id = session.get('current_project_id')
-                app_logger.info(f"No valid project ID in URL, trying session: {project_id}")
+                stored_project_id = session.get('current_project_id')
+                if stored_project_id and str(stored_project_id).isdigit():
+                    project_id = stored_project_id
+                    app_logger.info(f"Using valid project ID from session: {project_id}")
+                else:
+                    app_logger.info(f"No valid project ID in session: {stored_project_id}")
 
             # If still no project ID, try to get the most recent project for the user
             if not project_id:

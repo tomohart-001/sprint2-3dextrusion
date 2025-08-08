@@ -928,7 +928,8 @@
     <!-- Site Header -->
     <div class="site-header">
         <div class="header-left">
-            <a href="{% if project_data and project_data.get('id') %}/project/{{ project_data.get('id') }}{% else %}/dashboard{% endif %}" class="header-back-btn">
+            {% set back_project_id = project_data.get('id') if project_data else (site_data.get('project_id') if site_data else None) %}
+            <a href="{% if back_project_id %}/project/{{ back_project_id }}{% else %}/dashboard{% endif %}" class="header-back-btn">
                 ← Project Overview
             </a>
             <div class="header-title-section">
@@ -937,7 +938,8 @@
             </div>
         </div>
         <div class="header-right">
-            <a href="/site-developer{% if project_data and project_data.get('id') %}?project_id={{ project_data.get('id') }}{% endif %}" class="header-cta-btn">FormLab</a>
+            {% set nav_project_id = project_data.get('id') if project_data else (site_data.get('project_id') if site_data else None) %}
+            <a href="/site-developer{% if nav_project_id %}?project_id={{ nav_project_id }}{% endif %}" class="header-cta-btn">FormLab</a>
         </div>
     </div>
 
@@ -946,32 +948,30 @@
         <div class="flow-container">
             <!-- Project Information -->
             <div class="project-info-section">
+                {% set project_name = None %}
+                {% set project_address = None %}
+                
+                {# Try to get project name and address from various sources #}
                 {% if project_data and project_data.get('name') %}
-                <div class="project-name">{{ project_data.get('name', 'Current Project') }}</div>
-                {% set address = project_data.get('address', '') %}
-                {% if address %}
+                    {% set project_name = project_data.get('name') %}
+                    {% set project_address = project_data.get('address') %}
+                {% elif site_data and site_data.get('project_name') %}
+                    {% set project_name = site_data.get('project_name') %}
+                    {% set project_address = site_data.get('address') or site_data.get('project_address') %}
+                {% endif %}
+                
+                {# Display project name with fallback #}
+                <div class="project-name">{{ project_name or 'Current Project' }}</div>
+                
+                {# Display project address with fallback #}
+                {% if project_address and project_address.strip() %}
+                    {% set address = project_address.strip() %}
                     {% if address|length > 45 %}
                     <div class="project-address" title="{{ address }}">{{ address[:42] }}...</div>
                     {% else %}
                     <div class="project-address">{{ address }}</div>
                     {% endif %}
                 {% else %}
-                <div class="project-address">No address available</div>
-                {% endif %}
-                {% elif site_data and site_data.get('address') %}
-                <div class="project-name">{{ site_data.get('project_name', 'Current Project') }}</div>
-                {% set address = site_data.get('address', '') %}
-                {% if address %}
-                    {% if address|length > 45 %}
-                    <div class="project-address" title="{{ address }}">{{ address[:42] }}...</div>
-                    {% else %}
-                    <div class="project-address">{{ address }}</div>
-                    {% endif %}
-                {% else %}
-                <div class="project-address">No address available</div>
-                {% endif %}
-                {% else %}
-                <div class="project-name">Current Project</div>
                 <div class="project-address">No address available</div>
                 {% endif %}
             </div>
