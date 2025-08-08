@@ -634,14 +634,17 @@ async function confirmDeleteProject() {
                 await window.dashboardManager.refreshProjectLists();
             }
 
-            alert(`Project "${projectName}" has been deleted successfully.`);
+            console.log(`[Dashboard] Project "${projectName}" deleted successfully`);
         } else {
             console.error(`[Dashboard] Failed to delete project ${projectId}:`, data);
-            alert(`Failed to delete project "${projectName}". Please try again.`);
+            // Show error message without alert to prevent modal reappearance
+            const errorMsg = data?.error || 'Unknown error occurred';
+            console.error(`Delete failed: ${errorMsg}`);
         }
     } catch (error) {
         console.error(`[Dashboard] Error deleting project ${projectId}:`, error);
-        alert(`Error deleting project "${projectName}". Please try again.`);
+        // Show error message without alert to prevent modal reappearance  
+        console.error(`Delete error: ${error.message || 'Network or server error'}`);
     }
 }
 
