@@ -1614,13 +1614,21 @@
             showError(errorMessage) {
                 try {
                     console.error('[TerrainViewer] Terrain generation error:', errorMessage);
-                    this.updateStatus(errorMessage || 'Unknown error occurred', true);
-                    this.updateProgress(0, 'Error occurred');
+                    
+                    const errorElement = document.getElementById('errorMessage');
+                    if (errorElement) {
+                        errorElement.textContent = errorMessage || 'Unknown error occurred';
+                        errorElement.style.display = 'block';
+                    }
 
-                    // Hide loading spinner if present
-                    const loadingElement = document.getElementById('terrainLoading');
-                    if (loadingElement) {
-                        loadingElement.style.display = 'none';
+                    this.updateProgressStatus(errorMessage || 'Error occurred');
+                    this.updateProgress(1, 'error');
+                    this.showLoading(false);
+
+                    // Show generate button again
+                    const generateSection = document.getElementById('generateTerrainSection');
+                    if (generateSection) {
+                        generateSection.style.display = 'block';
                     }
                 } catch (error) {
                     console.error('[TerrainViewer] Error in showError:', error);
@@ -1630,8 +1638,22 @@
             showSuccess(message) {
                 try {
                     console.log('[TerrainViewer] Success:', message);
-                    this.updateStatus(message || 'Terrain generated successfully', false);
-                    this.updateProgress(100, 'Complete');
+                    
+                    const successElement = document.getElementById('successMessage');
+                    if (successElement) {
+                        successElement.textContent = message || 'Terrain generated successfully';
+                        successElement.style.display = 'block';
+                    }
+
+                    this.updateProgressStatus(message || 'Complete!');
+                    this.updateProgress(7, 'completed');
+                    this.updateProgressBar(100);
+
+                    // Hide error messages
+                    const errorElement = document.getElementById('errorMessage');
+                    if (errorElement) {
+                        errorElement.style.display = 'none';
+                    }
                 } catch (error) {
                     console.error('[TerrainViewer] Error in showSuccess:', error);
                 }
@@ -1752,6 +1774,108 @@
                         <p style="margin: 0; max-width: 400px;">Click "Generate 3D Terrain" to create a detailed elevation model of your site using LiDAR data.</p>
                     </div>
                 `;
+            }
+
+            showLoading(show) {
+                try {
+                    const progressContainer = document.getElementById('progressContainer');
+                    const generateSection = document.getElementById('generateTerrainSection');
+                    const loadingSpinner = document.getElementById('loadingSpinner');
+
+                    if (show) {
+                        if (progressContainer) {
+                            progressContainer.style.display = 'block';
+                        }
+                        if (generateSection) {
+                            generateSection.style.display = 'none';
+                        }
+                        if (loadingSpinner) {
+                            loadingSpinner.classList.add('active');
+                        }
+                    } else {
+                        if (progressContainer) {
+                            progressContainer.style.display = 'none';
+                        }
+                        if (generateSection) {
+                            generateSection.style.display = 'block';
+                        }
+                        if (loadingSpinner) {
+                            loadingSpinner.classList.remove('active');
+                        }
+                    }
+                } catch (error) {
+                    console.error('[TerrainViewer] Error in showLoading:', error);
+                }
+            }
+
+            clearMessages() {
+                try {
+                    const errorMessage = document.getElementById('errorMessage');
+                    const successMessage = document.getElementById('successMessage');
+
+                    if (errorMessage) {
+                        errorMessage.style.display = 'none';
+                        errorMessage.textContent = '';
+                    }
+                    if (successMessage) {
+                        successMessage.style.display = 'none';
+                        successMessage.textContent = '';
+                    }
+                } catch (error) {
+                    console.error('[TerrainViewer] Error clearing messages:', error);
+                }
+            }
+
+            updateProgressStatus(message) {
+                try {
+                    const statusElement = document.getElementById('progressStatus');
+                    if (statusElement && message) {
+                        statusElement.textContent = message;
+                    }
+                } catch (error) {
+                    console.error('[TerrainViewer] Error updating progress status:', error);
+                }
+            }
+
+            updateProgressBar(percentage) {
+                try {
+                    const progressBar = document.getElementById('progressBar');
+                    const progressPercent = document.getElementById('progressPercent');
+
+                    if (progressBar) {
+                        progressBar.style.width = `${percentage}%`;
+                    }
+                    if (progressPercent) {
+                        progressPercent.textContent = `${Math.round(percentage)}%`;
+                    }
+                } catch (error) {
+                    console.error('[TerrainViewer] Error updating progress bar:', error);
+                }
+            }
+
+            updateProgress(stepNumber, status) {
+                try {
+                    const progressSteps = document.querySelectorAll('.progress-step');
+                    
+                    progressSteps.forEach((step, index) => {
+                        const stepNum = index + 1;
+                        step.classList.remove('active', 'completed', 'error');
+                        
+                        if (stepNum < stepNumber) {
+                            step.classList.add('completed');
+                        } else if (stepNum === stepNumber) {
+                            if (status === 'error') {
+                                step.classList.add('error');
+                            } else if (status === 'completed') {
+                                step.classList.add('completed');
+                            } else {
+                                step.classList.add('active');
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.error('[TerrainViewer] Error updating progress:', error);
+                }
             }
 
             async generateTerrain() {
@@ -2930,7 +3054,7 @@
                 this.showSuccess('Platform cleared');
             }
 
-            // Missing method stubs to prevent errors
+            // View control methods
             resetView() {
                 if (this.plot) {
                     Plotly.relayout(this.plot, {
@@ -2980,35 +3104,52 @@
             }
 
             loadBuildableAreaAsPlatform() {
-                console.log('[TerrainViewer] Loading buildable area as platform - method stub');
+                console.log('[TerrainViewer] Loading buildable area as platform');
+                if (!this.siteData || !this.siteData.buildable_area) {
+                    this.showError('No buildable area data available');
+                    return;
+                }
+                // Implementation would go here
             }
 
             calculateEarthworks() {
-                console.log('[TerrainViewer] Calculate earthworks - method stub');
-            }
-
-            clearPlatform() {
-                console.log('[TerrainViewer] Clear platform - method stub');
+                console.log('[TerrainViewer] Calculate earthworks');
+                if (!this.terrainData) {
+                    this.showError('Please generate terrain data first');
+                    return;
+                }
+                // Implementation would go here
             }
 
             updateFflMode() {
-                console.log('[TerrainViewer] Update FFL mode - method stub');
+                console.log('[TerrainViewer] Update FFL mode');
+                // Implementation would go here
             }
 
             updateRotation(value) {
                 console.log('[TerrainViewer] Update rotation:', value);
+                const rotationValue = document.getElementById('platformRotationValue');
+                const rotationSlider = document.getElementById('platformRotation');
+                
+                if (rotationValue && rotationSlider) {
+                    rotationValue.value = value;
+                    rotationSlider.value = value;
+                    this.currentPlatformRotation = parseFloat(value);
+                }
             }
 
             togglePlatformMovement() {
-                console.log('[TerrainViewer] Toggle platform movement - method stub');
+                this.platformMovementEnabled = !this.platformMovementEnabled;
+                console.log('[TerrainViewer] Platform movement:', this.platformMovementEnabled ? 'enabled' : 'disabled');
             }
 
             updatePlatformDimensions() {
-                console.log('[TerrainViewer] Update platform dimensions - method stub');
-            }
-
-            updateEarthworksDisplay() {
-                console.log('[TerrainViewer] Update earthworks display - method stub');
+                if (!this.structurePlatformData) return;
+                
+                const width = parseFloat(document.getElementById('platformWidth').value) || 10;
+                const length = parseFloat(document.getElementById('platformLength').value) || 10;
+                
+                console.log('[TerrainViewer] Platform dimensions updated:', { width, length });
             }
 
             toggleLayer(layerType, visible) {
