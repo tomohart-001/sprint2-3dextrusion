@@ -809,7 +809,7 @@ class TerrainRoutes:
             try:
                 import requests
                 import time
-                
+
                 # Use Nominatim (OpenStreetMap) for geocoding with proper headers
                 geocode_url = "https://nominatim.openstreetmap.org/search"
                 params = {
@@ -819,37 +819,37 @@ class TerrainRoutes:
                     'bounded': 1,
                     'countrycodes': 'nz'  # Restrict to New Zealand
                 }
-                
+
                 # Add proper headers to avoid 403 errors
                 headers = {
                     'User-Agent': 'EngineRoom-Terrain-Service/1.0 (engineering@engineroom.nz)',
                     'Accept': 'application/json',
                     'Accept-Language': 'en'
                 }
-                
+
                 # Add a small delay to respect rate limits
                 time.sleep(1)
-                
+
                 response = requests.get(geocode_url, params=params, headers=headers, timeout=15)
                 response.raise_for_status()
-                
+
                 results = response.json()
-                
+
                 if not results:
                     return jsonify({
                         'success': False,
                         'error': f'Could not find location for address: {address}'
                     }), 404
-                
+
                 result = results[0]
                 lat = float(result['lat'])
                 lng = float(result['lon'])
-                
+
                 # Create a small boundary around the geocoded point (approximately 50m x 50m)
                 # Convert 50m to degrees (rough approximation)
                 lat_offset = 50 / 111320  # ~0.00045 degrees
                 lng_offset = 50 / (111320 * math.cos(lat * math.pi / 180))
-                
+
                 # Create a square boundary around the point
                 coordinates = [
                     [lng - lng_offset, lat - lat_offset],  # Southwest
@@ -858,7 +858,7 @@ class TerrainRoutes:
                     [lng - lng_offset, lat + lat_offset],  # Northwest
                     [lng - lng_offset, lat - lat_offset]   # Close polygon
                 ]
-                
+
                 # Calculate terrain bounds with buffer
                 terrain_bounds = {
                     'southwest': [lng - lng_offset * 2, lat - lat_offset * 2],
@@ -867,7 +867,7 @@ class TerrainRoutes:
                     'width': lng_offset * 4,
                     'height': lat_offset * 4
                 }
-                
+
                 # Create site data for terrain generation
                 site_data = {
                     'coordinates': coordinates,
@@ -879,9 +879,9 @@ class TerrainRoutes:
                     'geocoded_from_address': True,
                     'original_address': address
                 }
-                
+
                 app_logger.info(f"Successfully geocoded {address} to {lat}, {lng}")
-                
+
                 return jsonify({
                     'success': True,
                     'site_data': site_data,
@@ -889,10 +889,10 @@ class TerrainRoutes:
                     'center': [lng, lat],
                     'terrain_bounds': terrain_bounds
                 })
-                
+
             except requests.exceptions.RequestException as e:
                 app_logger.error(f"Geocoding request failed: {e}")
-                
+
                 # Check if it's a 403 error (rate limited or blocked)
                 if hasattr(e, 'response') and e.response and e.response.status_code == 403:
                     return jsonify({
@@ -906,7 +906,7 @@ class TerrainRoutes:
                         'error': 'Geocoding service unavailable. Please check your internet connection and try again.',
                         'error_type': 'service_unavailable'
                     }), 503
-                
+
             except Exception as e:
                 app_logger.error(f"Geocoding error: {e}")
                 return jsonify({

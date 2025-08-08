@@ -1059,11 +1059,11 @@
 
 
 
-            <!-- Generate Terrain Button (shown when no site data available) -->
-            <div id="generateTerrainSection" class="control-section" style="display: none;">
+            <!-- Generate Terrain Button (shown when no terrain data available) -->
+            <div id="generateTerrainSection" class="control-section">
                 <div class="section-title">Generate 3D Terrain</div>
                 <p style="color: #4a5568; font-size: 0.85rem; margin-bottom: 16px;">
-                    Generate terrain elevation data from the project address.
+                    Generate terrain elevation data from the project address or site boundary.
                 </p>
                 <button id="generateTerrainBtn" class="control-btn" style="width: 100%; background: linear-gradient(135deg, #547bf7 0%, #4a6bda 100%);">
                     Generate 3D Terrain
@@ -1369,9 +1369,12 @@
 
         async autoInitializeTerrainGeneration() {
                 try {
+                    // Always show the generate terrain button initially
+                    this.showGenerateTerrainButton();
+
                     // Check if we have site data already available from the template
-                    if (this.siteData && this.siteData.coordinates && this.siteData.coordinates.length > 0) {
-                        console.log('[TerrainViewer] Site data already available, proceeding with terrain generation');
+                    if (this.siteData && (this.siteData.coordinates?.length > 0 || this.siteData.buildable_area?.coordinates?.length > 0)) {
+                        console.log('[TerrainViewer] Site data already available, but showing generate button for user control');
 
                         // Log what data we have available
                         const availableData = [];
@@ -1382,7 +1385,8 @@
 
                         console.log(`[TerrainViewer] Available data layers: ${availableData.join(', ')}`);
 
-                        await this.generateTerrain();
+                        // Don't auto-generate, let user click the button
+                        this.showMessage(`Ready to generate terrain with: ${availableData.join(', ')}`, 'info');
                     } else {
                         console.log('[TerrainViewer] No site data available for auto-initialization');
 
@@ -1405,37 +1409,49 @@
                                     if (response.site_data.floorplan_data?.boundaries) loadedData.push('floor plan');
 
                                     console.log(`[TerrainViewer] Loaded data layers: ${loadedData.join(', ')}`);
-                                    console.log('[TerrainViewer] Site data loaded from project, proceeding with terrain generation');
-
-                                    await this.generateTerrain();
+                                    
+                                    if (loadedData.length > 0) {
+                                        this.showMessage(`Site data loaded. Ready to generate terrain with: ${loadedData.join(', ')}`, 'success');
+                                    } else {
+                                        this.showMessage('Site data loaded, but no boundary coordinates found. Terrain can still be generated from project address.', 'info');
+                                    }
                                 } else {
                                     console.log('[TerrainViewer] No site data found in project');
-                                    this.showGenerateTerrainButton();
+                                    this.showMessage('No site data found. Terrain can be generated from project address.', 'info');
                                 }
                             } catch (error) {
                                 console.error('[TerrainViewer] Error loading site data from project:', error);
-                                this.showGenerateTerrainButton();
+                                this.showMessage('Error loading site data, but terrain can still be generated from project address.', 'warning');
                             }
-                        } else {
-                            this.showGenerateTerrainButton();
                         }
                     }
                 } catch (error) {
                     console.error('[TerrainViewer] Auto-initialization failed:', error);
-                    this.showGenerateTerrainButton();
+                    this.showMessage('Initialization error, but terrain generation is still available.', 'warning');
                 }
             }
 
             showGenerateTerrainButton() {
-                // Check if we have a project address to generate terrain from
+                // Always show the generate terrain button
+                document.getElementById('generateTerrainSection').style.display = 'block';
+                
+                // Check if we have data to work with
                 const hasProjectAddress = this.siteData && (this.siteData.address || this.siteData.project_address);
+                const hasCoordinates = (this.siteData?.coordinates?.length > 0) || 
+                                     (this.siteData?.buildable_area?.coordinates?.length > 0);
 
-                if (hasProjectAddress) {
-                    document.getElementById('generateTerrainSection').style.display = 'block';
-                    this.showMessage('Click "Generate 3D Terrain" to create elevation data from the project address.', 'info');
+                if (hasCoordinates) {
+                    console.log('[TerrainViewer] Generate terrain button shown with coordinate data available');
+                } else if (hasProjectAddress) {
+                    console.log('[TerrainViewer] Generate terrain button shown with project address available');
                 } else {
-                    this.showMessage('No site boundary or project address available. Please create site boundary data in Site Inspector first.', 'info');
+                    console.log('[TerrainViewer] Generate terrain button shown - will need site data');
                 }
+            }
+
+            showMessage(message, type = 'info') {
+                console.log(`[TerrainViewer] ${type.toUpperCase()}: ${message}`);
+                // You can add UI message display here if needed
             }
 
             async generateTerrainFromAddress() {
@@ -1743,8 +1759,14 @@
                 const progressBar = document.getElementById('progressBar');
                 const progressStatus = document.getElementById('progressStatus');
 
-                if (!this.siteData || !this.siteData.coordinates) {
-                    this.showError('Please load site data first using the "Load Site Data" button.');
+                // Check for site coordinates or buildable area coordinates
+                const hasCoordinates = (this.siteData?.coordinates?.length > 0) || 
+                                     (this.siteData?.buildable_area?.coordinates?.length > 0);
+                
+                const hasAddress = this.siteData?.address || this.siteData?.project_address;
+
+                if (!this.siteData || (!hasCoordinates && !hasAddress)) {
+                    this.showError('No site data available. Please create site boundary data in Site Inspector first or ensure project has an address.');
                     return;
                 }
 
