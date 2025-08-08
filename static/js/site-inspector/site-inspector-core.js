@@ -1561,7 +1561,7 @@ class SiteInspectorCore extends BaseManager {
                             'type': 'fill-extrusion',
                             'minzoom': 8,
                             'paint': {
-                                'fill-extrusion-color': '#9a9a9a',
+                                'fill-extrusion-color': '#999999',
                                 'fill-extrusion-height': 15,
                                 'fill-extrusion-base': 0,
                                 'fill-extrusion-opacity': 0.8
@@ -2042,33 +2042,126 @@ class SiteInspectorCore extends BaseManager {
      * @param {number} lng - Longitude of the project location.
      */
     async loadPropertyBoundaries(lat, lng) {
-        if (!this.siteBoundaryCore) {
-            this.warn('SiteBoundaryCore not initialized, cannot load property boundaries.');
-            return;
-        }
-
-        this.info(`Loading property boundaries for location: Lat=${lat}, Lng=${lng}`);
-
         try {
-            const boundaryData = await this.siteBoundaryCore.fetchPropertyBoundaries(lat, lng);
+            this.info('Loading property boundaries for location:', lat, lng);
 
-            if (!boundaryData || !boundaryData.features || boundaryData.features.length === 0) {
-                this.info('No property boundaries found for this location.');
+            const response = await fetch('/api/property-boundaries', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat: lat, lng: lng })
+            });
+
+            if (!response.ok) {
+                this.warn('Property boundaries API returned error:', response.status);
                 return;
             }
 
-            this.info(`Found ${boundaryData.features.length} property boundaries.`);
+            const data = await response.json();
 
-            // Add the boundary data to the map
-            await this.siteBoundaryCore.addBoundaryToMap(boundaryData);
-            this.info('Property boundaries added to the map.');
-
-            // Trigger an event to indicate boundaries are loaded
-            window.eventBus.emit('property-boundaries-loaded', boundaryData);
+            if (data.success && data.properties && data.properties.length > 0) {
+                this.info(`Loaded ${data.properties.length} property boundaries`);
+                this.displayPropertyBoundaries(data.properties, data.containing_property);
+            } else {
+                this.info('No property boundaries found for this location');
+            }
 
         } catch (error) {
-            this.error('Failed to load or display property boundaries:', error);
-            // Optionally show a user-facing error or warning
+            this.error('Error loading property boundaries:', error);
+        }
+    }
+
+    displayPropertyBoundaries(properties, containingProperty) {
+        try {
+            // Create features for all property boundaries
+            const features = properties.map((property, index) => {
+                const isContaining = containingProperty && property.id === containingProperty.id;
+
+                return {
+                    type: 'Feature',
+                    geometry: property.geometry,
+                    properties: {
+                        id: property.id,
+                        type: isContaining ? 'containing-property' : 'nearby-property',
+                        address: property.address || 'Unknown address',
+                        area: property.area || 'Unknown area'
+                    }
+                };
+            });
+
+            // Add property boundaries source
+            if (this.map.getSource('property-boundaries')) {
+                this.map.getSource('property-boundaries').setData({
+                    type: 'FeatureCollection',
+                    features: features
+                });
+            } else {
+                this.map.addSource('property-boundaries', {
+                    type: 'geojson',
+                    data: {
+                        type: 'FeatureCollection',
+                        features: features
+                    }
+                });
+
+                // Add fill layer for property boundaries
+                this.map.addLayer({
+                    id: 'property-boundaries-fill',
+                    type: 'fill',
+                    source: 'property-boundaries',
+                    paint: {
+                        'fill-color': [
+                            'case',
+                            ['==', ['get', 'type'], 'containing-property'],
+                            '#ff9500', // Orange for containing property
+                            '#87ceeb'  // Light blue for nearby properties
+                        ],
+                        'fill-opacity': [
+                            'case',
+                            ['==', ['get', 'type'], 'containing-property'],
+                            0.3, // More visible for containing property
+                            0.15 // More subtle for nearby properties
+                        ]
+                    }
+                });
+
+                // Add stroke layer for property boundaries
+                this.map.addLayer({
+                    id: 'property-boundaries-stroke',
+                    type: 'line',
+                    source: 'property-boundaries',
+                    paint: {
+                        'line-color': [
+                            'case',
+                            ['==', ['get', 'type'], 'containing-property'],
+                            '#ff9500', // Orange for containing property
+                            '#4682b4'  // Steel blue for nearby properties
+                        ],
+                        'line-width': [
+                            'case',
+                            ['==', ['get', 'type'], 'containing-property'],
+                            3, // Thicker line for containing property
+                            2
+                        ],
+                        'line-dasharray': [
+                            'case',
+                            ['==', ['get', 'type'], 'containing-property'],
+                            [5, 5], // Dashed line for containing property
+                            [1, 0]  // Solid line for nearby properties
+                        ],
+                        'line-opacity': 0.8
+                    }
+                });
+            }
+
+            this.info('Property boundaries displayed on map');
+
+            // Show info about containing property if found
+            if (containingProperty) {
+                this.info('Project address is within property:', containingProperty.address || 'Unknown address');
+            }
+
+        } catch (error) {
+            this.error('Error displaying property boundaries:', error);
         }
     }
 }
