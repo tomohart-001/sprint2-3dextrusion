@@ -1333,12 +1333,7 @@ class UIPanelManager extends BaseManager {
             // Reset all UI panels to initial state
             this.resetAllPanelsToInitialState();
 
-            // Update site info display
-            this.updateSiteInfoDisplay({
-                area: 0,
-                area_m2: 0,
-                type: 'residential'
-            });
+            // Site info display will be handled by the core system
 
             // Reset map view to original position if possible
             if (window.siteInspectorCore && window.siteInspectorCore.map) {

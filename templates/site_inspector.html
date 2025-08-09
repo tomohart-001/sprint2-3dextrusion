@@ -499,9 +499,9 @@
 
         /* Minimize Panel Button */
         .minimize-panel-btn {
-            background: linear-gradient(135deg, #6c757d 0%, #545b62 100%);
-            color: white;
-            border: none;
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            border: 1px solid rgba(0, 0, 0, 0.08);
             border-radius: 8px;
             padding: 0;
             font-size: 20px;
@@ -513,11 +513,15 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
         }
         .minimize-panel-btn:hover {
-            background: linear-gradient(135deg, #7a8288 0%, #5f666d 100%);
+            background: rgba(255, 255, 255, 1);
+            border-color: #007cbf;
+            color: #007cbf;
             transform: translateY(-1px);
-            box-shadow: 0 4px 16px rgba(108, 117, 125, 0.3);
+            box-shadow: 0 8px 24px rgba(0, 124, 191, 0.2);
         }
 
         /* Clear Site Inspector Button */
@@ -851,7 +855,7 @@
 
         <div class="panel-content" id="panelContent">
             <!-- Minimize Button -->
-            <div style="margin-bottom: 12px;">
+            <div style="margin-bottom: 12px; display: flex; justify-content: flex-end;">
                 <button id="minimizePanelButton" class="minimize-panel-btn">
                     −
                 </button>
