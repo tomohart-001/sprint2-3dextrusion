@@ -392,7 +392,7 @@ class SiteBoundaryCore extends MapManagerBase {
             try {
                 if (this.map && this.map.isStyleLoaded() && this.draw &&
                     typeof this.draw.changeMode === 'function') {
-                    
+
                     // Ensure draw button is enabled and ready
                     const drawBtn = this.getElementById('drawPolygonButton', false);
                     if (drawBtn) {
@@ -401,7 +401,7 @@ class SiteBoundaryCore extends MapManagerBase {
                         drawBtn.textContent = 'Draw Site Boundary';
                         drawBtn.classList.remove('active');
                     }
-                    
+
                     this.info('Drawing tools enabled and ready');
                     return;
                 }
@@ -1075,7 +1075,7 @@ class SiteBoundaryCore extends MapManagerBase {
             area_m2: metrics.area,
             perimeter: metrics.perimeter,
             edges: metrics.edges,
-            center: { lng: centerLng, lat: centerLat },
+            center: {lng: centerLng, lat: centerLat },
             center_lng: centerLng,
             center_lat: centerLat,
             type: 'residential',
@@ -1439,41 +1439,49 @@ class SiteBoundaryCore extends MapManagerBase {
     }
 
     clearBoundary() {
+        this.info('Clearing site boundary...');
+
         try {
-            this.info('Starting comprehensive boundary clearing...');
+            // Clear drawing state
+            this.resetDrawingState();
 
-            // Clear all visualization layers
-            this.clearDrawingVisualization();
-            this.clearBuildableArea();
-            this.clearBoundaryLayers();
+            // Clear polygon data
+            this.sitePolygon = null;
+            this.polygonEdges = [];
+            this.buildableAreaData = null;
+            this.isLocked = false;
 
-            // Reset internal state
-            this.resetBoundaryState();
+            // Clear all visual elements
+            this.clearAllVisualizationLayers();
 
-            // Reset UI to initial state
-            this.updateUI();
-
-            // Force reset the drawing button state
-            this.updateButtonState('drawPolygonButton', 'inactive', 'Draw Site Boundary');
-
-            // Clear the boundary info display
+            // Reset UI and ensure draw button is enabled
+            this.updateButtonStates(false, false);
             this.setElementDisplay('boundaryInfoDisplay', 'none');
 
+            // Explicitly re-enable the draw button after clearing
+            const drawBtn = this.getElementById('drawPolygonButton', false);
+            if (drawBtn && this.map && this.draw) {
+                drawBtn.disabled = false;
+                drawBtn.style.opacity = '1';
+                drawBtn.textContent = 'Draw Site Boundary';
+                drawBtn.classList.remove('active');
+            }
+
             // Emit clearing events
-            this.emitClearingEvents();
+            this.emit('site-boundary-deleted');
+            this.emit('clear-all-dependent-features');
 
-            // Reset UI panels to initial state
-            setTimeout(() => {
-                const uiManager = window.siteInspectorCore?.uiPanelManager;
-                if (uiManager && uiManager.resetAllPanelStates) {
-                    uiManager.resetAllPanelStates();
-                }
-            }, 100);
+            this.info('Site boundary cleared successfully');
 
-            this.info('Site boundary cleared completely - ready for new boundary');
         } catch (error) {
-            this.error('Error clearing boundary:', error);
+            this.error('Error clearing site boundary:', error);
         }
+    }
+
+    clearAllVisualizationLayers() {
+        this.clearDrawingVisualization();
+        this.clearBuildableArea();
+        this.clearBoundaryLayers();
     }
 
     clearBoundaryLayers() {
@@ -1530,7 +1538,7 @@ class SiteBoundaryCore extends MapManagerBase {
     updateUI() {
         this.setElementDisplay('boundaryInfoDisplay', 'none');
         this.updateButtonStates(false, false);
-        
+
         // Ensure draw button is enabled and ready for new boundary
         const drawBtn = this.getElementById('drawPolygonButton', false);
         if (drawBtn && this.map && this.draw) {
@@ -2005,7 +2013,7 @@ class SiteBoundaryCore extends MapManagerBase {
             area_m2: metrics.area,
             perimeter: metrics.perimeter,
             edges: metrics.edges,
-            center: { lng: centerLng, lat: centerLat },
+            center: {lng: centerLng, lat: centerLat },
             center_lng: centerLng,
             center_lat: centerLat,
             type: 'residential',
