@@ -320,14 +320,35 @@ class SiteBoundaryCore extends MapManagerBase {
     }
 
     validateDrawingReadiness() {
-        if (!this.map || !this.map.isStyleLoaded()) {
+        if (!this.map) {
+            this.showUserError('Map is not available. Please refresh the page.');
+            return false;
+        }
+        
+        if (!this.map.isStyleLoaded()) {
             this.showUserError('Map is still loading. Please wait a moment and try again.');
             return false;
         }
-        if (!this.draw || typeof this.draw.changeMode !== 'function') {
-            this.showUserError('Drawing tools are not ready. Please refresh the page.');
+        
+        if (!this.draw) {
+            this.showUserError('Drawing tools are not initialized. Please refresh the page.');
             return false;
         }
+        
+        if (typeof this.draw.changeMode !== 'function') {
+            this.showUserError('Drawing tools are not properly configured. Please refresh the page.');
+            return false;
+        }
+        
+        // Check if the draw control is actually added to the map
+        try {
+            const currentMode = this.draw.getMode();
+            this.debug('Current draw mode:', currentMode);
+        } catch (error) {
+            this.showUserError('Drawing control is not properly connected to the map. Please refresh the page.');
+            return false;
+        }
+        
         return true;
     }
 
@@ -341,6 +362,16 @@ class SiteBoundaryCore extends MapManagerBase {
         if (!this.validateDrawingReadiness()) return;
         try {
             this.info('Starting drawing mode...');
+            
+            // More robust validation
+            if (!this.draw) {
+                throw new Error('MapboxDraw instance not available');
+            }
+            
+            if (typeof this.draw.changeMode !== 'function') {
+                throw new Error('MapboxDraw not properly initialized - changeMode method missing');
+            }
+
             this.clearDrawingVisualization();
             this.drawingPoints = [];
             this.safeDeleteAllFeatures();
@@ -350,17 +381,32 @@ class SiteBoundaryCore extends MapManagerBase {
 
             this.setupDrawingPreview();
 
+            // Verify map is ready before changing mode
+            if (!this.map.isStyleLoaded()) {
+                throw new Error('Map style not loaded - please wait and try again');
+            }
+
             this.draw.changeMode('draw_polygon');
+            
             setTimeout(() => {
                 try {
                     const mode = this.draw.getMode?.();
-                    if (mode !== 'draw_polygon') this.warn('Draw mode not active. Current:', mode);
-                } catch (_) {}
+                    if (mode !== 'draw_polygon') {
+                        this.warn('Draw mode not active. Current:', mode);
+                        // Try to force the mode again
+                        this.draw.changeMode('draw_polygon');
+                    }
+                } catch (modeError) {
+                    this.warn('Could not verify or set draw mode:', modeError);
+                }
             }, 100);
+            
+            this.info('Drawing mode started successfully');
         } catch (error) {
             this.error('Failed to start drawing mode:', error);
             this.resetDrawingState();
-            this.showUserError('Failed to start drawing mode: ' + (error.message || 'Unknown error'));
+            const errorMessage = error.message || 'Drawing tools not properly initialized. Please refresh the page.';
+            this.showUserError('Failed to start drawing mode: ' + errorMessage);
         }
     }
 
