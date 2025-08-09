@@ -23,6 +23,13 @@ if (typeof DrawStructureManager === 'undefined') {
         constructor(map, floorplanManager) {
             super('DrawStructureManager');
 
+            if (!map) {
+                throw new Error('Map instance is required for DrawStructureManager');
+            }
+            if (!floorplanManager) {
+                throw new Error('FloorplanManager instance is required for DrawStructureManager');
+            }
+
             this.map = map;
             this.floorplanManager = floorplanManager;
             this.draw = null;
@@ -35,10 +42,10 @@ if (typeof DrawStructureManager === 'undefined') {
                 currentDrawMode: null
             };
 
-            // Event handlers
-            this.handleDrawingClick = null;
-            this.handleDrawingMouseMove = null;
-            this.handleDrawingUpdate = null;
+            // Event handlers - will be bound in setupDrawingPreview
+            this.boundHandleDrawingClick = null;
+            this.boundHandleDrawingMouseMove = null;
+            this.boundHandleDrawingUpdate = null;
         }
 
         async initialize() {
@@ -257,27 +264,27 @@ if (typeof DrawStructureManager === 'undefined') {
 
         setupDrawingPreview() {
             // Add map click listener for adding points
-            this.handleDrawingClick = this.handleDrawingClick.bind(this);
-            this.handleDrawingMouseMove = this.handleDrawingMouseMove.bind(this);
-            this.handleDrawingUpdate = this.handleDrawingUpdate.bind(this);
+            this.boundHandleDrawingClick = this.handleDrawingClick.bind(this);
+            this.boundHandleDrawingMouseMove = this.handleDrawingMouseMove.bind(this);
+            this.boundHandleDrawingUpdate = this.handleDrawingUpdate.bind(this);
 
-            this.map.on('click', this.handleDrawingClick);
-            this.map.on('mousemove', this.handleDrawingMouseMove);
-            this.map.on('draw.update', this.handleDrawingUpdate);
+            this.map.on('click', this.boundHandleDrawingClick);
+            this.map.on('mousemove', this.boundHandleDrawingMouseMove);
+            this.map.on('draw.update', this.boundHandleDrawingUpdate);
 
             this.info('Drawing preview listeners set up');
         }
 
         removeDrawingPreview() {
             try {
-                if (this.handleDrawingClick) {
-                    this.map.off('click', this.handleDrawingClick);
+                if (this.boundHandleDrawingClick) {
+                    this.map.off('click', this.boundHandleDrawingClick);
                 }
-                if (this.handleDrawingMouseMove) {
-                    this.map.off('mousemove', this.handleDrawingMouseMove);
+                if (this.boundHandleDrawingMouseMove) {
+                    this.map.off('mousemove', this.boundHandleDrawingMouseMove);
                 }
-                if (this.handleDrawingUpdate) {
-                    this.map.off('draw.update', this.handleDrawingUpdate);
+                if (this.boundHandleDrawingUpdate) {
+                    this.map.off('draw.update', this.boundHandleDrawingUpdate);
                 }
                 this.info('Drawing preview listeners removed');
             } catch (error) {

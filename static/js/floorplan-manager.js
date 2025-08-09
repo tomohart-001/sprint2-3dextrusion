@@ -224,7 +224,7 @@ if (typeof FloorplanManager === 'undefined') {
 
     toggleDrawingMode() {
         this.info('toggleDrawingMode called - checking draw control availability');
-        
+
         if (this.drawStructureManager) {
             this.info(this.isDrawingActive() ? 'Currently drawing - stopping drawing mode' : 'Not currently drawing - starting drawing mode');
             this.drawStructureManager.toggleDrawing();
@@ -323,25 +323,28 @@ if (typeof FloorplanManager === 'undefined') {
 
             try {
                 this.isDrawing = false;
-                this.state.currentDrawMode = null;
+                this.state.isDrawing = false;
+                this.state.drawingPoints = [];
+                this.removeDrawingPreview();
+                this.clearDrawingVisualization();
 
-                try {
-                    if (typeof this.draw.changeMode === 'function') {
+                // Safely change draw mode back to simple_select
+                if (this.draw && typeof this.draw.changeMode === 'function') {
+                    try {
                         const currentMode = this.draw.getMode();
                         if (currentMode !== 'simple_select') {
                             this.draw.changeMode('simple_select');
-                            this.info('Draw mode reset to simple_select (fallback)');
                         }
+                    } catch (modeError) {
+                        this.warn('Could not change draw mode:', modeError);
                     }
-                } catch (modeError) {
-                    this.warn('Could not change draw mode (fallback):', modeError);
                 }
 
-                this.clearStructureDrawingFeatures(); // Clear structure specific features
-                this.updateDrawingUI(false);
-                this.info('Structure drawing mode stopped (fallback)');
+                this.info('Structure drawing mode stopped - site boundary preserved');
             } catch (error) {
-                this.error('Failed to stop drawing mode (fallback):', error);
+                this.error('Failed to stop structure drawing mode:', error);
+                // Still try to reset state even if there's an error
+                this.resetDrawingState();
             }
         }
     }
