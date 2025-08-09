@@ -176,6 +176,10 @@ class MapFeaturesManager extends BaseManager {
                                 }
                             }, 500);
                         }
+
+                        // Restore all other layers and features
+                        this.restoreAllLayers();
+
                     } catch (error) {
                         this.error('Error restoring features after style change:', error);
                     }
@@ -183,6 +187,116 @@ class MapFeaturesManager extends BaseManager {
             });
 
             this.info('Map style changed to:', fullStyleUrl);
+        }
+    }
+
+    restoreAllLayers() {
+        this.info('Restoring all layers after style change...');
+
+        try {
+            // Get the site inspector core to restore layers
+            const siteInspectorCore = window.siteInspectorCore;
+            if (!siteInspectorCore) {
+                this.warn('Site inspector core not available for layer restoration');
+                return;
+            }
+
+            // Restore site boundary
+            const siteBoundaryCore = siteInspectorCore.siteBoundaryCore;
+            if (siteBoundaryCore && siteBoundaryCore.sitePolygon) {
+                this.info('Restoring site boundary...');
+                siteBoundaryCore.setupDrawingSources();
+                siteBoundaryCore.setupDrawingLayers();
+                
+                // Re-display the final boundary
+                const coordinates = siteBoundaryCore.sitePolygon.geometry.coordinates[0];
+                if (coordinates && coordinates.length > 0) {
+                    siteBoundaryCore.showFinalBoundary(coordinates);
+                    siteBoundaryCore.showFinalDimensions(coordinates);
+                }
+            }
+
+            // Restore property setbacks and buildable area
+            const propertySetbacksManager = siteInspectorCore.propertySetbacksManager;
+            if (propertySetbacksManager && propertySetbacksManager.currentBuildableArea) {
+                this.info('Restoring buildable area...');
+                propertySetbacksManager.setupSources();
+                propertySetbacksManager.setupLayers();
+                
+                // Re-display buildable area
+                const buildableData = propertySetbacksManager.currentBuildableArea;
+                if (buildableData.buildable_coords && buildableData.buildable_coords.length > 0) {
+                    siteBoundaryCore.updateBuildableAreaDisplay(buildableData, false);
+                    
+                    // Restore buildable area dimensions if they exist
+                    if (propertySetbacksManager.currentBuildableArea.buildable_coords) {
+                        propertySetbacksManager.generateBuildableAreaDimensions(
+                            propertySetbacksManager.currentBuildableArea.buildable_coords
+                        );
+                    }
+                }
+            }
+
+            // Restore structure footprint/floorplan
+            const floorplanManager = siteInspectorCore.floorplanManager;
+            if (floorplanManager && floorplanManager.currentStructure) {
+                this.info('Restoring structure footprint...');
+                
+                // Re-initialize floorplan manager sources and layers
+                if (typeof floorplanManager.initializeMapSources === 'function') {
+                    floorplanManager.initializeMapSources();
+                }
+                if (typeof floorplanManager.initializeMapLayers === 'function') {
+                    floorplanManager.initializeMapLayers();
+                }
+                
+                // Re-display the structure
+                const structureGeometry = floorplanManager.currentStructure.geometry;
+                if (structureGeometry && structureGeometry.coordinates && structureGeometry.coordinates[0]) {
+                    if (typeof floorplanManager.displayStructureOnMap === 'function') {
+                        floorplanManager.displayStructureOnMap(floorplanManager.currentStructure);
+                    }
+                }
+            }
+
+            // Restore 3D extrusions
+            const extrusion3DManager = siteInspectorCore.extrusion3DManager;
+            if (extrusion3DManager && extrusion3DManager.hasActiveExtrusions()) {
+                this.info('Restoring 3D extrusions...');
+                
+                // Re-add the extrusions source and layer
+                if (!this.map.getSource('building-extrusions')) {
+                    this.map.addSource('building-extrusions', {
+                        type: 'geojson',
+                        data: {
+                            type: 'FeatureCollection',
+                            features: []
+                        }
+                    });
+                }
+
+                if (!this.map.getLayer('building-extrusion-layer')) {
+                    this.map.addLayer({
+                        id: 'building-extrusion-layer',
+                        type: 'fill-extrusion',
+                        source: 'building-extrusions',
+                        paint: {
+                            'fill-extrusion-color': ['get', 'color'],
+                            'fill-extrusion-height': ['get', 'height'],
+                            'fill-extrusion-base': ['get', 'base'],
+                            'fill-extrusion-opacity': ['get', 'opacity']
+                        }
+                    });
+                }
+
+                // Update the source with existing extrusions
+                extrusion3DManager.updateExtrusionsSource();
+            }
+
+            this.info('Layer restoration completed');
+
+        } catch (error) {
+            this.error('Error restoring layers after style change:', error);
         }
     }
 

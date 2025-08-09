@@ -1,6 +1,6 @@
 /**
  * Dashboard Core JavaScript Module
- * 
+ *
  * Handles main dashboard functionality including:
  * - Search functionality
  * - Project filtering
@@ -15,6 +15,15 @@ class DashboardManager extends BaseManager {
         super('DashboardManager');
         this.searchTimeout = null;
         this.initialized = false;
+
+        // AbortControllers to easily remove listeners on re-init
+        this.searchAbort = null;
+        this.dropdownAbort = null;
+        this.globalAbort = null;
+
+        // Modal state
+        this.pendingDeleteProjectId = null;
+        this.pendingDeleteProjectName = null;
     }
 
     /**
@@ -34,10 +43,10 @@ class DashboardManager extends BaseManager {
             this.setupTeamManagement();
             this.setupEventListeners();
             this.setupDeleteModal();
+            this.setupProjectCardOpenHandler();
 
             this.initialized = true;
             this.info('Dashboard initialization complete');
-
         } catch (error) {
             this.error('Failed to initialize dashboard', error);
             throw error;
@@ -45,57 +54,52 @@ class DashboardManager extends BaseManager {
     }
 
     /**
-     * Setup search functionality with debouncing
+     * Setup search functionality with debouncing (no cloneNode hack)
      */
     setupSearchFunctionality() {
-        const searchInput = document.getElementById('projectSearch');
-        if (!searchInput) {
+        const input = document.getElementById('projectSearch');
+        if (!input) {
             this.warn('Search input not found');
             return;
         }
 
-        // Remove any existing event listeners to prevent conflicts
-        const newSearchInput = searchInput.cloneNode(true);
-        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+        // Clean prior listeners
+        if (this.searchAbort) this.searchAbort.abort();
+        this.searchAbort = new AbortController();
 
         const handleSearch = this.debounce((e) => {
-            const searchTerm = e.target.value.toLowerCase().trim();
+            const searchTerm = (e.target.value || '').toLowerCase().trim();
             this.filterProjects(searchTerm);
-
-            // Also filter the table if it exists
-            if (window.dashboardTableManager) {
+            if (window.dashboardTableManager?.filterTable) {
                 window.dashboardTableManager.filterTable(searchTerm);
             }
         }, 300);
 
         const handleKeydown = (e) => {
             if (e.key === 'Escape') {
-                newSearchInput.value = '';
+                input.value = '';
                 this.filterProjects('');
-                if (window.dashboardTableManager) {
+                if (window.dashboardTableManager?.clearTableFilter) {
                     window.dashboardTableManager.clearTableFilter();
                 }
             }
         };
 
-        newSearchInput.addEventListener('input', handleSearch);
-        newSearchInput.addEventListener('keydown', handleKeydown);
+        input.addEventListener('input', handleSearch, { signal: this.searchAbort.signal });
+        input.addEventListener('keydown', handleKeydown, { signal: this.searchAbort.signal });
 
         this.debug('Search functionality initialized successfully');
     }
 
     /**
-     * Debounce utility function
+     * Debounce utility that preserves the instance context
      */
     debounce(func, wait) {
         let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func.apply(this, args);
-            };
+        const ctx = this;
+        return (...args) => {
             clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
+            timeout = setTimeout(() => func.apply(ctx, args), wait);
         };
     }
 
@@ -103,27 +107,29 @@ class DashboardManager extends BaseManager {
      * Filter project list based on search input
      */
     filterProjects(searchTerm) {
-        const projectCards = document.querySelectorAll('.project-card');
+        const cards = document.querySelectorAll('.project-card');
         let visibleCount = 0;
 
-        projectCards.forEach(card => {
-            const projectTitle = card.querySelector('.project-card-title');
-            const projectMeta = card.querySelector('.project-card-meta');
-            const projectStatus = card.querySelector('.project-card-status');
+        cards.forEach(card => {
+            const titleEl = card.querySelector('.project-card-title');
+            const metaEl = card.querySelector('.project-card-meta');
+            const statusEl = card.querySelector('.project-card-status');
 
-            if (!projectTitle || !projectMeta || !projectStatus) return;
+            if (!titleEl || !metaEl || !statusEl) return;
 
-            const titleText = projectTitle.textContent.toLowerCase();
-            const metaText = projectMeta.textContent.toLowerCase();
-            const statusText = projectStatus.textContent.toLowerCase();
+            const titleText = (titleEl.textContent || '').toLowerCase();
+            const metaText = (metaEl.textContent || '').toLowerCase();
+            const statusText = (statusEl.textContent || '').toLowerCase();
 
-            const isMatch = searchTerm === '' ||
-                          titleText.includes(searchTerm) ||
-                          metaText.includes(searchTerm) ||
-                          statusText.includes(searchTerm);
+            const isMatch =
+                searchTerm === '' ||
+                titleText.includes(searchTerm) ||
+                metaText.includes(searchTerm) ||
+                statusText.includes(searchTerm);
 
             if (isMatch) {
-                card.style.display = 'block';
+                // Prefer resetting to default display to play nice with CSS layouts
+                card.style.display = '';
                 visibleCount++;
 
                 if (searchTerm !== '') {
@@ -131,63 +137,69 @@ class DashboardManager extends BaseManager {
                     card.style.border = '2px solid #547bf7';
                 } else {
                     card.style.backgroundColor = '';
-                    card.style.border = '1px solid #e2e8f0';
+                    card.style.border = '';
                 }
             } else {
                 card.style.display = 'none';
             }
         });
 
-        this.debug(`Search filtered projects: ${visibleCount} visible of ${projectCards.length} total`);
+        this.debug(`Search filtered projects: ${visibleCount} visible of ${cards.length} total`);
     }
 
     /**
-     * Setup user profile dropdown functionality
+     * Setup user profile dropdown functionality (single listener set)
      */
     setupUserDropdown() {
-        const userProfileDropdownToggle = document.getElementById('userProfileDropdownToggle');
-        const userProfileDropdownMenu = document.getElementById('userProfileDropdownMenu');
+        const toggle = document.getElementById('userProfileDropdownToggle');
+        const menu = document.getElementById('userProfileDropdownMenu');
 
-        if (!userProfileDropdownToggle || !userProfileDropdownMenu) {
+        if (!toggle || !menu) {
             this.warn('User dropdown elements not found');
             return;
         }
 
-        // Toggle dropdown on click
-        userProfileDropdownToggle.addEventListener('click', (e) => {
+        // Clean prior listeners
+        if (this.dropdownAbort) this.dropdownAbort.abort();
+        this.dropdownAbort = new AbortController();
+        const { signal } = this.dropdownAbort;
+
+        const closeAll = () => {
+            document.querySelectorAll('.user-dropdown-menu.show').forEach(m => m.classList.remove('show'));
+            document.querySelectorAll('.user-dropdown-toggle.active').forEach(t => t.classList.remove('active'));
+        };
+
+        const onToggleClick = (e) => {
             e.preventDefault();
             e.stopPropagation();
-
-            const isCurrentlyVisible = userProfileDropdownMenu.classList.contains('show');
-
-            // Close all other dropdowns first
-            document.querySelectorAll('.user-dropdown-menu.show').forEach(menu => {
-                menu.classList.remove('show');
-            });
-            document.querySelectorAll('.user-dropdown-toggle.active').forEach(toggle => {
-                toggle.classList.remove('active');
-            });
-
-            // Toggle current dropdown
-            if (!isCurrentlyVisible) {
-                userProfileDropdownToggle.classList.add('active');
-                userProfileDropdownMenu.classList.add('show');
+            const isVisible = menu.classList.contains('show');
+            closeAll();
+            if (!isVisible) {
+                toggle.classList.add('active');
+                menu.classList.add('show');
+                // Focus first focusable item for a11y if present
+                const first = menu.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                first?.focus?.();
             }
-        });
+        };
 
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!userProfileDropdownToggle.contains(e.target) &&
-                !userProfileDropdownMenu.contains(e.target)) {
-                userProfileDropdownToggle.classList.remove('active');
-                userProfileDropdownMenu.classList.remove('show');
+        const onDocClick = (e) => {
+            if (!toggle.contains(e.target) && !menu.contains(e.target)) {
+                closeAll();
             }
-        });
+        };
 
-        // Prevent dropdown from closing when clicking inside
-        userProfileDropdownMenu.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
+        const onKeydown = (e) => {
+            if (e.key === 'Escape') {
+                closeAll();
+                toggle.focus?.();
+            }
+        };
+
+        toggle.addEventListener('click', onToggleClick, { signal });
+        document.addEventListener('click', onDocClick, { signal });
+        document.addEventListener('keydown', onKeydown, { signal });
+        menu.addEventListener('click', (e) => e.stopPropagation(), { signal });
 
         this.debug('User dropdown functionality initialized');
     }
@@ -205,43 +217,29 @@ class DashboardManager extends BaseManager {
      */
     async updateTeamMenuName() {
         try {
-            const response = await fetch('/api/get-team-name');
-            const data = await response.json();
+            const resp = await fetch('/api/get-team-name');
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
 
             const teamMenuText = document.getElementById('teamMenuText');
             const teamMenuItem = document.getElementById('teamMenuItem');
             const fileFilterSelect = document.getElementById('fileFilterSelect');
 
-            if (data && data.success && data.team_name) {
-                if (teamMenuText) {
-                    teamMenuText.textContent = data.team_name;
-                    teamMenuText.title = data.team_name;
-                    this.debug(`Team menu updated with name: ${data.team_name}`);
-                }
-                if (teamMenuItem) {
-                    teamMenuItem.style.display = 'flex';
-                }
-                if (fileFilterSelect) {
-                    fileFilterSelect.style.display = 'block';
-                }
+            if (data?.success && data.team_name) {
+                teamMenuText && (teamMenuText.textContent = data.team_name, teamMenuText.title = data.team_name);
+                if (teamMenuItem) teamMenuItem.style.display = 'flex';
+                if (fileFilterSelect) fileFilterSelect.style.display = 'block';
+                this.debug(`Team menu updated with name: ${data.team_name}`);
             } else {
-                if (teamMenuItem) {
-                    teamMenuItem.style.display = 'none';
-                }
-                if (fileFilterSelect) {
-                    fileFilterSelect.style.display = 'none';
-                }
+                if (teamMenuItem) teamMenuItem.style.display = 'none';
+                if (fileFilterSelect) fileFilterSelect.style.display = 'none';
             }
         } catch (error) {
             this.warn('Could not load team name', error);
             const teamMenuItem = document.getElementById('teamMenuItem');
             const fileFilterSelect = document.getElementById('fileFilterSelect');
-            if (teamMenuItem) {
-                teamMenuItem.style.display = 'none';
-            }
-            if (fileFilterSelect) {
-                fileFilterSelect.style.display = 'none';
-            }
+            if (teamMenuItem) teamMenuItem.style.display = 'none';
+            if (fileFilterSelect) fileFilterSelect.style.display = 'none';
         }
     }
 
@@ -249,49 +247,51 @@ class DashboardManager extends BaseManager {
      * Setup team creation modal
      */
     setupTeamModal() {
-        const teamSetupModal = document.getElementById('teamSetupModal');
-        const closeTeamSetup = document.getElementById('closeTeamSetup');
-        const teamSetupForm = document.getElementById('teamSetupForm');
+        const modal = document.getElementById('teamSetupModal');
+        const closeBtn = document.getElementById('closeTeamSetup');
+        const form = document.getElementById('teamSetupForm');
 
-        if (closeTeamSetup) {
-            closeTeamSetup.addEventListener('click', () => {
-                teamSetupModal.style.display = 'none';
-            });
+        if (!modal) {
+            this.debug('No team setup modal on this page');
+            return;
         }
 
-        if (teamSetupForm) {
-            teamSetupForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
+        closeBtn?.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
 
-                const formData = new FormData(teamSetupForm);
-                const teamData = {
-                    teamName: formData.get('teamName'),
-                    teamDescription: '',
-                    teamSize: formData.get('teamSize')
-                };
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.style.display === 'block') {
+                modal.style.display = 'none';
+            }
+        });
 
-                try {
-                    const response = await fetch('/api/setup-team', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(teamData)
-                    });
+        form?.addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-                    if (response.ok) {
-                        teamSetupModal.style.display = 'none';
-                        this.updateTeamMenuName();
-                        location.reload();
-                    } else {
-                        throw new Error('Team setup failed');
-                    }
-                } catch (error) {
-                    this.error('Team setup failed', error);
-                    alert('Failed to create team. Please try again.');
-                }
-            });
-        }
+            const fd = new FormData(form);
+            const payload = {
+                teamName: fd.get('teamName'),
+                teamDescription: '',
+                teamSize: fd.get('teamSize')
+            };
+
+            try {
+                const response = await fetch('/api/setup-team', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                modal.style.display = 'none';
+                await this.updateTeamMenuName();
+                location.reload();
+            } catch (error) {
+                this.error('Team setup failed', error);
+                alert('Failed to create team. Please try again.');
+            }
+        });
 
         this.debug('Team modal functionality initialized');
     }
@@ -306,9 +306,14 @@ class DashboardManager extends BaseManager {
             return;
         }
 
-        // Close modal when clicking outside
+        // Close modal when clicking overlay background
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
+            if (e.target === modal) this.closeDeleteModal();
+        });
+
+        // ESC closes
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isModalOpen(modal)) {
                 this.closeDeleteModal();
             }
         });
@@ -317,22 +322,111 @@ class DashboardManager extends BaseManager {
     }
 
     /**
+     * Helper: is modal visible
+     */
+    isModalOpen(modal) {
+        return modal && (modal.classList.contains('show') || modal.style.display === 'flex' || modal.style.display === 'block');
+    }
+
+    /**
+     * Helper: show/hide delete modal with consistent styling
+     */
+    showDeleteModal(projectName) {
+        const modal = document.getElementById('deleteProjectModal');
+        if (!modal) return;
+
+        const deleteNameSpan = document.getElementById('deleteProjectName');
+        if (deleteNameSpan) deleteNameSpan.textContent = projectName;
+
+        // Keep your existing inline styling approach for compatibility
+        modal.classList.add('modal-overlay', 'show');
+        modal.style.display = 'flex';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100vw';
+        modal.style.height = '100vh';
+        modal.style.zIndex = '9999';
+        modal.style.justifyContent = 'center';
+        modal.style.alignItems = 'center';
+        modal.style.background = 'rgba(0, 0, 0, 0.6)';
+        modal.style.opacity = '1';
+        modal.style.visibility = 'visible';
+
+        const modalContent = modal.querySelector('.modal');
+        if (modalContent) {
+            modalContent.style.display = 'block';
+            modalContent.style.transform = 'translateY(0)';
+            modalContent.style.opacity = '1';
+            modalContent.style.zIndex = '10001';
+            modalContent.style.position = 'relative';
+            modalContent.style.background = 'white';
+            modalContent.style.borderRadius = '16px';
+            modalContent.style.maxWidth = '520px';
+            modalContent.style.width = '90%';
+            modalContent.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.15)';
+        }
+    }
+
+    closeDeleteModal() {
+        const modal = document.getElementById('deleteProjectModal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.style.justifyContent = '';
+            modal.style.alignItems = '';
+            modal.style.position = '';
+            modal.style.top = '';
+            modal.style.left = '';
+            modal.style.width = '';
+            modal.style.height = '';
+            modal.style.zIndex = '';
+            modal.style.background = '';
+            modal.style.opacity = '';
+            modal.style.visibility = '';
+            modal.classList.remove('show', 'modal-overlay');
+
+            const modalContent = modal.querySelector('.modal');
+            if (modalContent) {
+                modalContent.style.display = '';
+                modalContent.style.transform = '';
+                modalContent.style.opacity = '';
+                modalContent.style.zIndex = '';
+                modalContent.style.position = '';
+                modalContent.style.background = '';
+                modalContent.style.borderRadius = '';
+                modalContent.style.maxWidth = '';
+                modalContent.style.width = '';
+                modalContent.style.boxShadow = '';
+            }
+        }
+        this.pendingDeleteProjectId = null;
+        this.pendingDeleteProjectName = null;
+    }
+
+    /**
      * Setup additional event listeners
      */
     setupEventListeners() {
+        // Clean previous global listeners
+        if (this.globalAbort) this.globalAbort.abort();
+        this.globalAbort = new AbortController();
+        const { signal } = this.globalAbort;
+
         // Project visibility radio button handling
         const visibilityRadios = document.querySelectorAll('input[name="projectVisibility"]');
         const teamMembersGroup = document.getElementById('teamMembersGroup');
+        const teamMembersInput = document.getElementById('teamMembers');
 
         visibilityRadios.forEach(radio => {
-            radio.addEventListener('change', function() {
+            radio.addEventListener('change', function () {
+                if (!teamMembersGroup) return;
                 if (this.value === 'team') {
                     teamMembersGroup.style.display = 'block';
                 } else {
                     teamMembersGroup.style.display = 'none';
-                    document.getElementById('teamMembers').value = '';
+                    if (teamMembersInput) teamMembersInput.value = '';
                 }
-            });
+            }, { signal });
         });
 
         this.debug('Additional event listeners initialized');
@@ -351,34 +445,33 @@ class DashboardManager extends BaseManager {
         }
 
         if (!projects || projects.length === 0) {
-            if (noProjectsMessage) {
-                noProjectsMessage.style.display = 'flex';
-            }
+            if (noProjectsMessage) noProjectsMessage.style.display = 'flex';
+            container.innerHTML = '';
             this.debug('No recent projects to display');
             return;
         }
 
-        if (noProjectsMessage) {
-            noProjectsMessage.style.display = 'none';
-        }
+        if (noProjectsMessage) noProjectsMessage.style.display = 'none';
 
         const recentProjects = projects
             .sort((a, b) => new Date(b.modified || b.created || 0) - new Date(a.modified || a.created || 0))
             .slice(0, 5);
 
-        const projectCards = recentProjects.map(project => {
-            const projectType = this.getProjectTypeClass(project.type || project.status);
-            const icon = this.getProjectIcon(project.type || project.status);
-            const projectName = project.name || 'Untitled Project';
+        const html = recentProjects.map(project => {
+            const type = project.type || project.status;
+            const projectType = this.getProjectTypeClass(type);
+            const icon = this.getProjectIcon(type);
+            const projectName = this.escapeHtml(project.name || 'Untitled Project');
             const modifiedDate = project.modified || project.created || new Date().toISOString();
+            const safeId = this.escapeHtml(String(project.id));
 
             return `
-                <div class="project-card" onclick="openProject(${project.id})" style="cursor: pointer;">
+                <div class="project-card" data-project-id="${safeId}" style="cursor: pointer;">
                     <div class="project-card-header ${projectType}">
                         <div class="project-card-icon">${icon}</div>
                     </div>
                     <div class="project-card-content">
-                        <h4 class="project-card-title">${this.escapeHtml(projectName)}</h4>
+                        <h4 class="project-card-title">${projectName}</h4>
                         <p class="project-card-meta">Modified: ${this.formatDate(modifiedDate)}</p>
                         <span class="project-card-status ${project.status || 'active'}">${this.getStatusText(project.status || 'active')}</span>
                     </div>
@@ -386,8 +479,28 @@ class DashboardManager extends BaseManager {
             `;
         }).join('');
 
-        container.innerHTML = projectCards;
+        container.innerHTML = html;
         this.debug(`Populated ${recentProjects.length} recent projects`);
+    }
+
+    /**
+     * Delegated click handler for recent project cards
+     */
+    setupProjectCardOpenHandler() {
+        const container = document.getElementById('recentProjectsContainer');
+        if (!container) return;
+
+        // Remove previous to avoid duplication
+        container.replaceWith(container.cloneNode(true));
+        const fresh = document.getElementById('recentProjectsContainer');
+        if (!fresh) return;
+
+        fresh.addEventListener('click', (e) => {
+            const card = e.target.closest('.project-card');
+            if (!card) return;
+            const projectId = card.getAttribute('data-project-id');
+            if (projectId) openProject(projectId);
+        });
     }
 
     /**
@@ -396,11 +509,11 @@ class DashboardManager extends BaseManager {
     async loadAllProjects() {
         try {
             this.debug('Loading user projects from API...');
-
             const response = await fetch('/api/get-user-projects');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
 
-            if (data && data.success && Array.isArray(data.projects)) {
+            if (data?.success && Array.isArray(data.projects)) {
                 this.debug(`Loaded ${data.projects.length} projects`);
                 return data.projects;
             } else {
@@ -421,15 +534,12 @@ class DashboardManager extends BaseManager {
             this.debug('Refreshing project lists from server...');
             const projects = await this.loadAllProjects();
 
-            // Update recent projects
             this.populateRecentProjects(projects);
 
-            // Update table if dashboard table manager exists
-            if (window.dashboardTableManager) {
+            if (window.dashboardTableManager?.loadInitialData) {
                 await window.dashboardTableManager.loadInitialData();
             }
 
-            // Update project counter
             this.updateProjectCounter(projects.length);
 
             this.debug(`Project lists refreshed successfully with ${projects.length} projects`);
@@ -439,7 +549,7 @@ class DashboardManager extends BaseManager {
     }
 
     /**
-     * Delete project functionality
+     * Delete project: show modal and store state
      */
     async deleteProject(projectId) {
         // Prevent multiple simultaneous delete requests
@@ -448,94 +558,14 @@ class DashboardManager extends BaseManager {
             return;
         }
 
-        this.debug(`Delete requested for project ${projectId}`);
-        const row = document.querySelector(`tr[data-project-id="${projectId}"]`);
-        const projectName = row ? row.querySelector('.project-name-cell a').textContent : 'this project';
+        const row = document.querySelector(`tr[data-project-id="${CSS.escape(String(projectId))}"]`);
+        const projectName = row ? (row.querySelector('.project-name-cell a')?.textContent || 'this project') : 'this project';
 
-        // Store the project details for the modal
         this.pendingDeleteProjectId = projectId;
         this.pendingDeleteProjectName = projectName;
 
-        // Update modal content and show it
-        const deleteNameSpan = document.getElementById('deleteProjectName');
-        const modal = document.getElementById('deleteProjectModal');
-
-        if (deleteNameSpan && modal) {
-            deleteNameSpan.textContent = projectName;
-            
-            // Show modal with proper overlay class
-            modal.classList.add('modal-overlay', 'show');
-            modal.style.display = 'flex';
-            modal.style.position = 'fixed';
-            modal.style.top = '0';
-            modal.style.left = '0';
-            modal.style.width = '100vw';
-            modal.style.height = '100vh';
-            modal.style.zIndex = '9999';
-            modal.style.justifyContent = 'center';
-            modal.style.alignItems = 'center';
-            modal.style.background = 'rgba(0, 0, 0, 0.6)';
-            modal.style.opacity = '1';
-            modal.style.visibility = 'visible';
-            
-            // Force modal content to be visible
-            const modalContent = modal.querySelector('.modal');
-            if (modalContent) {
-                modalContent.style.display = 'block';
-                modalContent.style.transform = 'translateY(0)';
-                modalContent.style.opacity = '1';
-                modalContent.style.zIndex = '10001';
-                modalContent.style.position = 'relative';
-                modalContent.style.background = 'white';
-                modalContent.style.borderRadius = '16px';
-                modalContent.style.maxWidth = '520px';
-                modalContent.style.width = '90%';
-                modalContent.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.15)';
-            }
-            
-            this.info(`Showing delete confirmation modal for project: ${projectName}`);
-        } else {
-            this.error('Delete modal elements not found', { deleteNameSpan: !!deleteNameSpan, modal: !!modal });
-        }
-    }
-
-    /**
-     * Close delete modal
-     */
-    closeDeleteModal() {
-        const modal = document.getElementById('deleteProjectModal');
-        if (modal) {
-            modal.style.display = 'none';
-            modal.style.justifyContent = '';
-            modal.style.alignItems = '';
-            modal.style.position = '';
-            modal.style.top = '';
-            modal.style.left = '';
-            modal.style.width = '';
-            modal.style.height = '';
-            modal.style.zIndex = '';
-            modal.style.background = '';
-            modal.style.opacity = '';
-            modal.style.visibility = '';
-            modal.classList.remove('show', 'modal-overlay');
-            
-            // Reset modal content styles
-            const modalContent = modal.querySelector('.modal');
-            if (modalContent) {
-                modalContent.style.display = '';
-                modalContent.style.transform = '';
-                modalContent.style.opacity = '';
-                modalContent.style.zIndex = '';
-                modalContent.style.position = '';
-                modalContent.style.background = '';
-                modalContent.style.borderRadius = '';
-                modalContent.style.maxWidth = '';
-                modalContent.style.width = '';
-                modalContent.style.boxShadow = '';
-            }
-        }
-        this.pendingDeleteProjectId = null;
-        this.pendingDeleteProjectName = null;
+        this.showDeleteModal(projectName);
+        this.info(`Showing delete confirmation modal for project: ${projectName}`);
     }
 
     /**
@@ -556,21 +586,17 @@ class DashboardManager extends BaseManager {
         try {
             this.debug(`Confirming deletion of project ${projectId}`);
 
-            const response = await fetch(`/api/project/${projectId}`, {
+            const response = await fetch(`/api/project/${encodeURIComponent(projectId)}`, {
                 method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'Content-Type': 'application/json' }
             });
 
-            // Check if response is ok first
             if (!response.ok) {
                 const errorMessage = `Server error: ${response.status} ${response.statusText}`;
                 this.error(errorMessage);
                 throw new Error(errorMessage);
             }
 
-            // Try to parse JSON response
             let data;
             try {
                 data = await response.json();
@@ -579,49 +605,31 @@ class DashboardManager extends BaseManager {
                 throw new Error('Failed to parse server response');
             }
 
-            // Check if deletion was successful
-            if (data && data.success) {
+            if (data?.success) {
                 this.info(`Project ${projectId} "${projectName}" deleted successfully from server`);
-                
-                // Immediately remove from UI before refreshing
                 this.removeProjectFromUI(projectId);
-                
-                // Then refresh data from server to ensure consistency
                 await this.refreshProjectLists();
-                
                 this.info(`Project "${projectName}" deleted and UI updated successfully`);
-                
-                // Success - no error modal should appear
                 return;
             } else {
-                // Server returned success=false
-                const errorMessage = data.error || 'Unknown server error';
+                const errorMessage = data?.error || 'Unknown server error';
                 this.error(`Server reported failure for project ${projectId}: ${errorMessage}`);
                 throw new Error(errorMessage);
             }
         } catch (error) {
-            // Only show error modal for actual errors
             this.error(`Error deleting project ${projectId}:`, error);
             alert(`Error deleting project "${projectName}". Please try again.`);
-            
-            // Refresh to ensure UI consistency
-            try {
-                await this.refreshProjectLists();
-            } catch (refreshError) {
-                this.error('Failed to refresh after delete error:', refreshError);
-            }
+            try { await this.refreshProjectLists(); } catch (refreshError) { this.error('Failed to refresh after delete error:', refreshError); }
         }
     }
 
     /**
-     * Handle delete button clicks with debouncing
+     * Handle delete button clicks with debouncing/guarding
      */
     handleDeleteProject(projectId, buttonElement) {
-        // Disable the button to prevent multiple clicks
         if (buttonElement) {
-            if (buttonElement.disabled || buttonElement.classList.contains('deleting')) {
-                return;
-            }
+            if (buttonElement.disabled || buttonElement.classList.contains('deleting')) return;
+            buttonElement.dataset.originalText = buttonElement.textContent;
             buttonElement.disabled = true;
             buttonElement.classList.add('deleting');
             buttonElement.textContent = '...';
@@ -631,7 +639,7 @@ class DashboardManager extends BaseManager {
                 if (buttonElement && !this.pendingDeleteProjectId) {
                     buttonElement.disabled = false;
                     buttonElement.classList.remove('deleting');
-                    buttonElement.textContent = 'Delete';
+                    buttonElement.textContent = buttonElement.dataset.originalText || 'Delete';
                 }
             }, 5000);
         }
@@ -645,27 +653,14 @@ class DashboardManager extends BaseManager {
     removeProjectFromUI(projectId) {
         try {
             // Remove from table if table manager exists
-            if (window.dashboardTableManager && typeof window.dashboardTableManager.removeProjectFromTable === 'function') {
+            if (window.dashboardTableManager?.removeProjectFromTable) {
                 window.dashboardTableManager.removeProjectFromTable(projectId);
             }
-            
-            // Remove from recent projects if it's there
-            const projectCards = document.querySelectorAll('.project-card');
-            projectCards.forEach(card => {
-                try {
-                    const cardTitle = card.querySelector('.project-card-title');
-                    if (cardTitle) {
-                        // Check if this card's onclick matches the project ID
-                        const onclickAttr = card.getAttribute('onclick');
-                        if (onclickAttr && onclickAttr.includes(`openProject(${projectId})`)) {
-                            card.remove();
-                        }
-                    }
-                } catch (cardError) {
-                    this.warn(`Error removing project card: ${cardError.message}`);
-                }
-            });
-            
+
+            // Remove from recent projects by data attribute
+            document.querySelectorAll(`.project-card[data-project-id="${CSS.escape(String(projectId))}"]`)
+                .forEach(card => card.remove());
+
             this.debug(`Removed project ${projectId} from UI immediately`);
         } catch (error) {
             this.error(`Error in removeProjectFromUI for project ${projectId}:`, error);
@@ -686,9 +681,8 @@ class DashboardManager extends BaseManager {
      * Utility functions
      */
     escapeHtml(text) {
-        if (typeof text !== 'string') {
-            return String(text);
-        }
+        if (text == null) return '';
+        if (typeof text !== 'string') return String(text);
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
@@ -697,15 +691,9 @@ class DashboardManager extends BaseManager {
     formatDate(dateString) {
         try {
             const date = new Date(dateString);
-            if (isNaN(date.getTime())) {
-                return 'Unknown';
-            }
-            return date.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-        } catch (error) {
+            if (isNaN(date.getTime())) return 'Unknown';
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        } catch {
             return 'Unknown';
         }
     }
@@ -762,15 +750,14 @@ class DashboardManager extends BaseManager {
 // Global functions needed by HTML
 function openProject(projectId) {
     console.log(`[Dashboard] Opening project ${projectId}`);
-    window.location.href = `/project/${projectId}`;
+    window.location.href = `/project/${encodeURIComponent(projectId)}`;
 }
 
 function shareProject(projectId) {
     console.log(`[Dashboard] Sharing project ${projectId}`);
-    const row = document.querySelector(`tr[data-project-id="${projectId}"]`);
-    const projectName = row ? row.querySelector('.project-name-cell a').textContent : 'Project';
-
-    const shareUrl = `${window.location.origin}/site-selection?project=${projectId}&shared=true`;
+    const row = document.querySelector(`tr[data-project-id="${CSS.escape(String(projectId))}"]`);
+    const projectName = row ? (row.querySelector('.project-name-cell a')?.textContent || 'Project') : 'Project';
+    const shareUrl = `${window.location.origin}/site-selection?project=${encodeURIComponent(projectId)}&shared=true`;
 
     navigator.clipboard.writeText(shareUrl).then(() => {
         alert(`Share link for "${projectName}" has been copied to your clipboard!`);
@@ -812,7 +799,7 @@ async function refreshProjectLists() {
     document.querySelectorAll('.action-btn.delete.deleting').forEach(btn => {
         btn.disabled = false;
         btn.classList.remove('deleting');
-        btn.textContent = 'Delete';
+        btn.textContent = btn.dataset.originalText || 'Delete';
     });
 }
 

@@ -113,6 +113,9 @@ class SiteBoundaryCore extends MapManagerBase {
             return;
         }
 
+        // Clear existing layers first to avoid conflicts
+        this.clearExistingLayers();
+
         const layerConfigs = [
             {
                 id: this.layerIds.previewFill,
@@ -1482,6 +1485,20 @@ class SiteBoundaryCore extends MapManagerBase {
         this.clearDrawingVisualization();
         this.clearBuildableArea();
         this.clearBoundaryLayers();
+    }
+
+    clearExistingLayers() {
+        // Remove existing layers to avoid conflicts during style changes
+        const layersToRemove = Object.values(this.layerIds);
+        layersToRemove.forEach(layerId => {
+            if (this.map.getLayer && this.map.getLayer(layerId)) {
+                try {
+                    this.map.removeLayer(layerId);
+                } catch (error) {
+                    console.debug('Layer removal error:', error.message);
+                }
+            }
+        });
     }
 
     clearBoundaryLayers() {

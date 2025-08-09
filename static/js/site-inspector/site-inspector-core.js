@@ -842,71 +842,54 @@ class SiteInspectorCore extends BaseManager {
     setupEventHandlers() {
         this.info('Setting up inter-manager event handlers...');
 
-        // Clear any existing event listeners to prevent duplicates
-        if (window.eventBus && typeof window.eventBus.removeAllListeners === 'function') {
-            window.eventBus.removeAllListeners();
+        // Listen for site data updates
+        window.eventBus.on('site-data-updated', (data) => {
+            this.handleSiteDataUpdate(data);
+        });
+
+        // Listen for buildable area updates
+        window.eventBus.on('buildable-area-calculated', (data) => {
+            this.handleBuildableAreaUpdate(data);
+        });
+
+        // Listen for setback updates
+        window.eventBus.on('setbacks-updated', (data) => {
+            this.handleSetbacksUpdate(data);
+        });
+
+        // Listen for clear events
+        window.eventBus.on('clear-all-site-data', () => {
+            this.clearAllSiteData();
+        });
+
+        // Listen for map style changes and restore features
+        if (this.map) {
+            this.map.on('styledata', () => {
+                this.info('Map style changed, reinitializing features...');
+
+                // Small delay to ensure style is fully loaded
+                setTimeout(() => {
+                    this.restoreMapFeatures();
+                }, 500);
+            });
         }
 
-        // Handle setback calculations
-        window.eventBus.on('recalculate-buildable-area', async (data) => {
-            await this.handleBuildableAreaCalculation(data);
-        });
-
-        // Handle preview buildable area calculations
-        window.eventBus.on('preview-buildable-area', async (data) => {
-            await this.handleBuildableAreaPreview(data);
-        });
-
-        // Handle setback updates
-        window.eventBus.on('setbacks-updated', (data) => {
-            this.handleSetbacksUpdated(data);
-        });
-
-        // Listen for site boundary events
-        window.eventBus.on('site-boundary-created', (data) => {
-            this.info('Site boundary created, updating site data');
-            this.updateSiteData(data);
-            this.updateSiteBoundaryLegend(true);
-        });
-
-        window.eventBus.on('site-boundary-deleted', () => {
-            this.info('Site boundary deleted, clearing dependent data');
-            this.clearDependentData();
-            this.updateSiteBoundaryLegend(false);
-        });
-
-        // Listen for buildable area events
-        window.eventBus.on('buildable-area-calculated', (data) => {
-            this.info('Buildable area calculated, updating site data');
-            this.updateBuildableAreaData(data);
-            this.updateBuildableAreaLegend(true);
-        });
-
-        // Handle tool conflicts
-        window.eventBus.on('tool-activated', (toolName) => {
-            this.handleToolActivated(toolName);
-        });
-
-        // Handle panel state changes
-        window.eventBus.on('inspector-panel-toggled', (data) => {
-            this.handlePanelToggled(data);
-        });
-
-        // Listen for clearing events
-        window.eventBus.on('clear-all-dependent-features', () => {
-            this.info('Clearing all dependent features');
-            this.clearDependentData();
-            this.updateBuildableAreaLegend(false);
-        });
-
-        window.eventBus.on('clear-all-site-data', () => {
-            this.info('Clearing all site data');
-            this.clearAllData();
-            this.updateSiteBoundaryLegend(false);
-            this.updateBuildableAreaLegend(false);
-        });
-
         this.info('Event handlers setup completed');
+    }
+
+    restoreMapFeatures() {
+        this.info('Restoring map features after style change...');
+
+        try {
+            // This will be handled by the map features manager's restoreAllLayers method
+            // which gets called from the changeMapStyle method
+
+            // Ensure terrain is restored
+            this.setup3DTerrain();
+
+        } catch (error) {
+            this.error('Error restoring map features:', error);
+        }
     }
 
     updateBuildableAreaLegend(show = null) {
