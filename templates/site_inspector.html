@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Site Inspector - EngineRoom</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
     <!-- External JavaScript Dependencies -->
     <script src='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js'></script>
     <script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js'></script>
@@ -29,20 +30,28 @@
     <script src="{{ url_for('static', filename='js/site-inspector/ui-panel-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/site-inspector/extrusion-3d-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/site-inspector/site-inspector-core.js') }}"></script>
+
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
+        :root {
+            --header-h: 60px;
+            --progress-h: 56px;
+            --chrome-h: calc(var(--header-h) + var(--progress-h));
+            --panel-gap: 10px;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
             font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
             background: #000;
         }
 
-        #inspectorMap { 
-            position: absolute; 
-            top: 116px; 
-            bottom: 0; 
+        #inspectorMap {
+            position: absolute;
+            top: var(--chrome-h);
+            bottom: 0;
             left: 0;
-            width: 100%; 
+            width: 100%;
             z-index: 1;
         }
 
@@ -61,13 +70,13 @@
             align-items: center;
             justify-content: space-between;
             z-index: 2000;
-            height: 60px;
+            height: var(--header-h);
         }
 
         /* Engineering Flow Progress */
         .engineering-flow-progress {
             position: fixed;
-            top: 60px;
+            top: var(--header-h);
             left: 0;
             right: 0;
             background: rgba(255, 255, 255, 0.98);
@@ -75,7 +84,7 @@
             border-bottom: 1px solid rgba(0, 0, 0, 0.08);
             padding: 12px 24px;
             z-index: 1999;
-            height: 56px;
+            height: var(--progress-h);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -104,7 +113,6 @@
             font-weight: 600;
             color: #1a202c;
             margin-bottom: 2px;
-            font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
             letter-spacing: -0.02em;
             white-space: nowrap;
             overflow: hidden;
@@ -116,1517 +124,346 @@
             font-size: 13px;
             color: #64748b;
             font-weight: 400;
-            font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             max-width: 240px;
         }
 
-        .flow-steps-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex: 1;
-        }
-
-        .flow-step {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            position: relative;
-        }
-
+        .flow-steps-container { display: flex; align-items: center; justify-content: center; flex: 1; }
+        .flow-step { display: flex; align-items: center; gap: 12px; position: relative; }
         .step-indicator {
-            position: relative;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #e2e8f0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-            flex-shrink: 0;
+            position: relative; width: 40px; height: 40px; border-radius: 50%;
+            background: #e2e8f0; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; flex-shrink: 0;
         }
-
-        .flow-step.active .step-indicator {
-            background: #547bf7;
-            color: white;
-            box-shadow: 0 0 0 4px rgba(84, 123, 247, 0.2);
-        }
-
-        .flow-step.completed .step-indicator {
-            background: #10b981;
-            color: white;
-        }
-
-        .step-number {
-            font-size: 14px;
-            font-weight: 600;
-            display: block;
-        }
-
-        .step-check {
-            font-size: 14px;
-            font-weight: 600;
-            display: none;
-        }
-
-        .flow-step.completed .step-number {
-            display: none;
-        }
-
-        .flow-step.completed .step-check {
-            display: block;
-        }
-
-        .step-content {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .step-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #1a202c;
-            white-space: nowrap;
-        }
-
-        .step-subtitle {
-            font-size: 12px;
-            color: #64748b;
-            white-space: nowrap;
-        }
-
-        .flow-step.active .step-title {
-            color: #547bf7;
-        }
-
-        .flow-step.completed .step-title {
-            color: #10b981;
-        }
+        .flow-step.active .step-indicator { background: #547bf7; color: white; box-shadow: 0 0 0 4px rgba(84, 123, 247, 0.2); }
+        .flow-step.completed .step-indicator { background: #10b981; color: white; }
+        .step-number { font-size: 14px; font-weight: 600; display: block; }
+        .step-check { font-size: 14px; font-weight: 600; display: none; }
+        .flow-step.completed .step-number { display: none; }
+        .flow-step.completed .step-check { display: block; }
+        .step-content { display: flex; flex-direction: column; gap: 2px; }
+        .step-title { font-size: 14px; font-weight: 600; color: #1a202c; white-space: nowrap; }
+        .step-subtitle { font-size: 12px; color: #64748b; white-space: nowrap; }
+        .flow-step.active .step-title { color: #547bf7; }
+        .flow-step.completed .step-title { color: #10b981; }
 
         .flow-connector {
-            width: 60px;
-            height: 2px;
-            background: #e2e8f0;
-            margin: 0 16px;
-            position: relative;
-            transition: all 0.3s ease;
+            width: 60px; height: 2px; background: #e2e8f0; margin: 0 16px; position: relative; transition: all 0.3s ease;
         }
+        .flow-step.completed + .flow-connector { background: #10b981; }
+        .flow-step.active + .flow-connector { background: linear-gradient(90deg, #10b981 0%, #e2e8f0 50%, #e2e8f0 100%); }
 
-        .flow-step.completed + .flow-connector {
-            background: #10b981;
-        }
+        .flow-step.clickable { cursor: pointer; transition: all 0.3s ease; }
+        .flow-step.clickable:hover { transform: translateY(-2px); }
+        .flow-step.clickable:hover .step-indicator { box-shadow: 0 4px 12px rgba(84, 123, 247, 0.3); }
+        .flow-step.clickable:hover .step-title { color: #547bf7; }
 
-        .flow-step.active + .flow-connector {
-            background: linear-gradient(90deg, #10b981 0%, #e2e8f0 50%, #e2e8f0 100%);
-        }
-
-        /* Clickable flow steps */
-        .flow-step.clickable {
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .flow-step.clickable:hover {
-            transform: translateY(-2px);
-        }
-
-        .flow-step.clickable:hover .step-indicator {
-            box-shadow: 0 4px 12px rgba(84, 123, 247, 0.3);
-        }
-
-        .flow-step.clickable:hover .step-title {
-            color: #547bf7;
-        }
-
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
+        .header-left { display: flex; align-items: center; gap: 16px; }
         .header-back-btn {
-            background: rgba(0, 0, 0, 0.05);
-            color: #1a202c;
-            text-decoration: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, 0.05); color: #1a202c; text-decoration: none; padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500;
+            transition: all 0.3s ease; border: 1px solid rgba(0, 0, 0, 0.1); backdrop-filter: blur(10px);
         }
-
-        .header-back-btn:hover {
-            background: rgba(0, 0, 0, 0.1);
-            color: #1a202c;
-            text-decoration: none;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .header-title {
-            color: #1a202c;
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin: 0;
-        }
-
-        .header-subtitle {
-            color: #4a5568;
-            font-size: 0.9rem;
-            font-weight: 400;
-            margin: 2px 0 0 0;
-        }
-
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
+        .header-back-btn:hover { background: rgba(0, 0, 0, 0.1); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
+        .header-title { color: #1a202c; font-size: 1.2rem; font-weight: 600; margin: 0; }
+        .header-subtitle { color: #4a5568; font-size: 0.9rem; font-weight: 400; margin: 2px 0 0 0; }
+        .header-right { display: flex; align-items: center; gap: 8px; }
         .header-cta-btn {
-            background: linear-gradient(135deg, #547bf7 0%, #4a6bda 100%);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
+            background: linear-gradient(135deg, #547bf7 0%, #4a6bda 100%); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: all 0.3s ease; text-decoration: none; display: inline-block;
         }
-
-        .header-cta-btn:hover {
-            background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 16px rgba(84, 123, 247, 0.3);
-            color: white;
-            text-decoration: none;
-        }
+        .header-cta-btn:hover { background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(84, 123, 247, 0.3); }
 
         /* Map Controls Container */
         .map-controls-container {
             position: absolute;
-            top: 126px;
-            left: 64px; /* 40px (cog button) + 16px (gap) + 8px (margin) = 64px */
+            top: calc(var(--chrome-h) + var(--panel-gap));
+            left: 64px;
             z-index: 1000;
             display: flex;
             align-items: flex-start;
             gap: 8px;
             transition: left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
-
-        .map-controls-container.shifted {
-            left: 396px; /* 380px (panel width) + 16px (gap) = 396px */
-        }
+        .map-controls-container.shifted { left: 396px; }
 
         /* Right Edge Controls */
         .right-edge-controls {
             position: absolute;
-            top: 126px;
+            top: calc(var(--chrome-h) + var(--panel-gap));
             right: 8px;
             z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            align-items: flex-end;
+            display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
         }
 
-        .map-control-button {
+        .map-control-button,
+        .measure-tool-button,
+        .structure-management-button,
+        .help-button,
+        .search-toggle-btn {
             background: rgba(255, 255, 255, 0.95);
             border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 16px;
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 18px;
-            transition: all 0.3s ease;
-            color: #333333;
-            font-weight: 500;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(20px);
-            position: relative;
+            border-radius: 8px;
+            width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 16px; transition: all 0.3s ease; color: #333; font-weight: 500;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1); backdrop-filter: blur(20px);
         }
-
-        .map-control-button:hover {
+        .map-control-button:hover,
+        .measure-tool-button:hover,
+        .structure-management-button:hover,
+        .help-button:hover,
+        .search-toggle-btn:hover {
             background: rgba(255, 255, 255, 1);
             border-color: #007cbf;
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(0, 124, 191, 0.2);
         }
-
-        .map-control-button.active {
-            background: #007cbf;
-            color: white;
-            border-color: #005a8a;
-            box-shadow: 0 8px 24px rgba(0, 124, 191, 0.4);
-        }
+        .map-control-button.active,
+        .measure-tool-button.active { background: #007cbf; color: #fff; border-color: #005a8a; box-shadow: 0 8px 24px rgba(0,124,191,0.4); }
 
         /* Basemap Control */
         .basemap-control {
-            position: relative;
-            z-index: 1100;
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 8px;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-            height: 40px;
-            width: 120px;
-            display: flex;
-            align-items: center;
-            pointer-events: auto;
+            position: relative; z-index: 1100; background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0,0,0,0.08); border-radius: 8px; backdrop-filter: blur(20px); box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            height: 40px; width: 120px; display: flex; align-items: center; pointer-events: auto;
         }
-
         .style-selector {
-            width: 100%;
-            height: 40px;
-            padding: 0 24px 0 12px;
-            background: transparent;
-            border: none;
-            border-radius: 8px;
-            color: #333333;
-            font-size: 14px;
-            font-weight: 600;
-            outline: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            -webkit-appearance: none;
-            appearance: none;
+            width: 100%; height: 40px; padding: 0 24px 0 12px; background: transparent; border: none; border-radius: 8px; color: #333; font-size: 14px; font-weight: 600;
+            outline: none; cursor: pointer; transition: all 0.3s ease; -webkit-appearance: none; appearance: none;
             background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" width="12" height="6"><path d="M0 0l6 6 6-6z" fill="%23333"/></svg>');
-            background-repeat: no-repeat;
-            background-position: right 8px top 50%;
-            background-size: 10px auto;
+            background-repeat: no-repeat; background-position: right 8px top 50%; background-size: 10px auto;
         }
+        .style-selector:focus, .style-selector:hover { background: rgba(84, 123, 247, 0.1); color: #547bf7; }
 
-        .style-selector:focus {
-            background: rgba(84, 123, 247, 0.1);
-            color: #547bf7;
-        }
-
-        .style-selector:hover {
-            background: rgba(84, 123, 247, 0.1);
-            color: #547bf7;
-        }
-
-        /* 3D Buildings Control */
+        /* 3D Buildings Control (fixed class name) */
         .buildings-control-expandable {
-            position: absolute;
-            top: 55px;
-            right: 0;
-            z-index: 1100;
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 8px;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            height: 40px;
-            width: 120px;
-            transition: height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            display: flex;
-            flex-direction: column;
-            pointer-events: auto;
+            z-index: 1100; background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 8px; backdrop-filter: blur(20px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); overflow: hidden;
+            height: 40px; width: 120px; transition: height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            display: flex; flex-direction: column; pointer-events: auto;
         }
-
-        .buildings-control-expandable.expanded {
-            height: 88px;
-        }
-
+        .buildings-control-expandable.expanded { height: 88px; }
         .buildings-toggle-btn {
-            width: 100%;
-            height: 40px;
-            margin: 0;
-            padding: 0 8px;
-            border-radius: 8px;
-            flex-shrink: 0;
-            font-size: 14px;
-            font-weight: 600;
-            background: transparent;
-            border: none;
-            color: #333333;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            pointer-events: auto;
-            z-index: 1101;
+            width: 100%; height: 40px; margin: 0; padding: 0 8px; border-radius: 8px; flex-shrink: 0; font-size: 14px; font-weight: 600;
+            background: transparent; border: none; color: #333; cursor: pointer; transition: all 0.3s ease;
+            display: flex; align-items: center; justify-content: center; pointer-events: auto; z-index: 1101;
         }
-
-        .buildings-control-expandable.expanded .buildings-toggle-btn {
-            border-radius: 8px 8px 0 0;
-            background: rgba(84, 123, 247, 0.1);
-            color: #547bf7;
-        }
-
-        .buildings-toggle-btn:hover {
-            background: rgba(84, 123, 247, 0.1);
-            color: #547bf7;
-        }
-
-        .buildings-toggle-btn.active {
-            background: rgba(84, 123, 247, 0.2);
-            color: #547bf7;
-        }
-
+        .buildings-control-expandable.expanded .buildings-toggle-btn { border-radius: 8px 8px 0 0; background: rgba(84, 123, 247, 0.1); color: #547bf7; }
+        .buildings-toggle-btn:hover { background: rgba(84, 123, 247, 0.1); color: #547bf7; }
+        .buildings-toggle-btn.active { background: rgba(84, 123, 247, 0.2); color: #547bf7; }
         .buildings-slider-content {
-            padding: 12px 8px 16px 8px;
-            opacity: 0;
-            transition: opacity 0.3s ease 0.1s;
-            pointer-events: none;
-            text-align: center;
-            background: rgba(255, 255, 255, 0.95);
-            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 12px 8px 16px 8px; opacity: 0; transition: opacity 0.3s ease 0.1s; pointer-events: none; text-align: center;
+            background: rgba(255, 255, 255, 0.95); border-top: 1px solid rgba(0, 0, 0, 0.1);
         }
-
-        .buildings-control-expandable.expanded .buildings-slider-content {
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        .buildings-slider-content label {
-            font-size: 11px;
-            color: #333;
-            font-weight: 600;
-            display: block;
-            margin-bottom: 2px;
-        }
-
-        .buildings-slider-content input[type="range"] {
-            width: 80px;
-            height: 4px;
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 2px;
-            outline: none;
-            -webkit-appearance: none;
-            appearance: none;
-        }
-
-        .buildings-slider-content input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 12px;
-            height: 12px;
-            background: #547bf7;
-            border-radius: 50%;
-            cursor: pointer;
-        }
-
-        .buildings-slider-content input[type="range"]::-moz-range-thumb {
-            width: 12px;
-            height: 12px;
-            background: #547bf7;
-            border-radius: 50%;
-            cursor: pointer;
-            border: none;
-        }
-
-        .buildings-slider-content span {
-            display: none;
-        }
+        .buildings-control-expandable.expanded .buildings-slider-content { opacity: 1; pointer-events: all; }
+        .buildings-slider-content label { font-size: 11px; color: #333; font-weight: 600; display: block; margin-bottom: 2px; }
+        .buildings-slider-content input[type="range"] { width: 80px; height: 4px; background: rgba(0,0,0,0.1); border-radius: 2px; outline: none; -webkit-appearance: none; appearance: none; }
+        .buildings-slider-content input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: #547bf7; border-radius: 50%; cursor: pointer; }
+        .buildings-slider-content input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; background: #547bf7; border-radius: 50%; cursor: pointer; border: none; }
+        .buildings-slider-content span { display: none; }
 
         /* Site Inspector Panel */
         .inspector-panel {
             position: fixed;
-            top: 116px;
-            left: 0;
-            width: 40px;
-            height: 40px;
-            overflow: hidden;
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(20px);
-            z-index: 1000;
-            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
+            top: var(--chrome-h);
             left: 8px;
-            top: 126px;
+            width: 40px; height: 40px;
+            overflow: hidden; background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); backdrop-filter: blur(20px);
+            z-index: 1000; transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); cursor: pointer; display: flex; flex-direction: column;
         }
-
         .inspector-panel.expanded {
-            width: 380px;
-            height: calc(100vh - 116px);
-            border-radius: 0;
-            border-right: 1px solid rgba(0, 0, 0, 0.08);
-            border-left: none;
-            border-top: none;
-            border-bottom: none;
-            left: 0;
-            top: 116px;
-            cursor: default;
+            width: 380px; height: calc(100vh - var(--chrome-h));
+            border-radius: 0; border-right: 1px solid rgba(0,0,0,0.08); border-left: none; border-top: none; border-bottom: none;
+            left: 0; cursor: default;
         }
-
-        .panel-header {
-            display: none;
-        }
-
-        .inspector-panel.expanded .panel-header {
-            display: flex;
-        }
-
         .panel-toggle-btn {
-            width: 40px;
-            height: 40px;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            color: #333333;
-            transition: all 0.3s ease;
-            border-radius: 8px;
-            flex-shrink: 0;
-        }
-
-        .panel-toggle-btn:hover {
-            background: rgba(0, 124, 191, 0.1);
-            color: #007cbf;
-        }
-
-        .inspector-panel.expanded .panel-toggle-btn {
-            display: none;
-        }
-
-        .panel-header {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            padding: 16px 24px 0 24px;
-            flex-shrink: 0;
-        }
-
-        .panel-close {
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: #666666;
-            padding: 8px;
-            border-radius: 8px;
-            transition: all 0.2s ease;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .panel-close:hover {
-            background: rgba(0, 0, 0, 0.05);
-            color: #007cbf;
-        }
-
-        .panel-content {
-            flex: 1;
-            opacity: 0;
-            overflow-y: auto;
-            padding: 16px 24px 24px 24px;
-            transition: opacity 0.3s ease 0.1s;
-            display: none;
-        }
-
-        .inspector-panel.expanded .panel-content {
-            opacity: 1;
-            display: block;
-        }
-
-        /* Info sections */
-        .info-section {
-            margin-bottom: 24px;
-            background: #ffffff;
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        }
-
-        .info-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #1a1a1a;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            letter-spacing: -0.02em;
-        }
-
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-            align-items: center;
-        }
-
-        .info-row:last-child {
-            border-bottom: none;
-        }
-
-        .info-label {
-            font-weight: 500;
-            color: #666666;
-            font-size: 14px;
-        }
-
-        .info-value {
-            font-weight: 600;
-            color: #1a1a1a;
-            font-size: 14px;
-            text-align: right;
-        }
-
-        /* Boundary controls */
-        .boundary-controls {
-            background: #ffffff;
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-            transition: all 0.3s ease;
-        }
-
-        .boundary-controls.collapsed {
-            padding: 12px 20px;
-        }
-
-        .boundary-controls.collapsed .info-title {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0;
-            cursor: pointer;
-        }
-
-        .boundary-controls.collapsed .info-title:hover {
-            background: rgba(0, 0, 0, 0.05);
-            border-radius: 8px;
-            padding: 8px;
-            margin: -8px;
-        }
-
-        .boundary-controls.collapsed .setbacks-applied-check {
-            color: #28a745;
-            font-size: 16px;
-            font-weight: bold;
-        }
-
-        .boundary-controls.collapsed .boundary-content {
-            display: none;
-        }
-
-        .boundary-selector {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 12px;
-        }
-
-        .boundary-option {
-            background: #ffffff;
-            border: 2px solid rgba(0, 0, 0, 0.12);
-            border-radius: 10px;
-            padding: 12px 16px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            text-align: center;
-            color: #333333;
-        }
-
-        .boundary-option:hover {
-            border-color: #007cbf;
-            background: #f8f9fa;
-        }
-
-        .boundary-option.selected {
-            background: #007cbf;
-            color: white;
-            border-color: #005a8a;
-        }
-
-        .action-button {
-            background: linear-gradient(135deg, #28a745 0%, #20923a 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 14px 20px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            width: 100%;
-            margin-top: 16px;
-            transition: all 0.2s ease;
-        }
-
-        .action-button:hover {
-            background: linear-gradient(135deg, #34ce57 0%, #28a745 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(40, 167, 69, 0.3);
-        }
-
-        .action-button:disabled {
-            background: #e9ecef;
-            color: #6c757d;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .setback-button {
-            background: linear-gradient(135deg, #547bf7 0%, #4a6bda 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 14px 20px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            width: 100%;
-            margin-top: 16px;
-            transition: all 0.2s ease;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .setback-button:hover {
-            background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(84, 123, 247, 0.3);
-        }
-
-        .setback-button:disabled {
-            background: #e9ecef;
-            color: #6c757d;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        /* Edge Selection Styles */
-        .edge-selection-btn {
-            background: linear-gradient(135deg, #547bf7 0%, #4a6bda 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 14px 20px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            width: 100%;
-            transition: all 0.2s ease;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .edge-selection-btn:hover {
-            background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(84, 123, 247, 0.3);
-        }
-
-        .        .edge-selection-btn.active {
-            background: linear-gradient(135deg, #28a745 0%, #20923a 100%);
-        }
-
-        .edge-selection-btn.active:hover {
-            background: linear-gradient(135deg, #34ce57 0%, #28a745 100%);
-        }
-
-        .edge-selection-btn:disabled {
-            background: #e9ecef;
-            color: #6c757d;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .edge-status {
-            padding: 8px 12px;
-            background: #d4edda;
-            border:1px solid #c3e6cb;
-            border-radius: 6px;
-            margin-top: 8px;
-        }
-
-        .selected-edges-display {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-        padding: 12px;
-        }
-
-        .edge-item {
-            display: flex;
-            justify-content: space-between;
-            margin: 4px 0;
-            font-size: 13px;
-        }
-
-
-        .edge-label {
-            font-weight: 500;
-            color: #333333;
-        }
-
-        .edge-value {
-            font-weight: 600;
-            color: #333333;
-        }
-
-        /* Setback Input Styles */
-        .setback-inputs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px 12px;
-            margin: 20px 0;
-        }
-
-        .setback-inputs .input-group:nth-child(3) {
-            grid-column: 1 / -1;
-        }
-
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 8px;
-        }
-
-        .input-group label {
-            font-size: 12px;
-            font-weight: 500;
-            color: #666;
-            margin-bottom: 6px;
-        }
-
-        .setback-input {
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 10px 12px;
-            font-size: 13px;
-            background: white;
-            transition: border-color 0.2s ease;
-        }
-
-        .setback-input:focus {
-            outline: none;
-            border-color: #547bf7;
-            box-shadow: 0 0 0 2px rgba(84, 123, 247, 0.15);        }
-
-        /* Edge highlighting styles */
-        .polygon-edge-highlight {
-            stroke: #007cbf !important;
-            stroke-width: 3 !important;
-            stroke-opacity: 0.6 !important;
-            transition: all 0.2s ease !important;
-            cursor: pointer !important;
-        }
-
-        .polygon-edge-highlight:hover {
-            stroke: #0096d6 !important;
-            stroke-width: 6 !important;
-            stroke-opacity: 1 !important;
-        }
-
-        .polygon-edge-selected-front {
-            stroke: #28a745 !important;
-            stroke-width: 6 !important;
-            stroke-opacity: 1 !important;
-        }
-
-        .polygon-edge-selected-back {
-            stroke: #dc3545 !important;
-            stroke-width: 6 !important;
-            stroke-opacity: 1 !important;
-        }
-
-        /* Persistent selected edge styles */
-        .edge-selected-persistent {
-            stroke-width: 6 !important;
-            stroke-opacity: 1 !important;
-        }
-
-        .edge-front-selected {
-            stroke: #28a745 !important;
-        }
-
-        .edge-back-selected {
-            stroke: #dc3545 !important;
-        }
-
-        /* Setback visualization styles */
-        .setback-line {
-            stroke: #ffc107;
-            stroke-width: 2;
-            stroke-dasharray: 5,5;
-            stroke-opacity: 0.8;
-            fill: none;
-        }
-
-        .setback-fill {
-            fill: #ffc107;
-            fill-opacity: 0.15;
-            stroke: #ffc107;
-            stroke-width: 1;
-            stroke-opacity: 0.4;
-        }
-
-        /* Floor plan upload */
-        .floorplan-upload {
-            background: #ffffff;
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-            transition: all 0.3s ease;
-        }
-
-        .floorplan-upload.collapsed {
-            padding: 12px 20px;
-        }
-
-        .floorplan-upload.collapsed .info-title {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0;
-            cursor: pointer;
-        }
-
-        .floorplan-upload.collapsed .info-title:hover {
-            background: rgba(0, 0, 0, 0.05);
-            border-radius: 8px;
-            padding: 8px;
-            margin: -8px;
-        }
-
-        .floorplan-upload.collapsed .floorplan-applied-check {
-            color: #ffc107;
-            font-size: 16px;
-            font-weight: bold;
-        }
-
-        .floorplan-upload.collapsed .floorplan-content {
-            display: none;
-        }
-
-        .info-section.collapsed {
-            padding: 12px 20px;
-        }
-
-        .info-section.collapsed .info-title {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0;
-            cursor: pointer;
-        }
-
-        .info-section.collapsed .info-title:hover {
-            background: rgba(0, 0, 0, 0.05);
-            border-radius: 8px;
-            padding: 8px;
-            margin: -8px;
-        }
-
-        .info-section.collapsed .gradient-applied-check {
-            color: #17a2b8;
-            font-size: 16px;
-            font-weight: bold;
-        }
-
-        .info-section.collapsed .gradient-content,
-        .info-section.collapsed .extrusion-content {
-            display: none;
-        }
-
-        .upload-button {
-            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
-            color: #333333;
-            border: none;
-            border-radius: 12px;
-            padding: 14px 20px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            width: 100%;
-            margin-top: 12px;
-            transition: all 0.2s ease;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .upload-button:hover {
-            background: linear-gradient(135deg, #ffcd39 0%, #ffc107 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(255, 193, 7, 0.3);
-        }
-
-        /* Site info expandable */
-        .site-info-expandable-container {
-            position: relative;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        .site-info-expandable {
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            height: 40px;
-            display: flex;
-            align-items: flex-start;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            overflow: hidden;
-            width: 40px;
-            flex-direction: column;
-        }
-
-        .site-info-expandable.expanded {
-            width: 350px;
-            height: auto;
-            min-height: 200px;
-            max-height: calc(100vh - 120px);
-        }
-
-        .site-info-toggle-btn {
-            width: 40px;
-            height: 40px;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            color: #333333;
-            flex-shrink: 0;
-            transition: all 0.3s ease;
-            border-radius: 8px;
-        }
-
-        .site-info-toggle-btn:hover {
-            color: #547bf7;
-            background: rgba(84, 123, 247, 0.1);
-        }
-
-        .site-info-content-expandable {
-            flex: 1;
-            padding: 16px;
-            opacity: 0;
-            transition: opacity 0.3s ease 0.1s;
-            overflow-y: auto;
-            display: none;
-        }
-
-        .site-info-expandable.expanded .site-info-content-expandable {
-            opacity: 1;
-            display: block;
-        }
-
-        /* Measure tool */
-        .measure-tool-button {
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 8px;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 18px;
-            transition: all 0.3s ease;
-            color: #333333;
-            font-weight: 500;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(20px);
-            margin-bottom: 8px;
-        }
-
-        .measure-tool-button:hover {
-            background: rgba(255, 255, 255, 1);
-            border-color: #007cbf;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 124, 191, 0.2);
-        }
-
-        .measure-tool-button.active {
-            background: #007cbf;
-            color: white;
-            border-color: #005a8a;
-            box-shadow: 0 8px 24px rgba(0, 124, 191, 0.4);
-        }
-
-        /* Map Legend Styles */
-        .map-legend {
-            position: absolute;
-            bottom: 20px;
-            left: 8px;
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-            backdrop-filter: blur(20px);
-            font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: 12px;
-            color: #333333;
-            transition: left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            padding: 10px 12px;
-        }
-
-        .map-legend.shifted {
-            left: 388px; /* Move right when panel is open */
-        }
-
-        .legend-header {
-            margin-bottom: 8px;
-        }
-
-        .legend-title {
-            font-weight: 600;
-            font-size: 13px;
-            margin: 0;
-        }
-
-        .legend-content {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .legend-color {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        .legend-color.site-boundary {
-            background-color: #007cbf;
-        }
-
-        .legend-color.buildable-area {
-            background-color: #003d5f;
-            opacity: 0.8;
-        }
-
-        .legend-color.property-boundary {
-            background-color: #28a745;
-            opacity: 0.6;
-        }
-
-        .legend-label {
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        /* Edge Selection Overlay */
-        .edge-selection-overlay {
-            position: absolute;
-            top: 56px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 2000;
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 12px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-            backdrop-filter: blur(20px);
-            padding: 16px 24px;
-            font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-            display: none;
-            pointer-events: none;
-            animation: fadeInSlide 0.3s ease-out;
-            transition: left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-
-        /* Edge Labels */
-        .edge-label-popup {
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(0, 0, 0, 0.15);
-            border-radius: 4px;
-            padding: 2px 6px;
-            font-size: 10px;
-            font-weight: 600;
-            color: #333333;
-            backdrop-filter: blur(5px);
-            pointer-events: auto;
-            cursor: pointer;
-            white-space: nowrap;
-            font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-            transition: all 0.2s ease;
-            user-select: none;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .edge-label-popup:hover {
-            background: rgba(255, 255, 255, 1);
-            border-color: #007cbf;
-            transform: scale(1.05);
-        }
-
-        .edge-label-popup.front-edge {
-            background: rgba(40, 167, 69, 0.9);
-            color: #ffffff;
-            border-color: #28a745;
-        }
-
-        .edge-label-popup.front-edge:hover {
-            background: rgba(40, 167, 69, 1);
-        }
-
-        .edge-label-popup.back-edge {
-            background: rgba(220, 53, 69, 0.9);
-            color: #ffffff;
-            border-color: #dc3545;
-        }
-
-        .edge-label-popup.back-edge:hover {
-            background: rgba(220, 53, 69, 1);
-        }
-
-        /* Remove mapbox popup styling to prevent white cards */
-        .mapboxgl-popup-content {
-            background: transparent !important;
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-        }
-
-        .mapboxgl-popup-tip {
-            display: none !important;
-        }
-
-        .mapboxgl-popup.edge-label-popup-container .mapboxgl-popup-content {
-            background: transparent !important;
-            border: none !important;
-            padding: 0 !important;
-            box-shadow: none !important;
-        }
-
-        .edge-selection-overlay.show {
-            display: block;
-        }
-
-        .edge-selection-overlay.shifted {
-            left: calc(50% + 190px);
-        }
-
-        .overlay-content {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            white-space: nowrap;
-        }
-
-        .overlay-icon {
-            font-size: 18px;
-            line-height: 1;
-        }
-
-        .overlay-text {
-            font-size: 14px;
-            font-weight: 500;
-            color: #333333;
-            letter-spacing: -0.01em;
-        }
-
-        @keyframes fadeInSlide {
-            0% {
-                opacity: 0;
-                transform: translateX(-50%) translateY(-10px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateX(-50%) translateY(0);
-            }
-        }
-
-        /* Help Tooltip Modal */
-        .help-tooltip {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2500;
-            backdrop-filter: blur(8px);
-        }
-
-        .help-tooltip-content {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 16px;
-            padding: 24px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-            animation: modalSlideIn 0.3s ease;
-            font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-
-        .help-tooltip-content h4 {
-            color: #333333;
-            font-size: 1.4rem;
-            font-weight: 600;
-            margin: 0 0 16px 0;
-        }
-
-        .help-tooltip-content ol {
-            color: #333333;
-            margin: 16px 0;
-            padding-left: 20px;
-            line-height: 1.6;
-        }
-
-        .help-tooltip-content ol li {
-            margin: 12px 0;
-            font-size: 14px;
-        }
-
-        .help-tooltip-content ol li strong {
-            color: #007cbf;
-            font-weight: 600;
-        }
-
-        .close-help-btn {
-            background: linear-gradient(135deg, #007cbf 0%, #005a8a 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 16px;
-        }
-
-        .close-help-btn:hover {
-            background: linear-gradient(135deg, #0096d6 0%, #007cbf 100%);
-            transform: translateY(-1px);
-        }
-
-        @keyframes modalSlideIn {
-            from { 
-                opacity: 0; 
-                transform: scale(0.95); 
-            }
-            to { 
-                opacity: 1; 
-                transform: scale(1); 
-            }
-        }
-
-        @media (max-width: 768px) {
-            .help-tooltip-content {
-                max-width: 95%;
-                padding: 20px;
-                margin: 16px;
-                max-height: 85vh;
-            }
-
-            .help-tooltip-content h4 {
-                font-size: 1.2rem;
-            }
-
-            .help-tooltip-content ol li {
-                font-size: 13px;
-                margin: 10px 0;
-            }
-
-            .edge-selection-overlay {
-                top: 46px;
-                left: 50%;
-                transform: translateX(-50%);
-                padding: 12px 20px;
-                font-size: 13px;
-            }
-
-            .overlay-text {
-                font-size: 13px;
-            }
-
-            .overlay-icon {
-                font-size: 16px;
-            }
-
-            .edge-selection-overlay.shifted {
-                left: 50%;
-                transform: translateX(-50%);
-            }
-        }
-
-        .opacity-control {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .opacity-value {
-            margin-left: 8px;
-            font-size: 12px;
-            color: #555;
-        }
-
-        /* Collapsed state for all cards */
+            width: 40px; height: 40px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 18px; color: #333; transition: all 0.3s ease; border-radius: 8px; flex-shrink: 0;
+        }
+        .panel-toggle-btn:hover { background: rgba(0, 124, 191, 0.1); color: #007cbf; }
+        .inspector-panel.expanded .panel-toggle-btn { display: none; }
+
+        .panel-header { display: none; justify-content: flex-end; align-items: center; padding: 16px 24px 0 24px; flex-shrink: 0; }
+        .inspector-panel.expanded .panel-header { display: flex; }
+        .panel-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #666; padding: 8px; border-radius: 8px; transition: all 0.2s ease; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
+        .panel-close:hover { background: rgba(0,0,0,0.05); color: #007cbf; }
+
+        .panel-content { flex: 1; opacity: 0; overflow-y: auto; padding: 16px 24px 24px 24px; transition: opacity 0.3s ease 0.1s; display: none; }
+        .inspector-panel.expanded .panel-content { opacity: 1; display: block; }
+
+        /* Cards */
+        .info-section, .boundary-controls, .floorplan-upload {
+            margin-bottom: 24px; background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .info-title { font-size: 16px; font-weight: 600; color: #1a1a1a; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; letter-spacing: -0.02em; }
+
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.06); align-items: center; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: 500; color: #666; font-size: 14px; }
+        .info-value { font-weight: 600; color: #1a1a1a; font-size: 14px; text-align: right; }
+
+        /* Collapsed states */
+        .boundary-controls.collapsed,
+        .floorplan-upload.collapsed,
+        .info-section.collapsed { cursor: pointer; transition: all 0.3s ease; padding: 12px 20px; }
+        .boundary-controls.collapsed:hover,
+        .floorplan-upload.collapsed:hover,
+        .info-section.collapsed:hover { background-color: rgba(0, 123, 191, 0.05); }
+        .boundary-controls.collapsed .info-title,
+        .floorplan-upload.collapsed .info-title,
+        .info-section.collapsed .info-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; cursor: pointer; }
         .boundary-controls.collapsed .boundary-content,
         .boundary-controls.collapsed .setback-content,
         .boundary-controls.collapsed .floorplan-content,
         .boundary-controls.collapsed .site-boundary-content,
         .floorplan-upload.collapsed .floorplan-content,
         .info-section.collapsed .gradient-content,
-        .info-section.collapsed .extrusion-content {
-            display: none !important;
+        .info-section.collapsed .extrusion-content { display: none !important; }
+
+        /* Buttons */
+        .action-button,
+        .setback-button,
+        .edge-selection-btn,
+        .upload-button {
+            border: none; border-radius: 12px; padding: 14px 20px; cursor: pointer; font-weight: 600; font-size: 14px; width: 100%;
+            transition: all 0.2s ease; height: 48px; display: flex; align-items: center; justify-content: center;
+        }
+        .action-button { background: linear-gradient(135deg, #28a745 0%, #20923a 100%); color: #fff; }
+        .action-button:hover { background: linear-gradient(135deg, #34ce57 0%, #28a745 100%); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(40,167,69,0.3); }
+        .action-button:disabled { background: #e9ecef; color: #6c757d; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .setback-button,
+        .edge-selection-btn { background: linear-gradient(135deg, #547bf7 0%, #4a6bda 100%); color: #fff; }
+        .setback-button:hover,
+        .edge-selection-btn:hover { background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(84,123,247,0.3); }
+        .edge-selection-btn.active { background: linear-gradient(135deg, #28a745 0%, #20923a 100%); }
+        .edge-selection-btn.active:hover { background: linear-gradient(135deg, #34ce57 0%, #28a745 100%); }
+        .edge-selection-btn:disabled { background: #e9ecef; color: #6c757d; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .upload-button { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: #333; }
+        .upload-button:hover { background: linear-gradient(135deg, #ffcd39 0%, #ffc107 100%); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(255,193,7,0.3); }
+
+        /* Edge selection */
+        .edge-status { padding: 8px 12px; background: #d4edda; border:1px solid #c3e6cb; border-radius: 6px; margin-top: 8px; }
+        .selected-edges-display { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px; }
+        .edge-item { display: flex; justify-content: space-between; margin: 4px 0; font-size: 13px; }
+        .edge-label { font-weight: 500; color: #333; }
+        .edge-value { font-weight: 600; color: #333; }
+
+        /* Setback inputs */
+        .setback-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 12px; margin: 20px 0; }
+        .setback-inputs .input-group:nth-child(3) { grid-column: 1 / -1; }
+        .input-group { display: flex; flex-direction: column; margin-bottom: 8px; }
+        .input-group label { font-size: 12px; font-weight: 500; color: #666; margin-bottom: 6px; }
+        .setback-input { border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; font-size: 13px; background: #fff; transition: border-color 0.2s ease; }
+        .setback-input:focus { outline: none; border-color: #547bf7; box-shadow: 0 0 0 2px rgba(84, 123, 247, 0.15); }
+
+        /* Edge highlighting */
+        .polygon-edge-highlight { stroke: #007cbf !important; stroke-width: 3 !important; stroke-opacity: 0.6 !important; transition: all 0.2s ease !important; cursor: pointer !important; }
+        .polygon-edge-highlight:hover { stroke: #0096d6 !important; stroke-width: 6 !important; stroke-opacity: 1 !important; }
+        .polygon-edge-selected-front { stroke: #28a745 !important; stroke-width: 6 !important; stroke-opacity: 1 !important; }
+        .polygon-edge-selected-back { stroke: #dc3545 !important; stroke-width: 6 !important; stroke-opacity: 1 !important; }
+        .edge-selected-persistent { stroke-width: 6 !important; stroke-opacity: 1 !important; }
+        .edge-front-selected { stroke: #28a745 !important; }
+        .edge-back-selected { stroke: #dc3545 !important; }
+
+        /* Setback viz */
+        .setback-line { stroke: #ffc107; stroke-width: 2; stroke-dasharray: 5,5; stroke-opacity: 0.8; fill: none; }
+        .setback-fill { fill: #ffc107; fill-opacity: 0.15; stroke: #ffc107; stroke-width: 1; stroke-opacity: 0.4; }
+
+        /* Site info expandable */
+        .site-info-expandable-container { position: relative; margin-bottom: 8px; display: flex; justify-content: flex-end; }
+        .site-info-expandable {
+            background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 8px; height: 40px;
+            display: flex; align-items: flex-start; backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); overflow: hidden; width: 40px; flex-direction: column;
+        }
+        .site-info-expandable.expanded { width: 350px; height: auto; min-height: 200px; max-height: calc(100vh - 120px); }
+        .site-info-toggle-btn { width: 40px; height: 40px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #333; transition: all 0.3s ease; border-radius: 8px; }
+        .site-info-toggle-btn:hover { color: #547bf7; background: rgba(84, 123, 247, 0.1); }
+        .site-info-content-expandable { flex: 1; padding: 16px; opacity: 0; transition: opacity 0.3s ease 0.1s; overflow-y: auto; display: none; }
+        .site-info-expandable.expanded .site-info-content-expandable { opacity: 1; display: block; }
+
+        /* Map Legend */
+        .map-legend {
+            position: absolute; bottom: 20px; left: 8px; z-index: 1000; background: rgba(255,255,255,0.95); border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); backdrop-filter: blur(20px); font-size: 12px; color: #333; transition: left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); padding: 10px 12px;
+        }
+        .map-legend.shifted { left: 388px; }
+        .legend-header { margin-bottom: 8px; }
+        .legend-title { font-weight: 600; font-size: 13px; margin: 0; }
+        .legend-content { display: flex; flex-direction: column; gap: 6px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .legend-color { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+        .legend-color.site-boundary { background-color: #007cbf; }
+        .legend-color.buildable-area { background-color: #003d5f; opacity: 0.8; }
+        .legend-color.property-boundary { background-color: #28a745; opacity: 0.6; }
+        .legend-label { font-size: 12px; font-weight: 500; }
+
+        /* Edge Selection Instruction Overlay */
+        .edge-selection-overlay {
+            position: absolute; top: 56px; left: 50%; transform: translateX(-50%); z-index: 2000; background: rgba(255,255,255,0.95);
+            border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); backdrop-filter: blur(20px);
+            padding: 16px 24px; display: none; pointer-events: none; animation: fadeInSlide 0.3s ease-out; transition: left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .edge-selection-overlay.show { display: block; }
+        .edge-selection-overlay.shifted { left: calc(50% + 190px); }
+        .overlay-content { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+        .overlay-icon { font-size: 18px; line-height: 1; }
+        .overlay-text { font-size: 14px; font-weight: 500; color: #333; letter-spacing: -0.01em; }
+
+        @keyframes fadeInSlide {
+            0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+            100% { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
 
-        /* Ensure extrusion card is visible when not collapsed */
-        #extrusionControls:not(.collapsed) {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
+        /* Help Tooltip Modal */
+        .help-tooltip { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 2500; backdrop-filter: blur(8px); }
+        .help-tooltip-content {
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); border: 1px solid rgba(0,0,0,0.1); border-radius: 16px; padding: 24px; max-width: 600px; width: 90%;
+            max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: modalSlideIn 0.3s ease; font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .help-tooltip-content h4 { color: #333; font-size: 1.4rem; font-weight: 600; margin: 0 0 16px 0; }
+        .help-tooltip-content ol { color: #333; margin: 16px 0; padding-left: 20px; line-height: 1.6; }
+        .help-tooltip-content ol li { margin: 12px 0; font-size: 14px; }
+        .help-tooltip-content ol li strong { color: #007cbf; font-weight: 600; }
+        .close-help-btn { background: linear-gradient(135deg, #007cbf 0%, #005a8a 100%); color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; margin-top: 16px; }
+        .close-help-btn:hover { background: linear-gradient(135deg, #0096d6 0%, #007cbf 100%); transform: translateY(-1px); }
+        @keyframes modalSlideIn { from { opacity: 0; transform: scale(0.95);} to { opacity: 1; transform: scale(1);} }
+
+        @media (max-width: 768px) {
+            .help-tooltip-content { max-width: 95%; padding: 20px; margin: 16px; max-height: 85vh; }
+            .help-tooltip-content h4 { font-size: 1.2rem; }
+            .help-tooltip-content ol li { font-size: 13px; margin: 10px 0; }
+            .edge-selection-overlay { top: 46px; left: 50%; transform: translateX(-50%); padding: 12px 20px; font-size: 13px; }
+            .overlay-text { font-size: 13px; }
+            .overlay-icon { font-size: 16px; }
+            .edge-selection-overlay.shifted { left: 50%; transform: translateX(-50%); }
         }
 
-        #extrusionControls:not(.collapsed) .boundary-content,
-        #extrusionControls:not(.collapsed) .extrusion-content {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
+        .opacity-control { display: flex; align-items: center; justify-content: center; }
+        .opacity-value { margin-left: 8px; font-size: 12px; color: #555; }
 
-        /* Consistent targeting for all cards */
-        .boundary-controls.collapsed .boundary-content,
-        .boundary-controls.collapsed .site-boundary-content,
-        .floorplan-upload.collapsed .floorplan-content {
-            display: none !important;
-        }
+        /* Remove mapbox popup styling to prevent white cards */
+        .mapboxgl-popup-content { background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; padding: 0 !important; }
+        .mapboxgl-popup-tip { display: none !important; }
+        .mapboxgl-popup.edge-label-popup-container .mapboxgl-popup-content { background: transparent !important; border: none !important; padding: 0 !important; box-shadow: none !important; }
+    </style>
 
-        .boundary-controls.collapsed,
-        .floorplan-upload.collapsed,
-        .info-section.collapsed {
-            cursor: pointer;
-            transition: all 0.3s ease;
-            padding: 12px 20px;
-        }
-
-        .boundary-controls.collapsed:hover,
-        .floorplan-upload.collapsed:hover,
-        .info-section.collapsed:hover {
-            background-color: rgba(0, 123, 191, 0.05);
-        }
-
-        /* Collapsed title styling for Site Boundary card */
-        .boundary-controls.collapsed .info-title {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0;
-            cursor: pointer;
-        }
-
-        .boundary-controls.collapsed .info-title:hover {
-            background: rgba(0, 0, 0, 0.05);
-            border-radius: 8px;
-            padding: 8px;
-            margin: -8px;
-        }
-
-        /* Structure management button in right edge controls */
-        .structure-management-button {
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 8px;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            color: #333333;
-            font-weight: 500;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(20px);
-            margin-bottom: 8px;
-        }
-
-        .structure-management-button:hover {
-            background: rgba(255, 255, 255, 1);
-            border-color: #007cbf;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 124, 191, 0.2);
-        }
-
-        .measure-tool-button:hover,
-        .structure-designer-button:hover {
-            background: rgba(255, 255, 255, 1);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            transform: translateY(-1px);
-        }
-
-        .measure-tool-button.active {
-            background: #007cbf;
-            color: white;
-            border-color: #007cbf;
-        }
-</style>
     <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css' rel='stylesheet' />
     <link href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css' rel='stylesheet' />
-    <script src='https://api.mapbox.gl/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js'></script>
+    <!-- removed the incorrect/duplicate api.mapbox.gl draw script -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/adam-chat-widget.css') }}">
 </head>
 <body class="authenticated">
     <!-- Site Header -->
     <div class="site-header">
         <div class="header-left">
-            <a href="/project/{{ project_data.get('id', project_id) if project_data else project_id }}" class="header-back-btn">
-                ← Project Overview
-            </a>
+            <a href="/project/{{ project_data.get('id', project_id) if project_data else project_id }}" class="header-back-btn">← Project Overview</a>
             <div class="header-title-section">
                 <h1 class="header-title">Site Inspector</h1>
                 <p class="header-subtitle">Inspect and Evaluate Your Site Before Design</p>
@@ -1640,7 +477,6 @@
     <!-- Engineering Flow Progress -->
     <div class="engineering-flow-progress">
         <div class="flow-container">
-            <!-- Project Information -->
             <div class="project-info-section">
                 {% if project_data.name %}
                 <div class="project-name">{{ project_data.name }}</div>
@@ -1652,10 +488,7 @@
 
             <div class="flow-steps-container">
                 <div class="flow-step active clickable" onclick="navigateToStep(1)">
-                    <div class="step-indicator">
-                        <div class="step-number">1</div>
-                        <div class="step-check">✓</div>
-                    </div>
+                    <div class="step-indicator"><div class="step-number">1</div><div class="step-check">✓</div></div>
                     <div class="step-content">
                         <div class="step-title">Site Inspector</div>
                         <div class="step-subtitle">Define site boundaries</div>
@@ -1665,10 +498,7 @@
                 <div class="flow-connector"></div>
 
                 <div class="flow-step clickable" onclick="navigateToStep(2)">
-                    <div class="step-indicator">
-                        <div class="step-number">2</div>
-                        <div class="step-check">✓</div>
-                    </div>
+                    <div class="step-indicator"><div class="step-number">2</div><div class="step-check">✓</div></div>
                     <div class="step-content">
                         <div class="step-title">Cut & Fill Analysis</div>
                         <div class="step-subtitle">Analyse site topography</div>
@@ -1678,10 +508,7 @@
                 <div class="flow-connector"></div>
 
                 <div class="flow-step clickable" onclick="navigateToStep(3)">
-                    <div class="step-indicator">
-                        <div class="step-number">3</div>
-                        <div class="step-check">✓</div>
-                    </div>
+                    <div class="step-indicator"><div class="step-number">3</div><div class="step-check">✓</div></div>
                     <div class="step-content">
                         <div class="step-title">FormLab</div>
                         <div class="step-subtitle">AI development assistant</div>
@@ -1691,10 +518,7 @@
                 <div class="flow-connector"></div>
 
                 <div class="flow-step clickable" onclick="navigateToStep(4)">
-                    <div class="step-indicator">
-                        <div class="step-number">4</div>
-                        <div class="step-check">✓</div>
-                    </div>
+                    <div class="step-indicator"><div class="step-number">4</div><div class="step-check">✓</div></div>
                     <div class="step-content">
                         <div class="step-title">Structure Designer</div>
                         <div class="step-subtitle">Design your building</div>
@@ -1704,10 +528,7 @@
                 <div class="flow-connector"></div>
 
                 <div class="flow-step clickable" onclick="navigateToStep(5)">
-                    <div class="step-indicator">
-                        <div class="step-number">5</div>
-                        <div class="step-check">✓</div>
-                    </div>
+                    <div class="step-indicator"><div class="step-number">5</div><div class="step-check">✓</div></div>
                     <div class="step-content">
                         <div class="step-title">Structure Analyser</div>
                         <div class="step-subtitle">Validate structural integrity</div>
@@ -1730,9 +551,9 @@
             </select>
         </div>
 
-        <!-- 3D Buildings Control -->
-        <div class="buildings-control-independent" id="buildingsControl">
-            <button class="buildings-toggle-btn" id="buildingsToggle">3D Buildings</button>
+        <!-- 3D Buildings Control (class name fixed) -->
+        <div class="buildings-control-expandable" id="buildingsControl">
+            <button class="buildings-toggle-btn" id="buildingsToggle" type="button">3D Buildings</button>
             <div class="buildings-slider-content">
                 <label for="buildingsOpacity">Opacity</label>
                 <div class="opacity-control">
@@ -1742,13 +563,11 @@
             </div>
         </div>
 
-        <!-- Dimensions Control Button -->
+        <!-- Dimensions Control -->
         <div class="dimensions-control-independent" id="dimensionsControl" style="margin-bottom: 8px;">
-            <button class="dimensions-toggle-btn">
-                Dimensions
-            </button>
+            <button class="dimensions-toggle-btn" type="button" onclick="toggleDimensionsWithSync()">Dimensions</button>
             <label class="dimensions-toggle-switch">
-                <input type="checkbox" checked>
+                <input type="checkbox" id="dimensionsToggle" checked>
                 <span class="toggle-slider"></span>
             </label>
         </div>
@@ -1756,9 +575,7 @@
 
     <!-- Map Legend -->
     <div class="map-legend" id="mapLegend">
-        <div class="legend-header">
-            <span class="legend-title">Map Legend</span>
-        </div>
+        <div class="legend-header"><span class="legend-title">Map Legend</span></div>
         <div class="legend-content" id="legendContent">
             <div class="legend-item">
                 <div class="legend-color site-boundary"></div>
@@ -1788,29 +605,26 @@
     <div class="right-edge-controls">
         <!-- Search Control -->
         <div class="search-control-expandable" id="searchControl">
-            <button class="search-toggle-btn" id="searchButton" title="Search locations">🔍</button>
+            <button class="search-toggle-btn" id="searchButton" title="Search locations" type="button">🔍</button>
             <div class="search-input-content">
                 <input type="text" id="searchInput" placeholder="Search for an address or location..." />
-                <button class="clear-search-btn" id="clearSearchButton" title="Clear search">✕</button>
+                <button class="clear-search-btn" id="clearSearchButton" title="Clear search" type="button">✕</button>
                 <div class="search-status" id="searchStatus" style="display: none;"></div>
             </div>
         </div>
 
         <!-- Help Button -->
-        <button class="help-button" id="helpButton" title="Help">?</button>
+        <button class="help-button" id="helpButton" title="Help" type="button">?</button>
 
         <!-- Measure Tool Control -->
         <div class="measure-tool-button" id="measureToolButton" title="Measure distances">📐</div>
-
-
     </div>
 
     <!-- Site Inspector Panel -->
     <div class="inspector-panel" id="inspectorPanel">
-        <button class="panel-toggle-btn" id="panelToggleBtn">⚙️</button>
-
+        <button class="panel-toggle-btn" id="panelToggleBtn" type="button">⚙️</button>
         <div class="panel-header">
-            <button class="panel-close">✕</button>
+            <button class="panel-close" type="button">✕</button>
         </div>
 
         <div class="panel-content" id="panelContent">
@@ -1826,42 +640,24 @@
 
                     <!-- Drawing Controls -->
                     <div class="boundary-drawing-controls" style="margin: 12px 0;">
-                        <button id="drawPolygonButton" class="draw-button" style="width: 100%; margin-bottom: 8px;">
-                            Draw Site Boundary
-                        </button>
+                        <button id="drawPolygonButton" class="draw-button" style="width: 100%; margin-bottom: 8px;" type="button">Draw Site Boundary</button>
                         <div class="button-row" style="display: none; gap: 8px;" id="drawingButtonRow">
-                            <button id="stopDrawingButton" class="action-button" style="background: #dc3545; flex: 1;">
-                                Stop Drawing
-                            </button>
-                            <button id="clearBoundaryButton" class="action-button" style="background: #dc3545; flex: 1;">
-                                Clear Boundary
-                            </button>
+                            <button id="stopDrawingButton" class="action-button" style="background: #dc3545; flex: 1;" type="button">Stop Drawing</button>
+                            <button id="clearBoundaryButton" class="action-button" style="background: #dc3545; flex: 1;" type="button">Clear Boundary</button>
                         </div>
                     </div>
 
                     <!-- Boundary Info Display -->
                     <div id="boundaryInfoDisplay" class="boundary-info-display" style="display: none; margin: 12px 0; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px;">
-                        <div class="info-row">
-                            <span class="info-label">Area:</span>
-                            <span id="boundaryAreaDisplay" class="info-value">-</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Perimeter:</span>
-                            <span id="boundaryPerimeterDisplay" class="info-value">-</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Points:</span>
-                            <span id="boundaryPointsDisplay" class="info-value">-</span>
-                        </div>
+                        <div class="info-row"><span class="info-label">Area:</span><span id="boundaryAreaDisplay" class="info-value">-</span></div>
+                        <div class="info-row"><span class="info-label">Perimeter:</span><span id="boundaryPerimeterDisplay" class="info-value">-</span></div>
+                        <div class="info-row"><span class="info-label">Points:</span><span id="boundaryPointsDisplay" class="info-value">-</span></div>
                     </div>
 
                     <div class="boundary-action-buttons" style="display: flex; gap: 8px; margin-top: 16px; align-items: center;">
-                        <button id="confirmBoundaryButton" class="action-button" style="display: none; flex: 1; margin: 0;">
-                            Confirm Site Boundary
-                        </button>
-                        <button id="clearBoundaryButton2" classs="action-button" style="display: none; flex: 1; margin: 0; background: #dc3545;">
-                            Clear Boundary
-                        </button>
+                        <button id="confirmBoundaryButton" class="action-button" style="display: none; flex: 1; margin: 0;" type="button">Confirm Site Boundary</button>
+                        <!-- keep alt ID to avoid duplicate; wire it in JS only if needed -->
+                        <button id="clearBoundaryButtonAlt" class="action-button" style="display: none; flex: 1; margin: 0; background: #dc3545;" type="button">Clear Boundary</button>
                     </div>
                 </div>
             </div>
@@ -1878,26 +674,18 @@
 
                     <!-- Edge Selection Mode -->
                     <div class="edge-selection-mode" style="margin: 12px 0;">
-                        <button id="edgeSelectionButton" class="edge-selection-btn">
-                            Select Front & Back Edges
-                        </button>
+                        <button id="edgeSelectionButton" class="edge-selection-btn" type="button">Select Front & Back Edges</button>
                     </div>
 
                     <!-- Selected Edges Display -->
                     <div id="selectedEdgesDisplay" class="selected-edges-display" style="display: none; margin: 12px 0;">
-                        <div class="edge-item">
-                            <span class="edge-label">Front Setback:</span>
-                            <span id="frontEdgeDisplay" class="edge-value">Not selected</span>
-                        </div>
-                        <div class="edge-item">
-                            <span class="edge-label">Back Setback:</span>
-                            <span id="backEdgeDisplay" class="edge-value">Not selected</span>
-                        </div>
+                        <div class="edge-item"><span class="edge-label">Front Setback:</span><span id="frontEdgeDisplay" class="edge-value">Not selected</span></div>
+                        <div class="edge-item"><span class="edge-label">Back Setback:</span><span id="backEdgeDisplay" class="edge-value">Not selected</span></div>
                     </div>
 
                     <!-- Setback Input Fields -->
-
-                                        <div id="setbackInputsContainer" class="setback-inputs" style="margin: 16px 0; display: none;">                        <div class="input-group">
+                    <div id="setbackInputsContainer" class="setback-inputs" style="margin: 16px 0; display: none;">
+                        <div class="input-group">
                             <label for="frontSetback">Front Setback (m)</label>
                             <input type="number" id="frontSetback" step="0.1" value="4.5" class="setback-input">
                         </div>
@@ -1915,11 +703,9 @@
                         </div>
                     </div>
 
-                                    <div id="buildableAreaControls" style="display: none; margin-top: 10px;">
-                                        <button id="recalculateButton" class="setback-button">
-                                            Calculate & Confirm Buildable Area
-                                        </button>
-                                    </div>
+                    <div id="buildableAreaControls" style="display: none; margin-top: 10px;">
+                        <button id="recalculateButton" class="setback-button" type="button">Calculate & Confirm Buildable Area</button>
+                    </div>
                 </div>
             </div>
 
@@ -1931,47 +717,30 @@
                 </div>
 
                 <div class="floorplan-content" id="floorplanContent">
-                    <p style="font-size: 13px; color: #666666; margin: 8px 0;">Define the building footprint by drawing its intended location within the site boundary.</p>
+                    <p style="font-size: 13px; color: #666; margin: 8px 0;">Define the building footprint by drawing its intended location within the site boundary.</p>
 
-                    <button class="draw-button" id="drawFloorplanButton" style="margin-top: 8px; width: 100%;">Draw Structure Footprint</button>
+                    <button class="draw-button" id="drawFloorplanButton" style="margin-top: 8px; width: 100%;" type="button">Draw Structure Footprint</button>
 
                     <div id="structureDrawingButtonRow" class="button-row" style="display: none;">
-                            <button id="stopStructureDrawingButton" class="btn btn-secondary">
-                                <i class="fas fa-stop"></i>
-                                Stop Drawing
-                            </button>
-                            <button id="clearStructuresButton" class="btn btn-outline-danger">
-                                <i class="fas fa-trash"></i>
-                                Clear All
-                            </button>
-                        </div>
+                        <button id="stopStructureDrawingButton" class="btn btn-secondary" type="button">Stop Drawing</button>
+                        <button id="clearStructuresButton" class="btn btn-outline-danger" type="button">Clear All</button>
+                    </div>
 
-                        <!-- Structure Info Display -->
-                        <div id="structureInfoDisplay" class="info-display" style="display: none;">
-                            <div class="info-item">
-                                <label>Total Structures:</label>
-                                <span id="structureCountDisplay">0</span>
-                            </div>
-                            <div class="info-item">
-                                <label>Current Area:</label>
-                                <span id="structureAreaDisplay">0 m²</span>
-                            </div>
-                        </div>
+                    <!-- Structure Info Display -->
+                    <div id="structureInfoDisplay" class="info-display" style="display: none;">
+                        <div class="info-item"><label>Total Structures:</label><span id="structureCountDisplay">0</span></div>
+                        <div class="info-item"><label>Current Area:</label><span id="structureAreaDisplay">0 m²</span></div>
+                    </div>
 
-                        <!-- Action Buttons -->
-                        <div class="action-buttons">
-                            <button id="confirmStructureButton" class="btn btn-success" style="display: none;">
-                                <i class="fas fa-check"></i>
-                                Confirm Structure
-                            </button>
-                        </div>
+                    <!-- Action Buttons -->
+                    <div class="action-buttons">
+                        <button id="confirmStructureButton" class="btn btn-success" style="display: none;" type="button">Confirm Structure</button>
+                    </div>
 
                     <div class="floorplan-status" style="font-size: 13px; margin-top: 12px; padding: 8px 12px; border-radius: 6px; display: none;"></div>
 
                     <div class="floorplan-action-buttons" style="display: flex; gap: 8px; margin-top: 16px; align-items: center;">
-                        <button id="clearFloorplanButton" class="action-button" style="display: none; flex: 1; margin: 0; background: #dc3545;">
-                            Clear Structure
-                        </button>
+                        <button id="clearFloorplanButton" class="action-button" style="display: none; flex: 1; margin: 0; background: #dc3545;" type="button">Clear Structure</button>
                     </div>
 
                     {% if site_data.get('floorplan_data') and site_data.get('floorplan_data').get('success') and site_data.get('floorplan_data').get('boundaries') %}
@@ -1990,9 +759,7 @@
                 </div>
 
                 <div class="boundary-content extrusion-content">
-                    <p style="color: #666; font-size: 13px; margin-bottom: 16px;">
-                        Create 3D models from your structure footprints.
-                    </p>
+                    <p style="color: #666; font-size: 13px; margin-bottom: 16px;">Create 3D models from your structure footprints.</p>
 
                     <div class="input-group">
                         <label for="structureHeightInput">Structure Height (m):</label>
@@ -2000,18 +767,12 @@
                     </div>
 
                     <div class="button-row">
-                        <button class="setback-button primary" id="extrudeStructureButton">
-                            Extrude Structure Footprint
-                        </button>
+                        <button class="setback-button primary" id="extrudeStructureButton" type="button">Extrude Structure Footprint</button>
                     </div>
 
                     <div class="button-row">
-                        <button class="setback-button" id="toggle3DViewButton">
-                            Enable 3D View
-                        </button>
-                        <button class="setback-button" id="removeAll3DBtn" style="display: none; background: #dc3545;">
-                            Remove All 3D Models
-                        </button>
+                        <button class="setback-button" id="toggle3DViewButton" type="button">Enable 3D View</button>
+                        <button class="setback-button" id="removeAll3DBtn" style="display: none; background: #dc3545;" type="button">Remove All 3D Models</button>
                     </div>
 
                     <div id="activeExtrusionsDisplay" style="display: none; margin-top: 12px;">
@@ -2022,7 +783,6 @@
                     <div id="extrusionStatus" class="floorplan-status" style="display: none; margin-top: 12px;"></div>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -2042,33 +802,9 @@
             <p style="margin-top: 16px; font-size: 13px; color: #666;">
                 <strong>Workflow:</strong> Start by drawing or loading a site boundary, then define setbacks to calculate buildable area. Draw floor plans to visualize your building design.
             </p>
-            <button class="close-help-btn" onclick="closeHelpTooltip()">Got it</button>
+            <button class="close-help-btn" onclick="closeHelpTooltip()" type="button">Got it</button>
         </div>
     </div>
-
-
-
-
-
-
-                Site Inspector
-
-                    {% if project_data and project_data.get('address') %}
-                        {{ project_data.address }}
-                    {% elif site_data and site_data.get('address') %}
-                        {{ site_data.address }}
-                    {% else %}
-                        No location selected
-                    {% endif %}
-
-                {% if project_data and project_data.get('name') %}
-
-                    Project: {{ project_data.name }}
-
-                {% endif %}
-
-
-
 
     <script>
         // Inject project data if available
@@ -2088,91 +824,52 @@
 
         // Make site data available globally for JavaScript modules
         window.siteData = {{ site_data_json|safe }};
-        window.projectId = {% if project_id %}'{{ project_id }}'{% else %}null{% endif %};
-
-        // All Site Inspector functionality is now handled by the modular system
-        // Global functions are available through the UIPanelManager and other managers
+        // Prefer template project_id if provided
+        window.projectId = {% if project_id %}'{{ project_id }}'{% else %}window.projectId{% endif %};
 
         // Help tooltip functions
         function showHelpTooltip() {
             const helpTooltip = document.getElementById('helpTooltip');
-            if (helpTooltip) {
-                helpTooltip.style.display = 'flex';
-                console.log('[SiteInspector] Help tooltip opened');
-            }
+            if (helpTooltip) { helpTooltip.style.display = 'flex'; console.log('[SiteInspector] Help tooltip opened'); }
         }
-
         function closeHelpTooltip() {
             const helpTooltip = document.getElementById('helpTooltip');
-            if (helpTooltip) {
-                helpTooltip.style.display = 'none';
-                console.log('[SiteInspector] Help tooltip closed');
-            }
+            if (helpTooltip) { helpTooltip.style.display = 'none'; console.log('[SiteInspector] Help tooltip closed'); }
         }
 
-        // Setup help button event listener
-        document.addEventListener('DOMContentLoaded', function() {
-            const helpButton = document.getElementById('helpButton');
-            if (helpButton) {
-                helpButton.addEventListener('click', showHelpTooltip);
-                console.log('[SiteInspector] Help button event listener attached');
-            }
-
-            // Close help tooltip when clicking outside
-            document.addEventListener('click', function(event) {
-                const helpTooltip = document.getElementById('helpTooltip');
-                const helpContent = document.querySelector('.help-tooltip-content');
-                const helpButton = document.getElementById('helpButton');
-
-                if (helpTooltip && helpTooltip.style.display === 'flex' && 
-                    !helpContent.contains(event.target) && 
-                    event.target !== helpButton) {
-                    closeHelpTooltip();
-                }
-            });
-        });
-
-        // Function to sync dimensions button click with toggle
+        // Sync "Dimensions" button to toggle
         function toggleDimensionsWithSync() {
             const toggle = document.getElementById('dimensionsToggle');
             if (toggle) {
                 toggle.checked = !toggle.checked;
-                // Trigger the change event to activate the dimensions feature
                 toggle.dispatchEvent(new Event('change'));
             }
         }
 
-        // Navigation function for engineering flow steps
+        // Navigation function for engineering flow steps (allow digits, letters, dashes, underscores)
         function navigateToStep(step) {
-            let projectId = new URLSearchParams(window.location.search).get('project_id') || 
-                           new URLSearchParams(window.location.search).get('project');
+            let projectId = new URLSearchParams(window.location.search).get('project_id') ||
+                            new URLSearchParams(window.location.search).get('project');
 
-            // Clean up malformed project IDs
             if (projectId && (projectId.includes('?') || projectId.includes('&'))) {
                 projectId = projectId.split('?')[0].split('&')[0];
             }
 
-            // Fallback to project data from template if available
             {% if project_data and project_data.get('id') %}
             if (!projectId || projectId === 'null' || projectId === '') {
                 projectId = '{{ project_data.get("id") }}';
             }
             {% endif %}
 
-            // Ensure project ID is valid and clean
             if (projectId && typeof projectId === 'string') {
-                // Clean any malformed project IDs that contain URL parameters
                 projectId = projectId.split('?')[0].split('&')[0].trim();
-                if (!/^\d+$/.test(projectId)) {
+                if (!/^[\w-]+$/.test(projectId)) {
                     console.error('Invalid project ID format:', projectId);
                     return;
                 }
             }
 
-            if (!projectId) {
-                console.error('No valid project ID found for navigation');
-                return;
-            }
+            if (!projectId) { console.error('No valid project ID found for navigation'); return; }
 
             const routes = {
                 1: `/site-inspector?project_id=${projectId}`,
@@ -2182,120 +879,89 @@
                 5: `/structural-analyser?project_id=${projectId}`
             };
 
-            if (routes[step] && projectId) {
-                window.location.href = routes[step];
-            } else {
-                console.error('No project ID available for navigation');
-            }
+            if (routes[step] && projectId) { window.location.href = routes[step]; }
+            else { console.error('No project ID available for navigation'); }
         }
 
-        // Initialize when page loads
+        // Normalize and enrich siteData, using Turf for area calc
         document.addEventListener('DOMContentLoaded', () => {
-            // Normalize site data before initialization
-        if (siteData && siteData.coordinates) {
-            // Ensure coordinates are in correct format and add missing fields
-            if (!siteData.center && !siteData.center_lat && siteData.coordinates.length > 0) {
-                let totalLat = 0, totalLng = 0, validPoints = 0;
+            // Help button wiring
+            const helpButton = document.getElementById('helpButton');
+            if (helpButton) { helpButton.addEventListener('click', showHelpTooltip); }
 
-                for (const coord of siteData.coordinates) {
-                    let lat, lng;
-                    if (typeof coord === 'object' && coord.lat && coord.lng) {
-                        lat = coord.lat;
-                        lng = coord.lng;
-                    } else if (Array.isArray(coord) && coord.length >= 2) {
-                        // Auto-detect coordinate format
-                        if (Math.abs(coord[0]) > Math.abs(coord[1]) && Math.abs(coord[0]) > 90) {
-                            lng = coord[0];
-                            lat = coord[1];
-                        } else {
-                            lat = coord[0];
-                            lng = coord[1];
-                        }
-                    }
-
-                    if (lat && lng && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-                        totalLat += lat;
-                        totalLng += lng;
-                        validPoints++;
-                    }
+            document.addEventListener('click', function(event) {
+                const helpTooltip = document.getElementById('helpTooltip');
+                const helpContent = document.querySelector('.help-tooltip-content');
+                if (helpTooltip && helpTooltip.style.display === 'flex' &&
+                    helpContent && !helpContent.contains(event.target) &&
+                    event.target !== helpButton) {
+                    closeHelpTooltip();
                 }
+            });
 
-                if (validPoints > 0) {
-                    siteData.center = {
-                        lat: totalLat / validPoints,
-                        lng: totalLng / validPoints
-                    };
-                }
-            }
-
-            // Add default type if missing
-            if (!siteData.type) {
-                siteData.type = 'residential';
-            }
-
-            // Calculate area if missing
-            if (!siteData.area && siteData.coordinates.length >= 3) {
-                // Simple polygon area calculation (approximate)
-                let area = 0;
-                const coords = siteData.coordinates;
-                for (let i = 0; i < coords.length; i++) {
-                    const j = (i + 1) % coords.length;
-                    let x1, y1, x2, y2;
-
-                    if (Array.isArray(coords[i])) {
-                        x1 = coords[i][0]; y1 = coords[i][1];
-                        x2 = coords[j][0]; y2 = coords[j][1];
-                    } else {
-                        x1 = coords[i].lng || coords[i].x || 0;
-                        y1 = coords[i].lat || coords[i].y || 0;
-                        x2 = coords[j].lng || coords[j].x || 0;
-                        y2 = coords[j].lat || coords[j].y || 0;
-                    }
-
-                    area += (x1 * y2 - x2 * y1);
-                }
-                siteData.area = Math.abs(area / 2) * 12391399903; // Rough conversion to m²
-                siteData.area_m2 = siteData.area;
-            }
-        }
-
-        // Site Inspector initialization is handled by site-inspector-core.js
-            console.log('[SiteInspector] Template ready - initialization handled by modular system');
-
-            // Ensure site data is properly initialized
+            // Ensure siteData exists
             if (typeof window.siteData === 'undefined' || !window.siteData) {
-                window.siteData = {
-                    coordinates: [],
-                    center: { lat: -41.2865, lng: 174.7762 },
-                    area: 1000,
-                    type: 'residential'
-                };
+                window.siteData = { coordinates: [], center: { lat: -41.2865, lng: 174.7762 }, area: 1000, type: 'residential' };
             }
 
-            // Validate and fix site data structure
-            if (window.siteData) {
-                // Ensure center exists
-                if (!window.siteData.center) {
-                    window.siteData.center = { lat: -41.2865, lng: 174.7762 };
-                }
+            // Validate / massage
+            const sd = window.siteData;
 
-                // Ensure area exists and is valid
-                if (!window.siteData.area || window.siteData.area <= 0) {
-                    window.siteData.area = window.siteData.area_m2 || 1000;
-                }
+            // Ensure type
+            if (!sd.type) sd.type = 'residential';
 
-                // Ensure type exists
-                if (!window.siteData.type) {
-                    window.siteData.type = 'residential';
+            // Ensure center if missing; compute from coordinates
+            if ((!sd.center || sd.center.lat == null || sd.center.lng == null) && Array.isArray(sd.coordinates) && sd.coordinates.length > 0) {
+                let totalLat = 0, totalLng = 0, valid = 0;
+                for (const c of sd.coordinates) {
+                    let lat, lng;
+                    if (Array.isArray(c) && c.length >= 2) {
+                        // detect [lng,lat] vs [lat,lng]
+                        if (Math.abs(c[0]) > 90) { lng = c[0]; lat = c[1]; }
+                        else if (Math.abs(c[1]) > 90) { lng = c[1]; lat = c[0]; }
+                        else { lat = c[0]; lng = c[1]; }
+                    } else if (typeof c === 'object') {
+                        lat = c.lat ?? c.y; lng = c.lng ?? c.x;
+                    }
+                    if (Number.isFinite(lat) && Number.isFinite(lng)) { totalLat += lat; totalLng += lng; valid++; }
                 }
+                if (valid > 0) sd.center = { lat: totalLat / valid, lng: totalLng / valid };
+            }
+            if (!sd.center) sd.center = { lat: -41.2865, lng: 174.7762 };
 
-                // Validate coordinates
-                if (window.siteData.coordinates && window.siteData.coordinates.length > 0) {
-                    console.log('[SiteInspector] Site data has', window.siteData.coordinates.length, 'coordinate points');
-                } else {
-                    console.log('[SiteInspector] No coordinate data available');
+            // Area with Turf (m²)
+            if ((!sd.area || sd.area <= 0) && Array.isArray(sd.coordinates) && sd.coordinates.length >= 3) {
+                const ptsLngLat = sd.coordinates.map((c) => {
+                    if (Array.isArray(c) && c.length >= 2) {
+                        // normalize to [lng, lat]
+                        if (Math.abs(c[0]) > 90 || (Math.abs(c[0]) > Math.abs(c[1]) && Math.abs(c[0]) > 90)) return [c[0], c[1]];
+                        if (Math.abs(c[1]) > 90) return [c[1], c[0]];
+                        // assume [lat, lng]
+                        return [c[1], c[0]];
+                    } else if (typeof c === 'object') {
+                        return [c.lng ?? c.x, c.lat ?? c.y];
+                    }
+                    return [0,0];
+                }).filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
+
+                if (ptsLngLat.length >= 3) {
+                    if (ptsLngLat[0][0] !== ptsLngLat[ptsLngLat.length - 1][0] ||
+                        ptsLngLat[0][1] !== ptsLngLat[ptsLngLat.length - 1][1]) {
+                        ptsLngLat.push(ptsLngLat[0]);
+                    }
+                    try {
+                        const poly = turf.polygon([ptsLngLat]);
+                        sd.area = turf.area(poly);
+                        sd.area_m2 = sd.area;
+                    } catch (e) {
+                        console.warn('Turf area calc failed', e);
+                        sd.area = sd.area_m2 || 1000;
+                    }
                 }
             }
+            if (!sd.area || sd.area <= 0) sd.area = sd.area_m2 || 1000;
+
+            console.log('[SiteInspector] Template ready - initialization handled by modular system');
         });
     </script>
 </body>

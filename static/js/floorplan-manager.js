@@ -59,7 +59,8 @@ if (typeof FloorplanManager === 'undefined') {
             this.drawButton = document.getElementById('drawFloorplanButton') ||
                              document.getElementById('drawStructureButton') ||
                              document.querySelector('[data-action="draw-structure"]') ||
-                             document.querySelector('.draw-structure-btn');
+                             document.querySelector('.draw-structure-btn') ||
+                             document.querySelector('#floorplanCard .draw-button');
             this.clearButton = document.getElementById('clearStructuresButton') ||
                               document.getElementById('clearFloorplanButton');
             this.extrudeButton = document.getElementById('extrudeStructureButton');

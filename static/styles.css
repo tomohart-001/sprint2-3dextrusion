@@ -2903,30 +2903,34 @@ body {
 
 /* Ensure the draw-button class works for Draw Structure Footprint */
 button[id*="draw"].draw-button,
-#drawFloorplanButton.draw-button {
-    background: linear-gradient(135deg, #547bf7 0%, #4a6bda 100%);
-    color: white;
-    border: none;
-    padding: 14px 24px;
-    border-radius: 12px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    box-shadow: 0 4px 16px rgba(84, 123, 247, 0.2);
-    position: relative;
-    overflow: hidden;
+#drawFloorplanButton.draw-button,
+#drawFloorplanButton,
+button.draw-button {
+    background: linear-gradient(135deg, #547bf7 0%, #4a6bda 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 14px 24px !important;
+    border-radius: 12px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+    text-align: center !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    box-shadow: 0 4px 16px rgba(84, 123, 247, 0.2) !important;
+    position: relative !important;
+    overflow: hidden !important;
 }
 
 button[id*="draw"].draw-button:hover,
-#drawFloorplanButton.draw-button:hover {
-    background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(84, 123, 247, 0.35);
+#drawFloorplanButton.draw-button:hover,
+#drawFloorplanButton:hover,
+button.draw-button:hover {
+    background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 24px rgba(84, 123, 247, 0.35) !important;
 }

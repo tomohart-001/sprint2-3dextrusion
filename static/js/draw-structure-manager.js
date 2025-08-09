@@ -73,19 +73,24 @@ if (typeof DrawStructureManager === 'undefined') {
         setupDrawEventHandlers() {
             // Check if draw control is available, if not, wait for it
             const checkDraw = () => {
-                const core = window.siteInspectorCore;
-                if (core && core.draw) {
-                    this.draw = core.draw;
-                    this.info('Draw control found for structure drawing');
-                    
-                    // Set up map drawing event handlers
-                    this.map.on('draw.create', (e) => this.handleStructureCreated(e));
-                    this.map.on('draw.update', (e) => this.handleStructureUpdated(e));
-                    this.map.on('draw.delete', (e) => this.handleStructureDeleted(e));
-                    
-                    return true;
+                try {
+                    const core = window.siteInspectorCore;
+                    if (core && core.draw) {
+                        this.draw = core.draw;
+                        this.info('Draw control found for structure drawing');
+                        
+                        // Set up map drawing event handlers
+                        this.map.on('draw.create', (e) => this.handleStructureCreated(e));
+                        this.map.on('draw.update', (e) => this.handleStructureUpdated(e));
+                        this.map.on('draw.delete', (e) => this.handleStructureDeleted(e));
+                        
+                        return true;
+                    }
+                    return false;
+                } catch (error) {
+                    this.error('Error setting up draw event handlers:', error);
+                    return false;
                 }
-                return false;
             };
 
             // Try immediately, then retry if needed
@@ -108,6 +113,7 @@ if (typeof DrawStructureManager === 'undefined') {
 
         startDrawing() {
             if (!this.validateDrawingReadiness()) {
+                this.error('Drawing readiness validation failed');
                 return;
             }
 
@@ -120,7 +126,9 @@ if (typeof DrawStructureManager === 'undefined') {
                 }
 
                 // Clear any existing structure visualizations
-                this.floorplanManager.removeStructureVisualization();
+                if (this.floorplanManager && this.floorplanManager.removeStructureVisualization) {
+                    this.floorplanManager.removeStructureVisualization();
+                }
 
                 // Initialize drawing state
                 this.isDrawing = true;
@@ -130,6 +138,11 @@ if (typeof DrawStructureManager === 'undefined') {
                 // Set up drawing preview sources and layers
                 this.setupDrawingPreviewLayers();
 
+                // Verify draw control before changing mode
+                if (!this.draw || typeof this.draw.changeMode !== 'function') {
+                    throw new Error('Draw control not properly initialized');
+                }
+
                 // Start polygon drawing mode BEFORE setting up preview
                 this.draw.changeMode('draw_polygon');
 
@@ -137,19 +150,28 @@ if (typeof DrawStructureManager === 'undefined') {
                 this.setupDrawingPreview();
 
                 // Change cursor to indicate drawing mode
-                if (this.map.getCanvas()) {
+                if (this.map && this.map.getCanvas()) {
                     this.map.getCanvas().style.cursor = 'crosshair';
                 }
 
+                // Update UI state
+                if (this.floorplanManager && this.floorplanManager.updateDrawingUI) {
+                    this.floorplanManager.updateDrawingUI(true);
+                }
+
                 // Show user feedback
-                this.floorplanManager.showStatus('Click on the map to start drawing your structure footprint', 'info');
+                if (this.floorplanManager && this.floorplanManager.showStatus) {
+                    this.floorplanManager.showStatus('Click on the map to start drawing your structure footprint', 'info');
+                }
 
                 this.info('✅ Structure drawing mode started successfully');
 
             } catch (error) {
                 this.error('Failed to start structure drawing mode:', error);
                 this.resetDrawingState();
-                this.floorplanManager.showStatus('Failed to start drawing mode: ' + (error.message || 'Unknown error'), 'error');
+                if (this.floorplanManager && this.floorplanManager.showStatus) {
+                    this.floorplanManager.showStatus('Failed to start drawing mode: ' + (error.message || 'Unknown error'), 'error');
+                }
             }
         }
 
@@ -279,19 +301,33 @@ if (typeof DrawStructureManager === 'undefined') {
         }
 
         setupDrawingPreview() {
-            // Add map click listener for adding points
-            this.boundHandleDrawingClick = this.handleDrawingClick.bind(this);
-            this.boundHandleDrawingMouseMove = this.handleDrawingMouseMove.bind(this);
-            this.boundHandleDrawingUpdate = this.handleDrawingUpdate.bind(this);
+            try {
+                // Add map click listener for adding points
+                this.boundHandleDrawingClick = this.handleDrawingClick.bind(this);
+                this.boundHandleDrawingMouseMove = this.handleDrawingMouseMove.bind(this);
+                this.boundHandleDrawingUpdate = this.handleDrawingUpdate.bind(this);
 
-            // Only add click listener if we're in polygon drawing mode
-            if (this.draw && this.draw.getMode() === 'draw_polygon') {
-                this.map.on('click', this.boundHandleDrawingClick);
-                this.map.on('mousemove', this.boundHandleDrawingMouseMove);
+                // Verify map is available
+                if (!this.map) {
+                    throw new Error('Map not available for preview setup');
+                }
+
+                // Only add click listener if we're in polygon drawing mode
+                if (this.draw && this.draw.getMode() === 'draw_polygon') {
+                    this.map.on('click', this.boundHandleDrawingClick);
+                    this.map.on('mousemove', this.boundHandleDrawingMouseMove);
+                    this.info('Click and mousemove listeners added for polygon drawing');
+                } else {
+                    this.warn('Draw control not in polygon mode, listeners may not work correctly');
+                }
+                
+                this.map.on('draw.update', this.boundHandleDrawingUpdate);
+
+                this.info('Drawing preview listeners set up successfully');
+            } catch (error) {
+                this.error('Error setting up drawing preview:', error);
+                throw error;
             }
-            this.map.on('draw.update', this.boundHandleDrawingUpdate);
-
-            this.info('Drawing preview listeners set up');
         }
 
         removeDrawingPreview() {
@@ -564,7 +600,15 @@ if (typeof DrawStructureManager === 'undefined') {
             // Check if map is available
             if (!this.map) {
                 this.error('Map instance not available');
-                this.floorplanManager.showStatus('Map not ready for drawing', 'error');
+                if (this.floorplanManager && this.floorplanManager.showStatus) {
+                    this.floorplanManager.showStatus('Map not ready for drawing', 'error');
+                }
+                return false;
+            }
+
+            // Check if floorplan manager is available
+            if (!this.floorplanManager) {
+                this.error('FloorplanManager instance not available');
                 return false;
             }
 
@@ -576,19 +620,33 @@ if (typeof DrawStructureManager === 'undefined') {
                     this.draw = core.draw;
                     this.info('Draw control obtained from siteInspectorCore');
                 } else {
-                    this.error('Draw control not available');
-                    this.floorplanManager.showStatus('Drawing tools not ready. Please refresh the page.', 'error');
+                    this.error('Draw control not available - siteInspectorCore:', !!core, 'draw:', core?.draw);
+                    if (this.floorplanManager.showStatus) {
+                        this.floorplanManager.showStatus('Drawing tools not ready. Please refresh the page.', 'error');
+                    }
                     return false;
                 }
             }
 
             // Verify draw control has required methods
             if (typeof this.draw.changeMode !== 'function') {
-                this.error('Draw control not properly initialized');
-                this.floorplanManager.showStatus('Drawing tools are not ready. Please refresh the page.', 'error');
+                this.error('Draw control not properly initialized - missing changeMode method');
+                if (this.floorplanManager.showStatus) {
+                    this.floorplanManager.showStatus('Drawing tools are not ready. Please refresh the page.', 'error');
+                }
                 return false;
             }
 
+            // Check if map is loaded and ready
+            if (!this.map.isStyleLoaded()) {
+                this.warn('Map style not fully loaded yet');
+                if (this.floorplanManager.showStatus) {
+                    this.floorplanManager.showStatus('Map is still loading. Please wait a moment.', 'warning');
+                }
+                return false;
+            }
+
+            this.info('Drawing readiness validation passed');
             return true;
         }
 
