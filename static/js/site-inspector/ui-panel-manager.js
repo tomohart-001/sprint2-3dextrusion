@@ -858,6 +858,10 @@ class UIPanelManager extends BaseManager {
                 clearBtn.innerHTML = '🔄 Clearing...';
             }
 
+            // Clear legal boundary session storage
+            sessionStorage.removeItem('legal_boundary_applied');
+            sessionStorage.removeItem('legal_boundary_coordinates');
+
             window.eventBus?.emit?.('clear-all-site-data');
 
             const sic = window.siteInspectorCore;
@@ -948,6 +952,16 @@ class UIPanelManager extends BaseManager {
         // Hide warnings
         ['frontSetback', 'backSetback', 'sideSetback', 'heightLimit']
             .forEach(id => { const w = this.$(id + 'Warning'); if (w) w.style.display = 'none'; });
+
+        // Reset legal boundary button state
+        const legalBtn = this.$('useLegalBoundaryButton');
+        if (legalBtn) {
+            legalBtn.textContent = 'Use Legal Boundary';
+            legalBtn.disabled = false;
+            legalBtn.style.opacity = '1';
+            legalBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #20923a 100%)';
+            legalBtn.style.color = '#fff';
+        }
 
         this.info('All UI panels reset to initial state');
     }
