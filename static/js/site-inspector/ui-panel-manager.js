@@ -1358,7 +1358,7 @@ class UIPanelManager extends BaseManager {
                 // Re-enable the clear button
                 if (clearButton) {
                     clearButton.disabled = false;
-                    clearButton.innerHTML = '🗑️ Clear Site Inspector';
+                    clearButton.innerHTML = 'Clear Site Inspector';
                 }
             }, 500);
 
@@ -1372,7 +1372,7 @@ class UIPanelManager extends BaseManager {
             const clearButton = document.getElementById('clearSiteInspectorButton');
             if (clearButton) {
                 clearButton.disabled = false;
-                clearButton.innerHTML = '🗑️ Clear Site Inspector';
+                clearButton.innerHTML = 'Clear Site Inspector';
             }
         }
     }
