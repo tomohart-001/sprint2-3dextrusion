@@ -263,6 +263,9 @@ class SiteBoundaryCore extends MapManagerBase {
                 this.warn(`Failed to setup handler for ${id}:`, error);
             }
         });
+
+        // Setup legal boundary button state based on location
+        this.setupLegalBoundaryButtonState();
     }
 
     setupDrawingEventHandlers() {
@@ -396,6 +399,48 @@ class SiteBoundaryCore extends MapManagerBase {
         };
 
         setTimeout(checkReadiness, 100);
+    }
+
+    setupLegalBoundaryButtonState() {
+        try {
+            const legalBoundaryBtn = this.getElementById('useLegalBoundaryButton', false);
+            if (!legalBoundaryBtn) {
+                this.warn('Legal boundary button not found');
+                return;
+            }
+
+            // Get location from project data or site data
+            const siteData = window.siteData || {};
+            const projectData = window.projectData || {};
+            
+            let center = siteData.center;
+            if (!center && projectData.lat && projectData.lng) {
+                center = { lat: projectData.lat, lng: projectData.lng };
+            }
+            
+            // Default to Wellington coordinates if no location available
+            if (!center || !center.lat || !center.lng) {
+                center = { lat: -41.2865, lng: 174.7762 }; // Wellington default
+            }
+
+            const isInNZ = this.isLocationInNewZealand(center.lat, center.lng);
+            
+            if (isInNZ) {
+                legalBoundaryBtn.disabled = false;
+                legalBoundaryBtn.style.opacity = '1';
+                legalBoundaryBtn.title = 'Use official property boundary from LINZ';
+                this.info('Legal boundary button enabled for New Zealand location');
+            } else {
+                legalBoundaryBtn.disabled = true;
+                legalBoundaryBtn.style.opacity = '0.5';
+                legalBoundaryBtn.style.background = '#e9ecef';
+                legalBoundaryBtn.style.color = '#6c757d';
+                legalBoundaryBtn.title = 'Legal property boundaries are only available within New Zealand';
+                this.info('Legal boundary button disabled for location outside New Zealand');
+            }
+        } catch (error) {
+            this.error('Error setting up legal boundary button state:', error);
+        }
     }
 
     toggleDrawingMode() {
@@ -1963,6 +2008,12 @@ class SiteBoundaryCore extends MapManagerBase {
     async useLegalPropertyBoundary() {
         try {
             this.info('Using legal property boundary...');
+
+            // Check if button should be enabled
+            const legalBoundaryBtn = this.getElementById('useLegalBoundaryButton', false);
+            if (legalBoundaryBtn && legalBoundaryBtn.disabled) {
+                throw new Error('Legal property boundaries are not available for this location.');
+            }
 
             // Get project data to determine if we're in New Zealand
             const siteData = window.siteData || {};
