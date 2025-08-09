@@ -327,9 +327,35 @@
         .action-button,
         .setback-button,
         .edge-selection-btn,
-        .upload-button {
+        .upload-button,
+        .draw-button {
             border: none; border-radius: 12px; padding: 14px 20px; cursor: pointer; font-weight: 600; font-size: 14px; width: 100%;
             transition: all 0.2s ease; height: 48px; display: flex; align-items: center; justify-content: center;
+        }
+        
+        .draw-button {
+            background: linear-gradient(135deg, #547bf7 0%, #4a6bda 100%); 
+            color: #fff;
+        }
+        .draw-button:hover:not(:disabled) {
+            background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%); 
+            transform: translateY(-2px); 
+            box-shadow: 0 4px 16px rgba(84,123,247,0.3);
+        }
+        .draw-button:disabled {
+            background: #e9ecef !important; 
+            color: #6c757d !important; 
+            cursor: not-allowed; 
+            transform: none; 
+            box-shadow: none;
+            opacity: 0.5;
+        }
+        
+        .legal-boundary-btn:not(:disabled) {
+            background: linear-gradient(135deg, #28a745 0%, #20923a 100%) !important;
+        }
+        .legal-boundary-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #34ce57 0%, #28a745 100%) !important;
         }
         .action-button { background: linear-gradient(135deg, #28a745 0%, #20923a 100%); color: #fff; }
         .action-button:hover { background: linear-gradient(135deg, #34ce57 0%, #28a745 100%); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(40,167,69,0.3); }
@@ -641,6 +667,7 @@
                     <!-- Drawing Controls -->
                     <div class="boundary-drawing-controls" style="margin: 12px 0;">
                         <button id="drawPolygonButton" class="draw-button" style="width: 100%; margin-bottom: 8px;" type="button">Draw Site Boundary</button>
+                        <button id="useLegalBoundaryButton" class="draw-button legal-boundary-btn" style="width: 100%; margin-bottom: 8px; background: linear-gradient(135deg, #28a745 0%, #20923a 100%);" type="button">Use Legal Property Boundary</button>
                         <div class="button-row" style="display: none; gap: 8px;" id="drawingButtonRow">
                             <button id="stopDrawingButton" class="action-button" style="background: #dc3545; flex: 1;" type="button">Stop Drawing</button>
                             <button id="clearBoundaryButton" class="action-button" style="background: #dc3545; flex: 1;" type="button">Clear Boundary</button>

@@ -242,7 +242,8 @@ class SiteBoundaryCore extends MapManagerBase {
             { id: 'stopDrawingButton', handler: () => this.safeStopDrawingMode() },
             { id: 'clearBoundaryButton', handler: () => this.safeClearBoundary() },
             { id: 'clearBoundaryButton2', handler: () => this.safeClearBoundary() },
-            { id: 'confirmBoundaryButton', handler: () => this.safeConfirmBoundary() }
+            { id: 'confirmBoundaryButton', handler: () => this.safeConfirmBoundary() },
+            { id: 'useLegalBoundaryButton', handler: () => this.safeUseLegalBoundary() }
         ];
 
         handlers.forEach(({ id, handler }) => {
@@ -321,6 +322,15 @@ class SiteBoundaryCore extends MapManagerBase {
             this.confirmBoundary();
         } catch (error) {
             this.error('Error confirming boundary:', error);
+        }
+    }
+
+    safeUseLegalBoundary() {
+        try {
+            this.useLegalPropertyBoundary();
+        } catch (error) {
+            this.error('Error using legal property boundary:', error);
+            this.showUserError('Failed to use legal property boundary: ' + error.message);
         }
     }
 
@@ -1948,6 +1958,184 @@ class SiteBoundaryCore extends MapManagerBase {
             alert(message);
         }
         this.error('User error:', message);
+    }
+
+    async useLegalPropertyBoundary() {
+        try {
+            this.info('Using legal property boundary...');
+
+            // Get project data to determine if we're in New Zealand
+            const siteData = window.siteData || {};
+            const projectData = window.projectData || {};
+            
+            // Check if we have center coordinates
+            let center = siteData.center;
+            if (!center && projectData.lat && projectData.lng) {
+                center = { lat: projectData.lat, lng: projectData.lng };
+            }
+            
+            if (!center || !center.lat || !center.lng) {
+                throw new Error('Location not available. Please ensure project location is set.');
+            }
+
+            // Check if location is in New Zealand (rough bounds check)
+            const isInNZ = this.isLocationInNewZealand(center.lat, center.lng);
+            if (!isInNZ) {
+                throw new Error('Legal property boundaries are only available within New Zealand.');
+            }
+
+            // Show loading state
+            this.updateButtonState('useLegalBoundaryButton', 'active', 'Loading Property Boundary...');
+
+            // Fetch property boundaries
+            const response = await fetch('/api/property-boundaries', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    lat: center.lat, 
+                    lng: center.lng 
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch property boundaries: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to retrieve property boundaries');
+            }
+
+            if (!data.containing_property || !data.containing_property.geometry) {
+                throw new Error('No containing property found for this location');
+            }
+
+            // Extract coordinates from the containing property
+            const geometry = data.containing_property.geometry;
+            let coordinates;
+
+            if (geometry.type === 'Polygon') {
+                coordinates = geometry.coordinates[0];
+            } else if (geometry.type === 'MultiPolygon') {
+                // Use the largest polygon from MultiPolygon
+                const polygons = geometry.coordinates;
+                const largestPolygon = polygons.reduce((largest, current) => {
+                    return current[0].length > largest[0].length ? current : largest;
+                });
+                coordinates = largestPolygon[0];
+            } else {
+                throw new Error('Invalid property geometry type: ' + geometry.type);
+            }
+
+            if (!coordinates || coordinates.length < 4) {
+                throw new Error('Invalid property boundary coordinates');
+            }
+
+            // Process and validate coordinates
+            const processedCoordinates = this.processLegalBoundaryCoordinates(coordinates);
+            
+            // Create polygon from legal boundary
+            this.createPolygonFromLegalBoundary(processedCoordinates, data.containing_property);
+
+            this.info('Legal property boundary applied successfully');
+
+        } catch (error) {
+            this.error('Error using legal property boundary:', error);
+            this.updateButtonState('useLegalBoundaryButton', 'inactive', 'Use Legal Property Boundary');
+            throw error;
+        }
+    }
+
+    isLocationInNewZealand(lat, lng) {
+        // New Zealand bounds (approximate)
+        const nzBounds = {
+            north: -34.0,
+            south: -47.5,
+            east: 179.0,
+            west: 166.0
+        };
+        
+        return lat >= nzBounds.south && lat <= nzBounds.north && 
+               lng >= nzBounds.west && lng <= nzBounds.east;
+    }
+
+    processLegalBoundaryCoordinates(coordinates) {
+        const processedCoords = [];
+        
+        for (let i = 0; i < coordinates.length; i++) {
+            const coord = coordinates[i];
+            
+            if (!Array.isArray(coord) || coord.length < 2) {
+                this.warn(`Skipping invalid coordinate at index ${i}:`, coord);
+                continue;
+            }
+            
+            const lng = parseFloat(coord[0]);
+            const lat = parseFloat(coord[1]);
+            
+            if (isNaN(lng) || isNaN(lat)) {
+                this.warn(`Skipping NaN coordinate at index ${i}:`, coord);
+                continue;
+            }
+            
+            if (!this.isValidCoordinateRange(lng, lat)) {
+                this.warn(`Skipping out-of-range coordinate at index ${i}:`, coord);
+                continue;
+            }
+            
+            processedCoords.push([lng, lat]);
+        }
+        
+        if (processedCoords.length < 3) {
+            throw new Error('Not enough valid coordinates for legal boundary polygon');
+        }
+        
+        // Ensure polygon is closed
+        const firstCoord = processedCoords[0];
+        const lastCoord = processedCoords[processedCoords.length - 1];
+        if (!this.pointsAreEqual(firstCoord, lastCoord)) {
+            processedCoords.push([...firstCoord]);
+        }
+        
+        return processedCoords;
+    }
+
+    createPolygonFromLegalBoundary(coordinates, propertyInfo) {
+        try {
+            // Clear any existing drawing state
+            this.clearDrawingVisualization();
+            this.safeDeleteAllFeatures();
+
+            // Create polygon feature
+            const feature = this.createPolygonFeature(coordinates);
+            this.sitePolygon = feature;
+
+            // Calculate metrics
+            const metrics = this.calculatePolygonMetrics(coordinates);
+            this.polygonEdges = metrics.edges;
+
+            // Update UI
+            this.updateUIAfterCreation(coordinates, metrics);
+            this.updateButtonState('useLegalBoundaryButton', 'inactive', 'Legal Boundary Applied ✓');
+            this.updateButtonState('drawPolygonButton', 'inactive', 'Draw Site Boundary');
+
+            // Show property information
+            const propertyTitle = propertyInfo.title || 'Legal Property Boundary';
+            this.info(`Legal property boundary applied: ${propertyTitle}`);
+
+            // Emit events
+            this.emitBoundaryCreatedEvent(coordinates, metrics);
+
+            // Auto-confirm the boundary since it's from official records
+            setTimeout(() => {
+                this.confirmBoundary();
+            }, 500);
+
+        } catch (error) {
+            this.error('Error creating polygon from legal boundary:', error);
+            throw error;
+        }
     }
 
     // Public API methods

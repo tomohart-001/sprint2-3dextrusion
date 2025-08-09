@@ -969,12 +969,36 @@ class SiteInspectorCore extends BaseManager {
                 // Show which property contains the project address
                 if (data.containing_property) {
                     this.info('Project address is within property:', data.containing_property.title || 'Unknown title');
+                    
+                    // Update legal boundary button state
+                    this.updateLegalBoundaryButtonState(true, data.containing_property);
                 }
             } else {
                 this.warn('No property boundaries found');
+                this.updateLegalBoundaryButtonState(false);
             }
         } catch (error) {
             this.error('Error loading property boundaries:', error);
+            this.updateLegalBoundaryButtonState(false);
+        }
+    }
+
+    updateLegalBoundaryButtonState(available, propertyInfo = null) {
+        const button = document.getElementById('useLegalBoundaryButton');
+        if (!button) return;
+
+        if (available && propertyInfo) {
+            button.disabled = false;
+            button.style.opacity = '1';
+            button.style.background = 'linear-gradient(135deg, #28a745 0%, #20923a 100%)';
+            button.textContent = `Use Legal Boundary (${propertyInfo.title || 'Property'})`;
+            button.title = `Apply legal property boundary: ${propertyInfo.title || 'Unknown property'}`;
+        } else {
+            button.disabled = true;
+            button.style.opacity = '0.5';
+            button.style.background = '#e9ecef';
+            button.textContent = 'Legal Boundary Not Available';
+            button.title = 'Legal property boundaries are only available in New Zealand';
         }
     }
 
