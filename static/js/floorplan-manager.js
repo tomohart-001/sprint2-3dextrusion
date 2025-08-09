@@ -23,8 +23,10 @@ if (typeof FloorplanManager === 'undefined') {
         super('FloorplanManager');
 
         this.map = map;
-        this.draw = null;
-        this.isDrawing = false;
+        this.draw = null; // MapboxDraw instance
+        this.drawStructureManager = null; // Instance of the new DrawStructureManager
+
+        this.isDrawing = false; // Kept for backward compatibility/fallback
         this.structures = [];
         this.currentStructure = null;
 
@@ -34,7 +36,7 @@ if (typeof FloorplanManager === 'undefined') {
             geojsonPolygon: null,
             currentDrawMode: null,
             isExtruded: false,
-            drawingPoints: []
+            drawingPoints: [] // Kept for backward compatibility/fallback
         };
 
         // UI elements
@@ -63,11 +65,21 @@ if (typeof FloorplanManager === 'undefined') {
             this.extrudeButton = document.getElementById('extrudeStructureButton');
             this.stopButton = document.getElementById('stopStructureDrawingButton');
 
+            // Initialize the DrawStructureManager
+            // Pass the map instance and draw control to it
+            if (typeof DrawStructureManager !== 'undefined') {
+                this.drawStructureManager = new DrawStructureManager(this.map);
+                this.info('DrawStructureManager initialized');
+            } else {
+                this.warn('DrawStructureManager class not found. Drawing functionality will be limited.');
+            }
+
+
             // Setup event handlers
             this.setupEventHandlers();
 
             // Initialize state
-            this.isDrawing = false;
+            this.isDrawing = false; // Default state
             this.structures = [];
 
             // Ensure UI is in correct initial state
@@ -95,7 +107,6 @@ if (typeof FloorplanManager === 'undefined') {
         } else {
             this.warn('Draw structure button not found in DOM - checking alternatives...');
 
-            // Try to find button by different selectors
             const alternativeButtons = [
                 document.querySelector('#drawFloorplanButton'),
                 document.querySelector('.draw-button'),
@@ -149,13 +160,20 @@ if (typeof FloorplanManager === 'undefined') {
             });
         }
 
-        // Wait for draw control to be available
-        this.setupDrawEventHandlers();
+        // Setup draw control event handlers via the DrawStructureManager
+        if (this.drawStructureManager) {
+            this.drawStructureManager.setupDrawEventHandlers();
+        } else {
+            // Fallback if DrawStructureManager is not available
+            this.setupDrawEventHandlersFallback();
+        }
+
 
         // Listen for other tool activations to stop structure drawing
         if (window.eventBus) {
             window.eventBus.on('tool-activated', (toolName) => {
-                if (toolName !== 'floorplan' && this.isDrawing) {
+                // If a different tool is activated and we are drawing, stop drawing
+                if (toolName !== 'floorplan' && this.isDrawingActive()) {
                     this.info(`Other tool '${toolName}' activated, stopping structure drawing`);
                     this.stopDrawing();
                 }
@@ -165,12 +183,14 @@ if (typeof FloorplanManager === 'undefined') {
         this.info('Event handlers setup completed');
     }
 
-    setupDrawEventHandlers() {
-        // Check if draw control is available, if not, wait for it
+    // Fallback for setting up draw event handlers if DrawStructureManager is not available
+    setupDrawEventHandlersFallback() {
+        this.info('Setting up fallback draw event handlers...');
+
         const checkDraw = () => {
             const core = window.siteInspectorCore;
             if (core && core.draw) {
-                this.draw = core.draw;
+                this.draw = core.draw; // Use the internal draw property
                 this.info('Draw control found, setting up map event handlers');
 
                 // Map Drawing Event Handlers
@@ -183,7 +203,6 @@ if (typeof FloorplanManager === 'undefined') {
             return false;
         };
 
-        // Try immediately, then retry if needed
         if (!checkDraw()) {
             this.info('Draw control not ready, will retry...');
             let attempts = 0;
@@ -201,85 +220,53 @@ if (typeof FloorplanManager === 'undefined') {
         }
     }
 
+
     toggleDrawingMode() {
-        this.info('toggleDrawingMode called - checking draw control availability');
-
-        // Try to get draw control from multiple sources
-        if (!this.draw) {
-            const core = window.siteInspectorCore;
-            if (core && core.draw) {
-                this.draw = core.draw;
-                this.info('Draw control obtained from siteInspectorCore');
-            }
-        }
-
-        if (!this.draw) {
-            this.warn('Drawing not available - MapboxDraw not initialized');
-            alert('Structure drawing is currently unavailable. Please refresh the page.');
-            return;
-        }
-
-        if (this.isDrawing) {
-            this.info('Currently drawing - stopping drawing mode');
-            this.stopDrawing();
+        this.info('toggleDrawingMode called');
+        if (this.drawStructureManager) {
+            this.drawStructureManager.toggleDrawing();
         } else {
-            this.info('Not currently drawing - starting drawing mode');
-            this.startDrawing();
+            // Fallback logic if DrawStructureManager is not available
+            this.warn('DrawStructureManager not available, using fallback toggle logic');
+            if (this.isDrawing) {
+                this.stopDrawing();
+            } else {
+                this.startDrawing();
+            }
         }
     }
 
     startDrawing() {
-        if (!this.draw) {
-            this.error('Cannot start drawing - draw control not available');
-            return;
-        }
-
-        try {
-            this.info('Starting structure drawing mode...');
-
-            // Emit tool activation event to stop other tools
-            window.eventBus.emit('tool-activated', 'floorplan');
-
-            // Clear any existing structures first
-            this.clearExistingStructures();
-
-            // Check if draw control has the required methods
-            if (typeof this.draw.changeMode !== 'function') {
-                throw new Error('Draw control missing changeMode method');
+        if (this.drawStructureManager) {
+            this.drawStructureManager.startDrawing();
+        } else {
+            // Fallback logic
+            this.warn('DrawStructureManager not available, using fallback startDrawing logic');
+            if (!this.draw) {
+                this.error('Cannot start drawing - draw control not available');
+                alert('Structure drawing is currently unavailable. Please refresh the page.');
+                return;
             }
-
-            if (typeof this.draw.getMode !== 'function') {
-                throw new Error('Draw control missing getMode method');
+            try {
+                this.info('Starting structure drawing mode (fallback)...');
+                if (window.eventBus) {
+                    window.eventBus.emit('tool-activated', 'floorplan');
+                }
+                this.clearExistingStructures();
+                if (typeof this.draw.changeMode === 'function') {
+                    this.draw.changeMode('draw_polygon');
+                }
+                this.isDrawing = true;
+                this.state.currentDrawMode = 'structure';
+                this.updateDrawingUI(true);
+                this.showStatus('Click on the map to start drawing your structure footprint', 'info');
+                this.info('✅ Structure drawing mode started successfully (fallback)');
+            } catch (error) {
+                this.error('Failed to start drawing mode (fallback):', error);
+                this.showStatus('Failed to start drawing mode: ' + error.message, 'error');
+                this.isDrawing = false;
+                this.updateDrawingUI(false);
             }
-
-            // Get current mode for debugging
-            const currentMode = this.draw.getMode();
-            this.info(`Current draw mode: ${currentMode}`);
-
-            // Change to polygon drawing mode for structures
-            this.draw.changeMode('draw_polygon');
-            this.isDrawing = true;
-            this.state.currentDrawMode = 'structure';
-
-            // Verify mode change
-            const newMode = this.draw.getMode();
-            this.info(`New draw mode: ${newMode}`);
-
-            // Update UI
-            this.updateDrawingUI(true);
-
-            // Show user feedback
-            this.showStatus('Click on the map to start drawing your structure footprint', 'info');
-
-            this.info('✅ Structure drawing mode started successfully');
-
-        } catch (error) {
-            this.error('Failed to start drawing mode:', error);
-            this.showStatus('Failed to start drawing mode: ' + error.message, 'error');
-
-            // Reset state on error
-            this.isDrawing = false;
-            this.updateDrawingUI(false);
         }
     }
 
@@ -287,8 +274,12 @@ if (typeof FloorplanManager === 'undefined') {
         try {
             // Remove existing structure visualization layers
             this.removeStructureVisualization();
-
-            // Don't touch the draw control's features - structures are managed separately
+            // Also clear from draw control if possible and needed
+            if (this.drawStructureManager) {
+                this.drawStructureManager.clearStructureDrawingFeatures();
+            } else if (this.draw) {
+                this.clearStructureDrawingFeatures();
+            }
             this.info('Cleared existing structure visualizations');
         } catch (error) {
             this.warn('Could not clear existing structures:', error);
@@ -296,9 +287,9 @@ if (typeof FloorplanManager === 'undefined') {
     }
 
     clearStructureDrawingFeatures() {
+        // This method is now primarily handled by DrawStructureManager,
+        // but kept for fallback if DrawStructureManager is not available.
         try {
-            // Only clear features that are specifically structure-related
-            // Do NOT clear features that might be the site boundary
             if (this.draw && typeof this.draw.getAll === 'function') {
                 const allFeatures = this.draw.getAll();
                 const structureFeatures = allFeatures.features.filter(feature =>
@@ -311,41 +302,44 @@ if (typeof FloorplanManager === 'undefined') {
                 if (structureFeatures.length > 0) {
                     const structureIds = structureFeatures.map(f => f.id);
                     this.draw.delete(structureIds);
-                    this.info(`Cleared ${structureFeatures.length} structure features from draw control`);
+                    this.info(`Cleared ${structureFeatures.length} structure features from draw control (fallback)`);
                 }
             }
         } catch (error) {
-            this.warn('Could not clear structure drawing features:', error);
+            this.warn('Could not clear structure drawing features (fallback):', error);
         }
     }
 
     stopDrawing() {
-        if (!this.draw) return;
+        if (this.drawStructureManager) {
+            this.drawStructureManager.stopDrawing();
+        } else {
+            // Fallback logic
+            this.warn('DrawStructureManager not available, using fallback stopDrawing logic');
+            if (!this.draw) return;
 
-        try {
-            this.isDrawing = false;
-
-            // Safely change draw mode back to simple_select without affecting site boundary
             try {
-                if (this.draw && typeof this.draw.changeMode === 'function') {
-                    const currentMode = this.draw.getMode();
-                    if (currentMode !== 'simple_select') {
-                        this.draw.changeMode('simple_select');
-                        this.info('Draw mode reset to simple_select, preserving site boundary integrity');
+                this.isDrawing = false;
+                this.state.currentDrawMode = null;
+
+                try {
+                    if (typeof this.draw.changeMode === 'function') {
+                        const currentMode = this.draw.getMode();
+                        if (currentMode !== 'simple_select') {
+                            this.draw.changeMode('simple_select');
+                            this.info('Draw mode reset to simple_select (fallback)');
+                        }
                     }
+                } catch (modeError) {
+                    this.warn('Could not change draw mode (fallback):', modeError);
                 }
-            } catch (modeError) {
-                this.warn('Could not change draw mode:', modeError);
-                // Continue with cleanup even if mode change fails
+
+                this.clearStructureDrawingFeatures(); // Clear structure specific features
+                this.updateDrawingUI(false);
+                this.info('Structure drawing mode stopped (fallback)');
+            } catch (error) {
+                this.error('Failed to stop drawing mode (fallback):', error);
             }
-
-            // Clear any structure-related drawing features without touching site boundary
-            this.clearStructureDrawingFeatures();
-
-            this.updateDrawingUI(false);
-            this.info('Structure drawing mode stopped - site boundary preserved');
-        } catch (error) {
-            this.error('Failed to stop drawing mode:', error);
         }
     }
 
@@ -363,22 +357,23 @@ if (typeof FloorplanManager === 'undefined') {
         if (this.stopButton) {
             this.stopButton.style.display = isDrawing ? 'inline-block' : 'none';
         }
-        // Disable draw button when drawing
+        // Disable draw button when drawing (or delegate to manager)
         if (this.drawButton) {
             this.drawButton.disabled = isDrawing;
         }
     }
 
     handleStructureCreated(e) {
+        // This method is now primarily handled by DrawStructureManager,
+        // but kept for fallback if DrawStructureManager is not available.
         try {
             const feature = e.features[0];
             if (!feature || feature.geometry.type !== 'Polygon') {
                 return;
             }
 
-            this.info('Structure created:', feature);
+            this.info('Structure created (fallback):', feature);
 
-            // Store the original feature data before removing from draw control
             const coordinates = feature.geometry.coordinates[0];
             const structureFeature = {
                 type: 'Feature',
@@ -393,32 +388,25 @@ if (typeof FloorplanManager === 'undefined') {
             };
 
             // Immediately remove from draw control to prevent interference with site boundary
-            // This ensures the structure doesn't affect the site boundary system
             if (this.draw && feature.id) {
                 this.draw.delete([feature.id]);
-                this.info('Structure removed from draw control to preserve site boundary independence');
+                this.info('Structure removed from draw control to preserve site boundary independence (fallback)');
             }
 
-            // Store the structure independently
             this.currentStructure = structureFeature;
             this.state.geojsonPolygon = structureFeature;
             this.state.hasFloorplan = true;
 
-            // Calculate area
             const area = this.calculatePolygonArea(coordinates);
-            this.info(`Structure area: ${area.toFixed(2)} m²`);
+            this.info(`Structure area: ${area.toFixed(2)} m² (fallback)`);
 
-            // Add structure visualization layer (completely separate from site boundary)
             this.addStructureVisualization(structureFeature);
 
-            // Update UI
             this.showStatus(`Structure created (${area.toFixed(1)} m²)`, 'success');
             this.updateStructureControls(true);
 
-            // Stop drawing mode and reset draw control to simple_select
-            this.stopDrawing();
+            this.stopDrawing(); // Stop drawing mode
 
-            // Emit event
             window.eventBus.emit('structure-created', {
                 feature: structureFeature,
                 area: area,
@@ -427,22 +415,19 @@ if (typeof FloorplanManager === 'undefined') {
             });
 
         } catch (error) {
-            this.error('Error handling structure creation:', error);
+            this.error('Error handling structure creation (fallback):', error);
             this.showStatus('Error creating structure', 'error');
         }
     }
 
     addStructureVisualization(feature) {
         try {
-            // Use completely separate source and layer IDs for structure footprint
             const sourceId = 'structure-footprint-independent';
             const fillLayerId = 'structure-footprint-fill-independent';
             const strokeLayerId = 'structure-footprint-stroke-independent';
 
-            // Remove existing structure layers (ensure complete cleanup)
-            this.removeStructureVisualization();
+            this.removeStructureVisualization(); // Ensure cleanup
 
-            // Add structure source with independent naming
             this.map.addSource(sourceId, {
                 type: 'geojson',
                 data: {
@@ -459,25 +444,23 @@ if (typeof FloorplanManager === 'undefined') {
                 }
             });
 
-            // Add structure fill layer with distinct orange color (different from blue site boundary)
             this.map.addLayer({
                 id: fillLayerId,
                 type: 'fill',
                 source: sourceId,
                 paint: {
-                    'fill-color': '#ff6b35', // Orange color to distinguish from blue site boundary
+                    'fill-color': '#ff6b35',
                     'fill-opacity': 0.3
                 },
                 filter: ['==', ['get', 'layer_type'], 'structure_footprint']
             });
 
-            // Add structure stroke layer
             this.map.addLayer({
                 id: strokeLayerId,
                 type: 'line',
                 source: sourceId,
                 paint: {
-                    'line-color': '#ff6b35', // Orange color to distinguish from blue site boundary
+                    'line-color': '#ff6b35',
                     'line-width': 3,
                     'line-opacity': 0.8
                 },
@@ -485,17 +468,19 @@ if (typeof FloorplanManager === 'undefined') {
             });
 
             this.info('Structure visualization added to map with completely independent layers');
-            this.map.setLayoutProperty('structure-footprint-stroke-independent', 'visibility', 'visible');
-            this.map.setLayoutProperty('structure-footprint-fill-independent', 'visibility', 'visible');
+            // Ensure layers are visible
+            if (this.map.getLayoutProperty(strokeLayerId, 'visibility') !== 'visible') {
+                this.map.setLayoutProperty(strokeLayerId, 'visibility', 'visible');
+            }
+            if (this.map.getLayoutProperty(fillLayerId, 'visibility') !== 'visible') {
+                this.map.setLayoutProperty(fillLayerId, 'visibility', 'visible');
+            }
 
-            // Save structure placement data for persistence to other pages
+
             this.saveStructurePlacementData();
-
-            // Update UI to show structure is drawn
             this.updateStructureUI();
 
-            this.info('Draw mode reset to simple_select, preserving site boundary integrity');
-            this.isDrawing = false;
+            this.isDrawing = false; // Ensure drawing state is reset
 
         } catch (error) {
             this.error('Error adding structure visualization:', error);
@@ -503,6 +488,8 @@ if (typeof FloorplanManager === 'undefined') {
     }
 
     handleStructureUpdated(e) {
+        // This method is now primarily handled by DrawStructureManager,
+        // but kept for fallback if DrawStructureManager is not available.
         if (e.features && e.features.length > 0) {
             const feature = e.features[0];
             this.currentStructure = feature;
@@ -514,7 +501,9 @@ if (typeof FloorplanManager === 'undefined') {
     }
 
     handleStructureDeleted(e) {
-        this.info('Structure deleted');
+        // This method is now primarily handled by DrawStructureManager,
+        // but kept for fallback if DrawStructureManager is not available.
+        this.info('Structure deleted (fallback)');
         this.clearStructureState();
         this.updateStructureControls(false);
         this.showStatus('Structure deleted', 'info');
@@ -524,19 +513,13 @@ if (typeof FloorplanManager === 'undefined') {
 
     clearStructure() {
         try {
-            // Remove structure visualization layers (don't touch draw control features)
             this.removeStructureVisualization();
-
-            // Clear state
             this.clearStructureState();
-
-            // Update UI
             this.updateStructureControls(false);
             this.showStatus('Structure cleared', 'info');
 
             this.info('Structure cleared - site boundary unchanged');
 
-            // Emit event
             window.eventBus.emit('structure-deleted');
 
         } catch (error) {
@@ -545,7 +528,6 @@ if (typeof FloorplanManager === 'undefined') {
     }
 
     removeStructureVisualization() {
-        // Remove structure-specific visualization layers
         const layersToRemove = [
             'structure-footprint-fill-independent',
             'structure-footprint-stroke-independent',
@@ -595,19 +577,21 @@ if (typeof FloorplanManager === 'undefined') {
             this.clearButton.style.display = hasStructure ? 'block' : 'none';
         }
 
-        // Update extrusion controls
         const extrusionCard = document.getElementById('extrusionCard');
-        if (extrusionCard && hasStructure) {
-            extrusionCard.classList.remove('collapsed');
+        if (extrusionCard) {
+            if (hasStructure) {
+                extrusionCard.classList.remove('collapsed');
+            } else {
+                extrusionCard.classList.add('collapsed');
+            }
         }
-        // Also update the extrude button's enabled state
+
         if (this.extrudeButton) {
             this.extrudeButton.disabled = !hasStructure;
         }
     }
 
     extrudeStructure() {
-        // For now, prompt for height; in future, this might come from UI
         const heightInput = prompt('Enter extrusion height (in meters):');
         const height = parseFloat(heightInput);
 
@@ -625,10 +609,8 @@ if (typeof FloorplanManager === 'undefined') {
         try {
             const coordinates = this.currentStructure.geometry.coordinates[0];
 
-            // Remove any existing 3D structure
-            this.removeStructure3D();
+            this.removeStructure3D(); // Remove any existing 3D structure
 
-            // Add 3D extrusion layer
             const sourceId = 'structure-3d-extrusion';
             const layerId = 'structure-3d-layer';
 
@@ -666,7 +648,6 @@ if (typeof FloorplanManager === 'undefined') {
             this.showStatus(`Structure extruded to ${height}m`, 'success');
             this.info(`Structure extruded to ${height}m height`);
 
-            // Emit event
             window.eventBus.emit('extrusion-applied', {
                 height: height,
                 coordinates: coordinates
@@ -695,11 +676,10 @@ if (typeof FloorplanManager === 'undefined') {
     }
 
     calculatePolygonArea(coordinates) {
-        // Simple area calculation using shoelace formula
         if (!coordinates || coordinates.length < 3) return 0;
 
         let area = 0;
-        const numPoints = coordinates.length - 1; // Last point is same as first
+        const numPoints = coordinates.length - 1;
 
         for (let i = 0; i < numPoints; i++) {
             const j = (i + 1) % numPoints;
@@ -709,8 +689,7 @@ if (typeof FloorplanManager === 'undefined') {
 
         area = Math.abs(area) / 2;
 
-        // Convert to square meters (approximate)
-        // This is a rough conversion - more accurate conversion would need proper projection
+        // Approximate conversion to square meters
         return area * 111319.9 * 111319.9 * Math.cos(coordinates[0][1] * Math.PI / 180);
     }
 
@@ -720,7 +699,6 @@ if (typeof FloorplanManager === 'undefined') {
             this.statusDisplay.className = `floorplan-status ${type}`;
             this.statusDisplay.style.display = 'block';
 
-            // Auto-hide after 5 seconds
             setTimeout(() => {
                 if (this.statusDisplay) {
                     this.statusDisplay.style.display = 'none';
@@ -745,590 +723,50 @@ if (typeof FloorplanManager === 'undefined') {
         return null;
     }
 
+    // Delegated to DrawStructureManager or fallback
     isDrawingActive() {
+        if (this.drawStructureManager) {
+            return this.drawStructureManager.isDrawingActive();
+        }
         return this.isDrawing;
     }
 
-    // Add missing methods for fallback compatibility
-    clearAllFloorplanData() {
-        this.info('Clearing all floorplan data');
-
-        // Clear the main state
-        this.state.geojsonPolygon = null;
-        this.state.isDrawing = false;
-        this.state.isLocked = false;
-
-        // Clear visualization
-        this.removeFloorplanFromMap();
-
-        // Clear structure placement data from session
-        this.clearStructurePlacementData();
-
-        // Update UI
-        this.updateStructureUI();
-
-        this.info('All floorplan data cleared');
+    getDrawingPoints() {
+        if (this.drawStructureManager) {
+            return this.drawStructureManager.getDrawingPoints();
+        }
+        return this.state.drawingPoints || [];
     }
 
-    saveStructurePlacementData() {
-        if (!this.state.geojsonPolygon) {
-            this.warn('No structure to save');
-            return;
-        }
 
-        try {
-            const coordinates = this.state.geojsonPolygon.geometry.coordinates[0];
-            const area = this.calculatePolygonArea(coordinates);
+    // Added methods for drawing preview - Now delegated to DrawStructureManager
+    // Keep fallback methods for when DrawStructureManager is not available.
 
-            // Calculate center point
-            const centerLng = coordinates.reduce((sum, coord) => sum + coord[0], 0) / coordinates.length;
-            const centerLat = coordinates.reduce((sum, coord) => sum + coord[1], 0) / coordinates.length;
+    // Drawing methods now delegated to DrawStructureManager
+    // Removed redundant methods like startDrawingMode, stopDrawingMode,
+    // setupDrawingPreviewLayers, setupDrawingPreview, removeDrawingPreview,
+    // handleDrawingClick, handleDrawingMouseMove, handleDrawingUpdate,
+    // updateDrawingPreview, updateLiveDrawingPreview, getStaticPreviewFeatures,
+    // addDrawingPointMarker, clearDrawingVisualization, resetDrawingState, updateDrawButton.
 
-            // Calculate approximate dimensions (for rectangular structures)
-            const bounds = this.calculateBounds(coordinates);
-            const width = Math.abs(bounds.maxLng - bounds.minLng) * 111320 * Math.cos(centerLat * Math.PI / 180);
-            const length = Math.abs(bounds.maxLat - bounds.minLat) * 111320;
-
-            const structureData = {
-                coordinates: coordinates,
-                area_m2: area,
-                center: {
-                    lat: centerLat,
-                    lng: centerLng
-                },
-                dimensions: {
-                    width: Math.round(width * 10) / 10,
-                    length: Math.round(length * 10) / 10
-                },
-                type: 'structure_placement',
-                timestamp: new Date().toISOString(),
-                project_id: this.getProjectId()
-            };
-
-            // Store in session for immediate access
-            sessionStorage.setItem('structure_placement_data', JSON.stringify(structureData));
-
-            // Also store in localStorage for persistence across sessions
-            const projectId = this.getProjectId();
-            if (projectId) {
-                localStorage.setItem(`structure_placement_${projectId}`, JSON.stringify(structureData));
-            }
-
-            this.info('Structure placement data saved:', structureData);
-        } catch (error) {
-            this.error('Failed to save structure placement data:', error);
-        }
-    }
-
-    clearStructurePlacementData() {
-        try {
-            sessionStorage.removeItem('structure_placement_data');
-
-            const projectId = this.getProjectId();
-            if (projectId) {
-                localStorage.removeItem(`structure_placement_${projectId}`);
-            }
-
-            this.info('Structure placement data cleared');
-        } catch (error) {
-            this.error('Failed to clear structure placement data:', error);
-        }
-    }
-
-    calculateBounds(coordinates) {
-        const lngs = coordinates.map(coord => coord[0]);
-        const lats = coordinates.map(coord => coord[1]);
-
-        return {
-            minLng: Math.min(...lngs),
-            maxLng: Math.max(...lngs),
-            minLat: Math.min(...lats),
-            maxLat: Math.max(...lats)
-        };
-    }
-
-    getProjectId() {
-        // Get project ID from URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        let projectId = urlParams.get('project_id') || urlParams.get('project') ||
-                       sessionStorage.getItem('current_project_id') ||
-                       sessionStorage.getItem('project_id');
-
-        // Clean up malformed project IDs (remove any extra parameters)
-        if (projectId && typeof projectId === 'string' && projectId.includes('?')) {
-            projectId = projectId.split('?')[0];
-        }
-
-        return projectId;
-    }
-
-    // Added methods for drawing preview
-    startDrawingMode() {
-        if (!this.validateDrawingReadiness()) {
-            return;
-        }
-
-        try {
-            this.info('Starting structure drawing mode...');
-
-            // Emit tool activation event
-            if (window.eventBus) {
-                window.eventBus.emit('tool-activated', 'floorplan');
-            }
-
-            // Clear any existing structure visualizations
-            this.removeStructureVisualization();
-
-            // Initialize drawing state
-            this.isDrawing = true;
-            this.state.isDrawing = true;
-            this.state.drawingPoints = [];
-            this.updateDrawButton(true);
-
-            // Set up drawing preview sources and layers
-            this.setupDrawingPreviewLayers();
-
-            // Set up drawing event listeners for live preview
-            this.setupDrawingPreview();
-
-            // Get current mode for debugging
-            const currentMode = this.draw ? this.draw.getMode() : 'unknown';
-            this.info('Current draw mode:', currentMode);
-
-            // Start polygon drawing mode
-            this.draw.changeMode('draw_polygon');
-
-            const newMode = this.draw ? this.draw.getMode() : 'unknown';
-            this.info('New draw mode:', newMode);
-
-            // Show user feedback
-            this.showStatus('Click on the map to start drawing your structure footprint', 'info');
-
-            this.info('✅ Structure drawing mode started successfully');
-
-        } catch (error) {
-            this.error('Failed to start structure drawing mode:', error);
-            this.resetDrawingState();
-            this.showStatus('Failed to start drawing mode: ' + (error.message || 'Unknown error'), 'error');
-        }
-    }
-
-    stopDrawingMode() {
-        if (!this.draw) return;
-
-        try {
-            this.isDrawing = false;
-            this.state.isDrawing = false;
-            this.state.drawingPoints = [];
-            this.removeDrawingPreview();
-            this.clearDrawingVisualization();
-            
-            // Safely change draw mode back to simple_select
-            if (this.draw && typeof this.draw.changeMode === 'function') {
-                const currentMode = this.draw.getMode();
-                if (currentMode !== 'simple_select') {
-                    this.draw.changeMode('simple_select');
-                }
-            }
-            
-            this.updateDrawButton(false);
-            this.info('Draw mode reset to simple_select, preserving site boundary integrity');
-            this.info('Structure drawing mode stopped - site boundary preserved');
-        } catch (error) {
-            this.error('Failed to stop structure drawing mode:', error);
-            // Still try to reset state even if there's an error
-            this.resetDrawingState();
-        }
-    }
-
-    setupDrawingPreviewLayers() {
-        const emptyFeatureCollection = {
-            type: 'FeatureCollection',
-            features: []
-        };
-
-        // Add preview source for drawing lines and polygons
-        if (!this.map.getSource('structure-drawing-preview')) {
-            this.map.addSource('structure-drawing-preview', {
-                type: 'geojson',
-                data: emptyFeatureCollection
-            });
-        }
-
-        // Add points source for vertex markers
-        if (!this.map.getSource('structure-drawing-points')) {
-            this.map.addSource('structure-drawing-points', {
-                type: 'geojson',
-                data: emptyFeatureCollection
-            });
-        }
-
-        // Add preview fill layer
-        if (!this.map.getLayer('structure-preview-fill')) {
-            this.map.addLayer({
-                id: 'structure-preview-fill',
-                type: 'fill',
-                source: 'structure-drawing-preview',
-                paint: {
-                    'fill-color': [
-                        'case',
-                        ['==', ['get', 'type'], 'preview-polygon-live'],
-                        '#28a745',
-                        '#20c997'
-                    ],
-                    'fill-opacity': [
-                        'case',
-                        ['==', ['get', 'type'], 'preview-polygon-live'],
-                        0.2,
-                        0.3
-                    ]
-                },
-                filter: ['in', ['get', 'type'], ['literal', ['preview-polygon', 'preview-polygon-live']]]
-            });
-        }
-
-        // Add preview line layer
-        if (!this.map.getLayer('structure-preview-line')) {
-            this.map.addLayer({
-                id: 'structure-preview-line',
-                type: 'line',
-                source: 'structure-drawing-preview',
-                paint: {
-                    'line-color': [
-                        'case',
-                        ['==', ['get', 'type'], 'preview-line-live'],
-                        '#28a745',
-                        '#20c997'
-                    ],
-                    'line-width': [
-                        'case',
-                        ['==', ['get', 'type'], 'preview-line-live'],
-                        2,
-                        3
-                    ],
-                    'line-dasharray': [
-                        'case',
-                        ['==', ['get', 'type'], 'preview-line-live'],
-                        ['literal', [2, 2]],
-                        ['literal', []]
-                    ],
-                    'line-opacity': 0.8
-                },
-                filter: ['in', ['get', 'type'], ['literal', ['preview-line', 'preview-line-live']]]
-            });
-        }
-
-        // Add points layer for vertices
-        if (!this.map.getLayer('structure-drawing-points')) {
-            this.map.addLayer({
-                id: 'structure-drawing-points',
-                type: 'circle',
-                source: 'structure-drawing-points',
-                paint: {
-                    'circle-radius': 6,
-                    'circle-color': '#28a745',
-                    'circle-stroke-color': '#ffffff',
-                    'circle-stroke-width': 2,
-                    'circle-opacity': 1.0
-                }
-            });
-        }
-    }
-
-    setupDrawingPreview() {
-        // Add map click listener for adding points
-        this.handleDrawingClick = this.handleDrawingClick.bind(this);
-        this.handleDrawingMouseMove = this.handleDrawingMouseMove.bind(this);
-        this.handleDrawingUpdate = this.handleDrawingUpdate.bind(this);
-
-        this.map.on('click', this.handleDrawingClick);
-        this.map.on('mousemove', this.handleDrawingMouseMove);
-        this.map.on('draw.update', this.handleDrawingUpdate);
-
-        this.info('Drawing preview listeners set up');
-    }
-
-    removeDrawingPreview() {
-        try {
-            if (this.handleDrawingClick) {
-                this.map.off('click', this.handleDrawingClick);
-            }
-            if (this.handleDrawingMouseMove) {
-                this.map.off('mousemove', this.handleDrawingMouseMove);
-            }
-            if (this.handleDrawingUpdate) {
-                this.map.off('draw.update', this.handleDrawingUpdate);
-            }
-            this.info('Drawing preview listeners removed');
-        } catch (error) {
-            this.warn('Error removing drawing preview listeners:', error);
-        }
-    }
-
-    handleDrawingClick(e) {
-        if (!this.state.isDrawing) return;
-
-        try {
-            const point = [e.lngLat.lng, e.lngLat.lat];
-            this.state.drawingPoints.push(point);
-
-            this.info(`Drawing point ${this.state.drawingPoints.length} added:`, point);
-
-            // Update the preview visualization
-            this.updateDrawingPreview();
-
-            // Add point marker
-            this.addDrawingPointMarker(point, this.state.drawingPoints.length - 1);
-
-        } catch (error) {
-            this.error('Error handling drawing click:', error);
-        }
-    }
-
-    handleDrawingMouseMove(e) {
-        if (!this.state.isDrawing || this.state.drawingPoints.length === 0) return;
-
-        try {
-            const mousePoint = [e.lngLat.lng, e.lngLat.lat];
-            this.updateLiveDrawingPreview(mousePoint);
-        } catch (error) {
-            // Suppress mouse move errors to avoid spam
-            console.debug('Mouse move error:', error.message);
-        }
-    }
-
-    handleDrawingUpdate(e) {
-        if (!this.state.isDrawing) return;
-
-        try {
-            // Update our internal points array from the draw tool
-            if (e.features && e.features[0] && e.features[0].geometry && e.features[0].geometry.coordinates) {
-                const coords = e.features[0].geometry.coordinates[0];
-                if (coords && coords.length > 0) {
-                    this.state.drawingPoints = coords.slice(0, -1); // Remove the duplicate closing point
-                    this.updateDrawingPreview();
-                }
-            }
-        } catch (error) {
-            this.warn('Error handling drawing update:', error);
-        }
-    }
-
-    updateDrawingPreview() {
-        try {
-            const features = [];
-
-            // Always show points if we have any
-            if (this.state.drawingPoints.length >= 1) {
-                // Create preview line if we have 2+ points
-                if (this.state.drawingPoints.length >= 2) {
-                    const lineFeature = {
-                        type: 'Feature',
-                        geometry: {
-                            type: 'LineString',
-                            coordinates: this.state.drawingPoints
-                        },
-                        properties: {
-                            type: 'preview-line'
-                        }
-                    };
-                    features.push(lineFeature);
-                }
-
-                // Create preview fill if we have 3+ points
-                if (this.state.drawingPoints.length >= 3) {
-                    const closedCoords = [...this.state.drawingPoints, this.state.drawingPoints[0]];
-                    const fillFeature = {
-                        type: 'Feature',
-                        geometry: {
-                            type: 'Polygon',
-                            coordinates: [closedCoords]
-                        },
-                        properties: {
-                            type: 'preview-polygon'
-                        }
-                    };
-                    features.push(fillFeature);
-                }
-
-                // Update preview source
-                this.map.getSource('structure-drawing-preview').setData({
-                    type: 'FeatureCollection',
-                    features: features
-                });
-
-                this.info(`Drawing preview updated with ${features.length} features and ${this.state.drawingPoints.length} points`);
-            } else {
-                this.clearDrawingVisualization();
-            }
-
-        } catch (error) {
-            this.error('Error updating drawing preview:', error);
-        }
-    }
-
-    updateLiveDrawingPreview(mousePoint) {
-        if (this.state.drawingPoints.length === 0) return;
-
-        try {
-            // Get static features first
-            const staticFeatures = this.getStaticPreviewFeatures();
-            const liveFeatures = [];
-
-            // Create live preview line from last point to mouse
-            if (this.state.drawingPoints.length >= 1) {
-                const lastPoint = this.state.drawingPoints[this.state.drawingPoints.length - 1];
-                const liveLineFeature = {
-                    type: 'Feature',
-                    geometry: {
-                        type: 'LineString',
-                        coordinates: [lastPoint, mousePoint]
-                    },
-                    properties: {
-                        type: 'preview-line-live'
-                    }
-                };
-                liveFeatures.push(liveLineFeature);
-            }
-
-            // Create polygon preview if we have 2+ points
-            if (this.state.drawingPoints.length >= 2) {
-                const previewCoords = [...this.state.drawingPoints, mousePoint, this.state.drawingPoints[0]];
-                const livePolygonFeature = {
-                    type: 'Feature',
-                    geometry: {
-                        type: 'Polygon',
-                        coordinates: [previewCoords]
-                    },
-                    properties: {
-                        type: 'preview-polygon-live'
-                    }
-                };
-                liveFeatures.push(livePolygonFeature);
-            }
-
-            // Update preview with both static and live elements
-            this.map.getSource('structure-drawing-preview').setData({
-                type: 'FeatureCollection',
-                features: [...staticFeatures, ...liveFeatures]
-            });
-
-        } catch (error) {
-            // Suppress frequent mouse move errors
-            console.debug('Live preview error:', error.message);
-        }
-    }
-
-    getStaticPreviewFeatures() {
-        const features = [];
-
-        if (this.state.drawingPoints.length >= 2) {
-            // Static line through existing points
-            features.push({
-                type: 'Feature',
-                geometry: {
-                    type: 'LineString',
-                    coordinates: this.state.drawingPoints
-                },
-                properties: {
-                    type: 'preview-line'
-                }
-            });
-        }
-
-        // Add static polygon if we have 3+ points
-        if (this.state.drawingPoints.length >= 3) {
-            const closedCoords = [...this.state.drawingPoints, this.state.drawingPoints[0]];
-            features.push({
-                type: 'Feature',
-                geometry: {
-                    type: 'Polygon',
-                    coordinates: [closedCoords]
-                },
-                properties: {
-                    type: 'preview-polygon'
-                }
-            });
-        }
-
-        return features;
-    }
-
-    addDrawingPointMarker(point, index) {
-        try {
-            const pointFeature = {
-                type: 'Feature',
-                geometry: {
-                    type: 'Point',
-                    coordinates: point
-                },
-                properties: {
-                    index: index,
-                    type: 'drawing-point'
-                }
-            };
-
-            // Get existing points
-            const existingSource = this.map.getSource('structure-drawing-points');
-            if (existingSource) {
-                let currentData;
-                try {
-                    currentData = existingSource._data || { type: 'FeatureCollection', features: [] };
-                } catch (e) {
-                    currentData = { type: 'FeatureCollection', features: [] };
-                }
-                
-                if (!currentData.features) {
-                    currentData.features = [];
-                }
-                
-                currentData.features.push(pointFeature);
-                existingSource.setData(currentData);
-            }
-
-        } catch (error) {
-            this.error('Error adding drawing point marker:', error);
-        }
-    }
-
-    clearDrawingVisualization() {
-        const emptyFeatureCollection = {
-            type: 'FeatureCollection',
-            features: []
-        };
-
-        try {
-            const previewSource = this.map.getSource('structure-drawing-preview');
-            if (previewSource) {
-                previewSource.setData(emptyFeatureCollection);
-            }
-
-            const pointsSource = this.map.getSource('structure-drawing-points');
-            if (pointsSource) {
-                pointsSource.setData(emptyFeatureCollection);
-            }
-
-            this.state.drawingPoints = [];
-        } catch (error) {
-            this.warn('Error clearing drawing visualization:', error);
-        }
-    }
-
+    // validateDrawingReadiness now delegates to DrawStructureManager or uses fallback
     validateDrawingReadiness() {
-        // Check if map is available
+        if (this.drawStructureManager) {
+            return this.drawStructureManager.validateDrawingReadiness();
+        }
+
+        // Fallback validation
         if (!this.map) {
             this.error('Map instance not available');
             this.showStatus('Map not ready for drawing', 'error');
             return false;
         }
 
-        // Check if draw control is available
         if (!this.draw) {
-            // Try to get it from siteInspectorCore
             const core = window.siteInspectorCore;
             if (core && core.draw) {
                 this.draw = core.draw;
-                this.info('Draw control obtained from siteInspectorCore');
+                this.info('Draw control obtained from siteInspectorCore (fallback)');
             } else {
                 this.error('Draw control not available');
                 this.showStatus('Drawing tools not ready. Please refresh the page.', 'error');
@@ -1336,7 +774,6 @@ if (typeof FloorplanManager === 'undefined') {
             }
         }
 
-        // Verify draw control has required methods
         if (typeof this.draw.changeMode !== 'function') {
             this.error('Draw control not properly initialized');
             this.showStatus('Drawing tools are not ready. Please refresh the page.', 'error');
@@ -1346,14 +783,21 @@ if (typeof FloorplanManager === 'undefined') {
         return true;
     }
 
+    // resetDrawingState now delegates to DrawStructureManager or uses fallback
     resetDrawingState() {
-        this.isDrawing = false;
-        this.state.drawingPoints = [];
-        this.state.currentDrawMode = null;
-        this.updateDrawingUI(false);
-        this.clearDrawingVisualization();
+        if (this.drawStructureManager) {
+            this.drawStructureManager.resetDrawingState();
+        } else {
+            this.warn('DrawStructureManager not available, using fallback resetDrawingState');
+            this.isDrawing = false;
+            this.state.drawingPoints = [];
+            this.state.currentDrawMode = null;
+            this.updateDrawingUI(false);
+            // In fallback, clear visualization is handled by stopDrawing
+        }
     }
 
+    // updateDrawButton logic is kept here for UI consistency with the drawButton
     updateDrawButton(isActive) {
         if (this.drawButton) {
             if (isActive) {
@@ -1367,25 +811,28 @@ if (typeof FloorplanManager === 'undefined') {
         }
     }
 
+    // updateStructureUI is kept here to manage the overall structure drawing state
     updateStructureUI() {
-        // Update UI to reflect current structure state
         const hasStructure = this.state.hasFloorplan;
         this.updateStructureControls(hasStructure);
-        
+
         if (hasStructure) {
             this.showStatus('Structure footprint ready', 'success');
         }
     }
 
+    // Alias for removeStructureVisualization for compatibility
     removeFloorplanFromMap() {
-        // Alias for removeStructureVisualization for compatibility
         this.removeStructureVisualization();
     }
 
-    // Need to rename startDrawingMode and stopDrawingMode to startDrawing and stopDrawing respectively
-    // to match the existing calls in the code.
-    startDrawing = this.startDrawingMode;
-    stopDrawing = this.stopDrawingMode;
+    // Cleanup method that also cleans up DrawStructureManager
+    cleanup() {
+        if (this.drawStructureManager) {
+            this.drawStructureManager.cleanup();
+        }
+        // Existing cleanup logic for FloorplanManager can be added here if needed
+        this.info('FloorplanManager cleanup complete.');
     }
 
     // Make available globally
