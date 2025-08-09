@@ -159,6 +159,9 @@ class UIPanelManager extends BaseManager {
         window.eventBus.on('structure-selection-changed', () => {
             this.updateExtrudeStructureButtonState();
         });
+
+        // Clear Site Inspector functionality
+        this.setupClearSiteInspectorListeners();
     }
 
     setupCardEventListeners() {
@@ -1119,7 +1122,7 @@ class UIPanelManager extends BaseManager {
             this.collapseSetbacksCard();
             this.collapseFloorplanCard();
             this.collapseExtrusionCard();
-            
+
             // Reset checkmarks
             const checkmarks = ['setbacksAppliedCheck', 'floorplanAppliedCheck', 'extrusionAppliedCheck'];
             checkmarks.forEach(checkId => {
@@ -1221,6 +1224,240 @@ class UIPanelManager extends BaseManager {
 
     isSiteInfoExpanded() {
         return this.panelState.siteInfo;
+    }
+
+    setupClearSiteInspectorListeners() {
+        // Clear Site Inspector button
+        const clearButton = document.getElementById('clearSiteInspectorButton');
+        if (clearButton) {
+            clearButton.addEventListener('click', () => this.showClearConfirmationModal());
+        }
+
+        // Modal event listeners
+        const modal = document.getElementById('clearConfirmationModal');
+        const confirmBtn = document.getElementById('clearConfirmBtn');
+        const cancelBtn = document.getElementById('clearCancelBtn');
+
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', () => this.clearAllSiteData());
+        }
+
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => this.hideClearConfirmationModal());
+        }
+
+        // Close modal on outside click
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.hideClearConfirmationModal();
+                }
+            });
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
+                this.hideClearConfirmationModal();
+            }
+        });
+    }
+
+    showClearConfirmationModal() {
+        const modal = document.getElementById('clearConfirmationModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            // Focus on cancel button for safety
+            const cancelBtn = document.getElementById('clearCancelBtn');
+            if (cancelBtn) {
+                setTimeout(() => cancelBtn.focus(), 100);
+            }
+        }
+    }
+
+    hideClearConfirmationModal() {
+        const modal = document.getElementById('clearConfirmationModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+    }
+
+    clearAllSiteData() {
+        try {
+            this.info('Starting comprehensive site data clearing...');
+
+            // Hide the confirmation modal first
+            this.hideClearConfirmationModal();
+
+            // Show loading state
+            const clearButton = document.getElementById('clearSiteInspectorButton');
+            if (clearButton) {
+                clearButton.disabled = true;
+                clearButton.innerHTML = '🔄 Clearing...';
+            }
+
+            // Emit comprehensive clearing event to all managers
+            window.eventBus.emit('clear-all-site-data');
+
+            // Clear all manager data through the core
+            if (window.siteInspectorCore) {
+                // Clear 3D extrusions first
+                if (window.siteInspectorCore.extrusion3DManager) {
+                    window.siteInspectorCore.extrusion3DManager.clearAllExtrusions();
+                }
+
+                // Clear floorplan data
+                if (window.siteInspectorCore.floorplanManager) {
+                    if (typeof window.siteInspectorCore.floorplanManager.clearAll === 'function') {
+                        window.siteInspectorCore.floorplanManager.clearAll();
+                    }
+                }
+
+                // Clear property setbacks and buildable area
+                if (window.siteInspectorCore.propertySetbacksManager) {
+                    window.siteInspectorCore.propertySetbacksManager.clearAllSetbackData();
+                }
+
+                // Clear site boundary last (this will trigger other clearings via events)
+                if (window.siteInspectorCore.siteBoundaryCore) {
+                    window.siteInspectorCore.siteBoundaryCore.clearBoundary();
+                }
+            }
+
+            // Reset all UI panels to initial state
+            this.resetAllPanelsToInitialState();
+
+            // Update site info display
+            this.updateSiteInfoDisplay({
+                area: 0,
+                area_m2: 0,
+                type: 'residential'
+            });
+
+            // Reset map view to original position if possible
+            if (window.siteInspectorCore && window.siteInspectorCore.map) {
+                const map = window.siteInspectorCore.map;
+                if (window.siteInspectorCore.siteData && window.siteInspectorCore.siteData.center) {
+                    map.flyTo({
+                        center: [window.siteInspectorCore.siteData.center.lng, window.siteInspectorCore.siteData.center.lat],
+                        zoom: 17,
+                        pitch: 0,
+                        bearing: 0,
+                        duration: 1000
+                    });
+                }
+            }
+
+            // Show success message
+            setTimeout(() => {
+                this.showSuccess('All site data has been cleared successfully');
+
+                // Re-enable the clear button
+                if (clearButton) {
+                    clearButton.disabled = false;
+                    clearButton.innerHTML = '🗑️ Clear Site Inspector';
+                }
+            }, 500);
+
+            this.info('Site data clearing completed successfully');
+
+        } catch (error) {
+            this.error('Error clearing site data:', error);
+            this.showError('Failed to clear site data: ' + error.message);
+
+            // Re-enable the clear button
+            const clearButton = document.getElementById('clearSiteInspectorButton');
+            if (clearButton) {
+                clearButton.disabled = false;
+                clearButton.innerHTML = '🗑️ Clear Site Inspector';
+            }
+        }
+    }
+
+    resetAllPanelsToInitialState() {
+        // Collapse all cards except site info
+        const cards = [
+            { id: 'siteBoundaryCard', expanded: false },
+            { id: 'propertySetbacksCard', expanded: false },
+            { id: 'floorplanCard', expanded: false }
+        ];
+
+        cards.forEach(card => {
+            const element = document.getElementById(card.id);
+            if (element) {
+                if (card.expanded) {
+                    element.classList.remove('collapsed');
+                } else {
+                    element.classList.add('collapsed');
+                }
+            }
+        });
+
+        // Reset button states
+        const buttons = [
+            { id: 'drawPolygonButton', text: 'Draw Site Boundary', active: false },
+            { id: 'edgeSelectionButton', text: 'Select Front & Back Edges', active: false }
+        ];
+
+        buttons.forEach(btn => {
+            const element = document.getElementById(btn.id);
+            if (element) {
+                element.textContent = btn.text;
+                element.disabled = !btn.active;
+                element.classList.remove('active');
+                if (!btn.active) {
+                    element.style.opacity = '0.6';
+                } else {
+                    element.style.opacity = '1';
+                }
+            }
+        });
+
+        // Hide all dependent sections
+        const sectionsToHide = [
+            'selectedEdgesDisplay',
+            'setbackInputsContainer', 
+            'buildableAreaControls',
+            'buildableArea3DControls',
+            'extrusionControls',
+            'floorplanUploadSection',
+            'activeExtrusionsDisplay'
+        ];
+
+        sectionsToHide.forEach(sectionId => {
+            const element = document.getElementById(sectionId);
+            if (element) {
+                element.style.display = 'none';
+            }
+        });
+
+        // Reset input fields to defaults
+        const inputs = [
+            { id: 'frontSetback', value: '4.5' },
+            { id: 'backSetback', value: '3.5' },
+            { id: 'sideSetback', value: '1.5' },
+            { id: 'heightLimit', value: '9' }
+        ];
+
+        inputs.forEach(input => {
+            const element = document.getElementById(input.id);
+            if (element) {
+                element.value = input.value;
+            }
+        });
+
+        // Clear any warning messages
+        ['frontSetback', 'backSetback', 'sideSetback', 'heightLimit'].forEach(inputId => {
+            const warningElement = document.getElementById(inputId + 'Warning');
+            if (warningElement) {
+                warningElement.style.display = 'none';
+            }
+        });
+
+        this.info('All UI panels reset to initial state');
     }
 }
 

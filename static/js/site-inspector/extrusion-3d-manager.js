@@ -48,6 +48,12 @@ class Extrusion3DManager extends BaseManager {
             this.info('Comprehensive clearing - removing all 3D extrusions');
             this.removeAllExtrusions();
         });
+
+        // Listen for comprehensive site data clearing
+        window.eventBus.on('clear-all-site-data', () => {
+            this.info('Complete site data clearing requested - removing all 3D extrusions');
+            this.removeAllExtrusions();
+        });
     }
 
     setupUIEventListeners() {

@@ -332,25 +332,25 @@
             border: none; border-radius: 12px; padding: 14px 20px; cursor: pointer; font-weight: 600; font-size: 14px; width: 100%;
             transition: all 0.2s ease; height: 48px; display: flex; align-items: center; justify-content: center;
         }
-        
+
         .draw-button {
-            background: linear-gradient(135deg, #547bf7 0%, #4a6bda 100%); 
+            background: linear-gradient(135deg, #547bf7 0%, #4a6bda 100%);
             color: #fff;
         }
         .draw-button:hover:not(:disabled) {
-            background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%); 
-            transform: translateY(-2px); 
+            background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%);
+            transform: translateY(-2px);
             box-shadow: 0 4px 16px rgba(84,123,247,0.3);
         }
         .draw-button:disabled {
-            background: #e9ecef !important; 
-            color: #6c757d !important; 
-            cursor: not-allowed; 
-            transform: none; 
+            background: #e9ecef !important;
+            color: #6c757d !important;
+            cursor: not-allowed;
+            transform: none;
             box-shadow: none;
             opacity: 0.5;
         }
-        
+
         .legal-boundary-btn:not(:disabled) {
             background: linear-gradient(135deg, #28a745 0%, #20923a 100%) !important;
         }
@@ -458,8 +458,116 @@
         .help-tooltip-content ol li { margin: 12px 0; font-size: 14px; }
         .help-tooltip-content ol li strong { color: #007cbf; font-weight: 600; }
         .close-help-btn { background: linear-gradient(135deg, #007cbf 0%, #005a8a 100%); color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; margin-top: 16px; }
-        .close-help-btn:hover { background: linear-gradient(135deg, #0096d6 0%, #007cbf 100%); transform: translateY(-1px); }
-        @keyframes modalSlideIn { from { opacity: 0; transform: scale(0.95);} to { opacity: 1; transform: scale(1);} }
+        .close-help-btn:hover { background: linear-gradient(135deg, #0096d6 0%, #006ba0 100%); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,123,191,0.3); }
+
+        /* Clear Site Inspector Button */
+        .clear-site-inspector-btn {
+            background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .clear-site-inspector-btn:hover {
+            background: linear-gradient(135deg, #e74c61 0%, #c7323f 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(220, 53, 69, 0.3);
+        }
+
+        /* Clear Site Inspector Confirmation Modal */
+        .clear-confirmation-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            backdrop-filter: blur(8px);
+        }
+        .clear-confirmation-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            animation: modalSlideIn 0.3s ease;
+            font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .clear-confirmation-content h3 {
+            color: #dc3545;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .clear-confirmation-content p {
+            color: #333;
+            margin: 16px 0;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        .clear-confirmation-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        .clear-confirm-btn {
+            background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+        .clear-confirm-btn:hover {
+            background: linear-gradient(135deg, #e74c61 0%, #c7323f 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(220, 53, 69, 0.3);
+        }
+        .clear-cancel-btn {
+            background: linear-gradient(135deg, #6c757d 0%, #545b62 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+        .clear-cancel-btn:hover {
+            background: linear-gradient(135deg, #7a8288 0%, #5f666d 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(108, 117, 125, 0.3);
+        }
+
+        @keyframes modalSlideIn {
+            0% { opacity: 0; transform: scale(0.9) translateY(-20px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
 
         @media (max-width: 768px) {
             .help-tooltip-content { max-width: 95%; padding: 20px; margin: 16px; max-height: 85vh; }
@@ -654,6 +762,34 @@
         </div>
 
         <div class="panel-content" id="panelContent">
+            <!-- Clear Site Inspector Button -->
+            <div style="margin-bottom: 20px;">
+                <button id="clearSiteInspectorButton" class="clear-site-inspector-btn">
+                    🗑️ Clear Site Inspector
+                </button>
+            </div>
+
+            <!-- Site Info Section -->
+            <div class="info-section">
+                <div class="info-title">📍 Site Information</div>
+                <div class="info-row">
+                    <span class="info-label">Project</span>
+                    <span class="info-value" id="projectName">{{ project_data.name if project_data else 'Unnamed Project' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Address</span>
+                    <span class="info-value" id="projectAddress">{{ project_data.address if project_data else 'No address set' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Area</span>
+                    <span class="info-value" id="siteAreaDisplay">{{ site_data.area_m2|round(1) if site_data.area_m2 else 0 }} m²</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Type</span>
+                    <span class="info-value">{{ site_data.type|title if site_data.type else 'Residential' }}</span>
+                </div>
+            </div>
+
             <!-- Site Boundary Drawing Tool -->
             <div class="boundary-controls" id="siteBoundaryControls">
                 <div class="info-title">
@@ -816,20 +952,36 @@
     <!-- Help Tooltip Modal -->
     <div class="help-tooltip" id="helpTooltip">
         <div class="help-tooltip-content">
-            <h4>Site Inspector Tools Guide:</h4>
+            <h4>🏗️ Site Inspector Guide</h4>
             <ol>
-                <li><strong>Site Boundary:</strong> Draw or load your property boundary to begin analysis. Use "Draw Site Boundary" to create new polygons or "Load Existing Boundary" to retrieve saved data</li>
-                <li><strong>Property Setbacks:</strong> Select front and back edges of your site boundary, then enter setback requirements to calculate buildable area</li>
-                <li><strong>Structure Placement:</strong> Define the building footprint by drawing its intended location within the site boundary. Create 3D building visualizations with adjustable height settings</li>
-                <li><strong>Map Controls:</strong> Switch between map styles (Streets, Satellite, Outdoors, Light) and toggle 3D buildings with adjustable opacity</li>
-                <li><strong>Measure Tool (📐):</strong> Click two points on the map to measure distances between them</li>
-                <li><strong>Site Information (ℹ️):</strong> View detailed site data including council, zoning, area, slope, and aspect information</li>
-                <li><strong>Panel Controls:</strong> Use the gear icon (⚙️) to open/close the inspector panel with all analysis tools</li>
+                <li><strong>Draw Site Boundary:</strong> Click the "Draw Site Boundary" button and trace your property outline on the map</li>
+                <li><strong>Select Edges:</strong> Use "Select Front & Back Edges" to define which sides face the street and rear</li>
+                <li><strong>Set Setbacks:</strong> Enter required distances from property boundaries (front, back, sides)</li>
+                <li><strong>Calculate Area:</strong> Click "Calculate Buildable Area" to see where you can build</li>
+                <li><strong>Upload Plans:</strong> Add your floor plan image to overlay on the buildable area</li>
+                <li><strong>3D Visualization:</strong> Use "Enable 3D View" to see your design in three dimensions</li>
             </ol>
-            <p style="margin-top: 16px; font-size: 13px; color: #666;">
-                <strong>Workflow:</strong> Start by drawing or loading a site boundary, then define setbacks to calculate buildable area. Draw floor plans to visualize your building design.
-            </p>
-            <button class="close-help-btn" onclick="closeHelpTooltip()" type="button">Got it</button>
+            <button class="close-help-btn" onclick="document.getElementById('helpTooltip').style.display='none'">Got it!</button>
+        </div>
+    </div>
+
+    <!-- Clear Site Inspector Confirmation Modal -->
+    <div class="clear-confirmation-modal" id="clearConfirmationModal">
+        <div class="clear-confirmation-content">
+            <h3>⚠️ Clear All Site Data</h3>
+            <p>This action will permanently remove all data from the Site Inspector, including:</p>
+            <ul style="margin: 16px 0; padding-left: 20px; color: #333;">
+                <li>Site boundary polygon</li>
+                <li>Property setback configurations</li>
+                <li>Buildable area calculations</li>
+                <li>Structure placements and floor plans</li>
+                <li>3D extrusions and models</li>
+            </ul>
+            <p><strong>This action cannot be undone.</strong> Are you sure you want to continue?</p>
+            <div class="clear-confirmation-buttons">
+                <button class="clear-cancel-btn" id="clearCancelBtn">Cancel</button>
+                <button class="clear-confirm-btn" id="clearConfirmBtn">Yes, Clear All Data</button>
+            </div>
         </div>
     </div>
 
@@ -926,6 +1078,40 @@
                 }
             });
 
+            // Clear Site Inspector button and modal wiring
+            const clearSiteInspectorButton = document.getElementById('clearSiteInspectorButton');
+            const clearConfirmationModal = document.getElementById('clearConfirmationModal');
+            const clearCancelBtn = document.getElementById('clearCancelBtn');
+            const clearConfirmBtn = document.getElementById('clearConfirmBtn');
+
+            if (clearSiteInspectorButton && clearConfirmationModal) {
+                clearSiteInspectorButton.addEventListener('click', () => {
+                    clearConfirmationModal.style.display = 'flex';
+                    console.log('[SiteInspector] Clear confirmation modal opened');
+                });
+            }
+
+            if (clearCancelBtn && clearConfirmationModal) {
+                clearCancelBtn.addEventListener('click', () => {
+                    clearConfirmationModal.style.display = 'none';
+                    console.log('[SiteInspector] Clear confirmation modal closed');
+                });
+            }
+
+            if (clearConfirmBtn && clearConfirmationModal) {
+                clearConfirmBtn.addEventListener('click', () => {
+                    console.log('[SiteInspector] Clearing all data...');
+                    // This is where the actual data clearing logic will be implemented
+                    // For now, just close the modal and log.
+                    clearConfirmationModal.style.display = 'none';
+                    // Example: Call a function to clear map data, reset states, etc.
+                    // if (typeof uiPanelManager !== 'undefined') {
+                    //     uiPanelManager.clearAllSiteData();
+                    // }
+                    alert('Site data cleared! (Functionality to be implemented)');
+                });
+            }
+
             // Ensure siteData exists
             if (typeof window.siteData === 'undefined' || !window.siteData) {
                 window.siteData = { coordinates: [], center: { lat: -41.2865, lng: 174.7762 }, area: 1000, type: 'residential' };
@@ -961,8 +1147,8 @@
                 const ptsLngLat = sd.coordinates.map((c) => {
                     if (Array.isArray(c) && c.length >= 2) {
                         // normalize to [lng, lat]
-                        if (Math.abs(c[0]) > 90 || (Math.abs(c[0]) > Math.abs(c[1]) && Math.abs(c[0]) > 90)) return [c[0], c[1]];
-                        if (Math.abs(c[1]) > 90) return [c[1], c[0]];
+                        if (Math.abs(c[0]) > 90) { return [c[0], c[1]]; }
+                        if (Math.abs(c[1]) > 90) { return [c[1], c[0]]; }
                         // assume [lat, lng]
                         return [c[1], c[0]];
                     } else if (typeof c === 'object') {

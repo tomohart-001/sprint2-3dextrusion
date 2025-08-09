@@ -264,6 +264,18 @@ class SiteBoundaryCore extends MapManagerBase {
             }
         });
 
+        // Listen for comprehensive clearing event
+        window.eventBus.on('clear-all-dependent-features', () => {
+            this.info('Comprehensive clearing requested - removing site boundary');
+            this.clearBoundary();
+        });
+
+        // Listen for comprehensive site data clearing
+        window.eventBus.on('clear-all-site-data', () => {
+            this.info('Complete site data clearing requested - removing all boundary data');
+            this.clearBoundary();
+        });
+
         // Setup legal boundary button state based on location
         this.setupLegalBoundaryButtonState();
     }
@@ -412,19 +424,19 @@ class SiteBoundaryCore extends MapManagerBase {
             // Get location from project data or site data
             const siteData = window.siteData || {};
             const projectData = window.projectData || {};
-            
+
             let center = siteData.center;
             if (!center && projectData.lat && projectData.lng) {
                 center = { lat: projectData.lat, lng: projectData.lng };
             }
-            
+
             // Default to Wellington coordinates if no location available
             if (!center || !center.lat || !center.lng) {
                 center = { lat: -41.2865, lng: 174.7762 }; // Wellington default
             }
 
             const isInNZ = this.isLocationInNewZealand(center.lat, center.lng);
-            
+
             if (isInNZ) {
                 legalBoundaryBtn.disabled = false;
                 legalBoundaryBtn.style.opacity = '1';
@@ -2018,13 +2030,13 @@ class SiteBoundaryCore extends MapManagerBase {
             // Get project data to determine if we're in New Zealand
             const siteData = window.siteData || {};
             const projectData = window.projectData || {};
-            
+
             // Check if we have center coordinates
             let center = siteData.center;
             if (!center && projectData.lat && projectData.lng) {
                 center = { lat: projectData.lat, lng: projectData.lng };
             }
-            
+
             if (!center || !center.lat || !center.lng) {
                 throw new Error('Location not available. Please ensure project location is set.');
             }
@@ -2042,9 +2054,9 @@ class SiteBoundaryCore extends MapManagerBase {
             const response = await fetch('/api/property-boundaries', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    lat: center.lat, 
-                    lng: center.lng 
+                body: JSON.stringify({
+                    lat: center.lat,
+                    lng: center.lng
                 })
             });
 
@@ -2085,7 +2097,7 @@ class SiteBoundaryCore extends MapManagerBase {
 
             // Process and validate coordinates
             const processedCoordinates = this.processLegalBoundaryCoordinates(coordinates);
-            
+
             // Create polygon from legal boundary
             this.createPolygonFromLegalBoundary(processedCoordinates, data.containing_property);
 
@@ -2106,49 +2118,49 @@ class SiteBoundaryCore extends MapManagerBase {
             east: 179.0,
             west: 166.0
         };
-        
-        return lat >= nzBounds.south && lat <= nzBounds.north && 
+
+        return lat >= nzBounds.south && lat <= nzBounds.north &&
                lng >= nzBounds.west && lng <= nzBounds.east;
     }
 
     processLegalBoundaryCoordinates(coordinates) {
         const processedCoords = [];
-        
+
         for (let i = 0; i < coordinates.length; i++) {
             const coord = coordinates[i];
-            
+
             if (!Array.isArray(coord) || coord.length < 2) {
                 this.warn(`Skipping invalid coordinate at index ${i}:`, coord);
                 continue;
             }
-            
+
             const lng = parseFloat(coord[0]);
             const lat = parseFloat(coord[1]);
-            
+
             if (isNaN(lng) || isNaN(lat)) {
                 this.warn(`Skipping NaN coordinate at index ${i}:`, coord);
                 continue;
             }
-            
+
             if (!this.isValidCoordinateRange(lng, lat)) {
                 this.warn(`Skipping out-of-range coordinate at index ${i}:`, coord);
                 continue;
             }
-            
+
             processedCoords.push([lng, lat]);
         }
-        
+
         if (processedCoords.length < 3) {
             throw new Error('Not enough valid coordinates for legal boundary polygon');
         }
-        
+
         // Ensure polygon is closed
         const firstCoord = processedCoords[0];
         const lastCoord = processedCoords[processedCoords.length - 1];
         if (!this.pointsAreEqual(firstCoord, lastCoord)) {
             processedCoords.push([...firstCoord]);
         }
-        
+
         return processedCoords;
     }
 

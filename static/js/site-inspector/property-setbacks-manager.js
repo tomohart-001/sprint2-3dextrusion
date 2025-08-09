@@ -187,6 +187,12 @@ class PropertySetbacksManager extends BaseManager {
             this.clearAllSetbackData();
         });
 
+        // Listen for comprehensive site data clearing
+        window.eventBus.on('clear-all-site-data', () => {
+            this.info('Complete site data clearing requested - clearing all setback data');
+            this.clearAllSetbackData();
+        });
+
         // Listen for setbacks applied event to hide edge labels
         window.eventBus.on('setbacks-applied', () => {
             this.hideEdgeSelectionLabels();
