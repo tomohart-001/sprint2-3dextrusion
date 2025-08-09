@@ -1064,41 +1064,47 @@ class UIPanelManager extends BaseManager {
     }
 
     updateBoundaryAppliedState() {
-        // Update UI to show boundary has been applied
-        const boundaryCheck = document.getElementById('boundaryAppliedCheck');
-        if (boundaryCheck) {
-            boundaryCheck.style.display = 'inline';
-        }
+        this.info('Boundary applied state updated in UI');
 
-        // Collapse site boundary card and expand property setbacks
+        // Collapse Site Boundary card with success indicator
         this.collapseSiteBoundaryCard();
+
+        // Expand Property Setbacks card
         this.expandSetbacksCard();
 
-        this.info('Boundary applied state updated in UI');
+        // Enable draw structure button
+        this.enableDrawStructureButton();
+
+        // Update legend
+        window.siteInspectorCore?.updateSiteBoundaryLegend?.(true);
     }
 
     resetAllPanelStates() {
-        try {
-            // Reset all checkmarks and success indicators
-            const checkmarks = ['boundaryAppliedCheck', 'setbacksAppliedCheck', 'floorplanAppliedCheck'];
-            checkmarks.forEach(checkId => {
-                const element = document.getElementById(checkId);
-                if (element) {
-                    element.style.display = 'none';
-                }
-            });
+        this.info('Resetting all panel states to initial configuration');
 
-            // Expand site boundary card and collapse others
-            this.expandSiteBoundaryCard();
-            this.collapseSetbacksCard();
-            this.collapseFloorplanCard();
-            this.collapseExtrusionCard();
+        // Expand site boundary card
+        this.expandSiteBoundaryCard();
 
-            // Reset any other UI states that depend on site boundary
-            this.info('All panel states reset to initial state');
-        } catch (error) {
-            this.error('Error resetting panel states:', error);
+        // Collapse other cards
+        this.collapsePropertySetbacksCard();
+        this.collapseStructureManagementCard();
+        this.collapseExtrusionCard();
+
+        // Hide success indicators
+        const successIndicators = document.querySelectorAll('.boundary-applied-check, .setbacks-applied-check, .floorplan-applied-check, .extrusion-applied-check');
+        successIndicators.forEach(indicator => {
+            indicator.style.display = 'none';
+        });
+
+        // Disable draw structure button until boundary is applied
+        const drawButton = document.getElementById('drawFloorplanButton');
+        if (drawButton) {
+            drawButton.disabled = true;
+            drawButton.style.opacity = '0.5';
+            drawButton.style.cursor = 'not-allowed';
         }
+
+        this.info('All panel states reset to initial configuration');
     }
 
     hideExtrusionControls() {
@@ -1466,6 +1472,16 @@ class UIPanelManager extends BaseManager {
         });
 
         this.info('All UI panels reset to initial state');
+    }
+
+    enableDrawStructureButton() {
+        const drawButton = document.getElementById('drawFloorplanButton');
+        if (drawButton) {
+            drawButton.disabled = false;
+            drawButton.style.opacity = '1';
+            drawButton.style.cursor = 'pointer';
+            this.info('Draw structure button enabled');
+        }
     }
 }
 
