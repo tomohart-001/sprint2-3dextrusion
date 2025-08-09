@@ -1013,7 +1013,8 @@ class SiteInspectorCore extends BaseManager {
                     <div style="font-size:18px;font-weight:600;margin-bottom:8px;">Map Failed to Load</div>
                     <div style="font-size:14px;max-width:400px;">${message}</div>
                     <button onclick="location.reload()" style="margin-top:16px;padding:8px 16px;background:#007cbf;color:#fff;border:none;border-radius:4px;cursor:pointer;">Retry</button>
-                </div>`;
+                </div>
+            `;
         }
     }
 
