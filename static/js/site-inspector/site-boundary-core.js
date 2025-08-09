@@ -392,7 +392,16 @@ class SiteBoundaryCore extends MapManagerBase {
             try {
                 if (this.map && this.map.isStyleLoaded() && this.draw &&
                     typeof this.draw.changeMode === 'function') {
-                    this.updateButtonState('drawPolygonButton', 'inactive', 'Draw Site Boundary');
+                    
+                    // Ensure draw button is enabled and ready
+                    const drawBtn = this.getElementById('drawPolygonButton', false);
+                    if (drawBtn) {
+                        drawBtn.disabled = false;
+                        drawBtn.style.opacity = '1';
+                        drawBtn.textContent = 'Draw Site Boundary';
+                        drawBtn.classList.remove('active');
+                    }
+                    
                     this.info('Drawing tools enabled and ready');
                     return;
                 }
@@ -1252,9 +1261,13 @@ class SiteBoundaryCore extends MapManagerBase {
                 button.textContent = text;
             }
 
-            const isReady = this.map && this.draw;
-            button.disabled = !isReady;
-            button.style.opacity = isReady ? '1' : '0.5';
+            // Only disable draw button if map/draw are not ready, but keep it enabled otherwise
+            if (buttonId === 'drawPolygonButton') {
+                const isReady = this.map && this.draw;
+                button.disabled = !isReady;
+                button.style.opacity = isReady ? '1' : '0.5';
+            }
+            // Don't modify other buttons' disabled state here - they have their own logic
         } catch (error) {
             console.debug('Button update error:', error.message);
         }
@@ -1517,6 +1530,15 @@ class SiteBoundaryCore extends MapManagerBase {
     updateUI() {
         this.setElementDisplay('boundaryInfoDisplay', 'none');
         this.updateButtonStates(false, false);
+        
+        // Ensure draw button is enabled and ready for new boundary
+        const drawBtn = this.getElementById('drawPolygonButton', false);
+        if (drawBtn && this.map && this.draw) {
+            drawBtn.disabled = false;
+            drawBtn.style.opacity = '1';
+            drawBtn.textContent = 'Draw Site Boundary';
+            drawBtn.classList.remove('active');
+        }
     }
 
     emitClearingEvents() {
