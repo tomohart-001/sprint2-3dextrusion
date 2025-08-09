@@ -73,6 +73,8 @@ if (typeof FloorplanManager === 'undefined') {
                 this.info('DrawStructureManager initialized');
             } else {
                 this.warn('DrawStructureManager class not found. Drawing functionality will be limited.');
+                // Ensure fallback methods are available
+                this.setupDrawEventHandlersFallback();
             }
 
 

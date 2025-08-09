@@ -77,6 +77,12 @@ if (typeof DrawStructureManager === 'undefined') {
                 if (core && core.draw) {
                     this.draw = core.draw;
                     this.info('Draw control found for structure drawing');
+                    
+                    // Set up map drawing event handlers
+                    this.map.on('draw.create', (e) => this.handleStructureCreated(e));
+                    this.map.on('draw.update', (e) => this.handleStructureUpdated(e));
+                    this.map.on('draw.delete', (e) => this.handleStructureDeleted(e));
+                    
                     return true;
                 }
                 return false;
@@ -595,6 +601,102 @@ if (typeof DrawStructureManager === 'undefined') {
 
         getDrawingPoints() {
             return this.state.drawingPoints;
+        }
+
+        handleStructureCreated(e) {
+            try {
+                const feature = e.features[0];
+                if (!feature || feature.geometry.type !== 'Polygon') {
+                    return;
+                }
+
+                this.info('Structure created via DrawStructureManager:', feature);
+
+                const coordinates = feature.geometry.coordinates[0];
+                const structureFeature = {
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [coordinates]
+                    },
+                    properties: {
+                        type: 'structure',
+                        name: 'Structure Footprint',
+                        layer_type: 'structure_footprint'
+                    }
+                };
+
+                // Remove from draw control to keep it independent
+                if (this.draw && feature.id) {
+                    this.draw.delete([feature.id]);
+                }
+
+                // Update floorplan manager state
+                this.floorplanManager.currentStructure = structureFeature;
+                this.floorplanManager.state.geojsonPolygon = structureFeature;
+                this.floorplanManager.state.hasFloorplan = true;
+
+                // Calculate area
+                const area = this.calculatePolygonArea(coordinates);
+                
+                // Add visualization
+                this.floorplanManager.addStructureVisualization(structureFeature);
+
+                // Update UI
+                this.floorplanManager.updateStructureControls(true);
+                this.floorplanManager.showStatus(`Structure created (${area.toFixed(1)} m²)`, 'success');
+
+                // Stop drawing mode
+                this.stopDrawing();
+                this.floorplanManager.updateDrawingUI(false);
+
+                // Emit event
+                if (window.eventBus) {
+                    window.eventBus.emit('structure-created', {
+                        feature: structureFeature,
+                        area: area,
+                        coordinates: coordinates,
+                        type: 'structure'
+                    });
+                }
+
+            } catch (error) {
+                this.error('Error handling structure creation:', error);
+                this.floorplanManager.showStatus('Error creating structure', 'error');
+            }
+        }
+
+        handleStructureUpdated(e) {
+            // Handle structure updates if needed
+            this.info('Structure updated via DrawStructureManager');
+        }
+
+        handleStructureDeleted(e) {
+            this.info('Structure deleted via DrawStructureManager');
+            this.floorplanManager.clearStructureState();
+            this.floorplanManager.updateStructureControls(false);
+            
+            if (window.eventBus) {
+                window.eventBus.emit('structure-deleted');
+            }
+        }
+
+        calculatePolygonArea(coordinates) {
+            if (!coordinates || coordinates.length < 3) return 0;
+
+            let area = 0;
+            const numPoints = coordinates.length - 1;
+
+            for (let i = 0; i < numPoints; i++) {
+                const j = (i + 1) % numPoints;
+                area += coordinates[i][0] * coordinates[j][1];
+                area -= coordinates[j][0] * coordinates[i][1];
+            }
+
+            area = Math.abs(area) / 2;
+
+            // Convert to square meters (approximate)
+            return area * 111319.9 * 111319.9 * Math.cos(coordinates[0][1] * Math.PI / 180);
         }
 
         // Cleanup method
