@@ -117,6 +117,12 @@ class UIPanelManager extends BaseManager {
                 this.expandSetbacksCard();
             });
 
+            bus.on('legal-boundary-applied', () => {
+                this.collapseSiteBoundaryCard();
+                this.markPropertySetbacksComplete();
+                this.expandFloorplanCard();
+            });
+
             bus.on('site-boundary-loaded', () => {
                 this.collapseSiteBoundaryCard();
                 setTimeout(() => {
@@ -473,6 +479,21 @@ class UIPanelManager extends BaseManager {
 
         this.cardStates.floorplan = 'expanded';
         this.info('Floor Plan card expanded');
+    }
+
+    markPropertySetbacksComplete() {
+        const controls = this.$('boundaryControls');
+        const check = this.$('setbacksAppliedCheck');
+        if (!controls) return;
+
+        controls.classList.add('collapsed');
+        if (check) {
+            check.style.display = 'inline';
+            check.textContent = '✅';
+        }
+
+        this.cardStates.setbacks = 'collapsed';
+        this.info('Property Setbacks card marked as complete for legal boundary');
     }
 
     collapseFloorplanCard() {

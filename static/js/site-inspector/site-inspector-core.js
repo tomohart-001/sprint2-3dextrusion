@@ -644,7 +644,17 @@ class SiteInspectorCore extends BaseManager {
         const button = document.getElementById('useLegalBoundaryButton');
         if (!button) return;
 
-        if (available && propertyInfo) {
+        // Check if legal boundary has already been applied
+        const legalBoundaryApplied = sessionStorage.getItem('legal_boundary_applied') === 'true';
+        
+        if (legalBoundaryApplied) {
+            button.disabled = true;
+            button.style.opacity = '0.7';
+            button.style.background = '#28a745';
+            button.style.color = '#fff';
+            button.textContent = 'Use Legal Boundary';
+            button.title = 'Legal property boundary has been applied';
+        } else if (available && propertyInfo) {
             button.disabled = false;
             button.style.opacity = '1';
             button.style.background = 'linear-gradient(135deg, #28a745 0%, #20923a 100%)';
@@ -654,7 +664,7 @@ class SiteInspectorCore extends BaseManager {
             button.disabled = true;
             button.style.opacity = '0.5';
             button.style.background = '#e9ecef';
-            button.textContent = 'Legal Boundary Not Available';
+            button.textContent = 'Use Legal Boundary';
             button.title = 'Legal property boundaries are only available in New Zealand';
         }
     }
