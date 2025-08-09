@@ -162,6 +162,9 @@ class UIPanelManager extends BaseManager {
 
         // Clear Site Inspector functionality
         this.setupClearSiteInspectorListeners();
+
+        // Minimize panel functionality
+        this.setupMinimizePanelListener();
     }
 
     setupCardEventListeners() {
@@ -1374,6 +1377,16 @@ class UIPanelManager extends BaseManager {
                 clearButton.disabled = false;
                 clearButton.innerHTML = 'Clear Site Inspector';
             }
+        }
+    }
+
+    setupMinimizePanelListener() {
+        const minimizeButton = document.getElementById('minimizePanelButton');
+        if (minimizeButton) {
+            minimizeButton.addEventListener('click', () => {
+                this.toggleInspectorPanel();
+                this.info('Panel minimized via minimize button');
+            });
         }
     }
 

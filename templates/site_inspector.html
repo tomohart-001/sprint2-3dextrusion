@@ -497,6 +497,29 @@
         .close-help-btn { background: linear-gradient(135deg, #007cbf 0%, #005a8a 100%); color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; margin-top: 16px; }
         .close-help-btn:hover { background: linear-gradient(135deg, #0096d6 0%, #006ba0 100%); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,123,191,0.3); }
 
+        /* Minimize Panel Button */
+        .minimize-panel-btn {
+            background: linear-gradient(135deg, #6c757d 0%, #545b62 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0;
+            font-size: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .minimize-panel-btn:hover {
+            background: linear-gradient(135deg, #7a8288 0%, #5f666d 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(108, 117, 125, 0.3);
+        }
+
         /* Clear Site Inspector Button */
         .clear-site-inspector-btn {
             background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
@@ -827,6 +850,13 @@
         </div>
 
         <div class="panel-content" id="panelContent">
+            <!-- Minimize Button -->
+            <div style="margin-bottom: 12px;">
+                <button id="minimizePanelButton" class="minimize-panel-btn">
+                    −
+                </button>
+            </div>
+
             <!-- Clear Site Inspector Button -->
             <div style="margin-bottom: 20px;">
                 <button id="clearSiteInspectorButton" class="clear-site-inspector-btn">
