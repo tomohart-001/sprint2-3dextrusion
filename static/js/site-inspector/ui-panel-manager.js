@@ -244,10 +244,84 @@ class UIPanelManager extends BaseManager {
             this.info('Extrusion card initialized as collapsed');
         }
 
+        // Add loading states to all cards initially
+        this.showCardLoadingStates();
+
         // Initialize search functionality
         this.initializeSearchControl();
 
         this.info('Panel states initialized - inspector panel expanded by default');
+    }
+
+    showCardLoadingStates() {
+        const cards = [
+            'siteBoundaryControls',
+            'boundaryControls', 
+            'floorplanControls',
+            'extrusionControls'
+        ];
+
+        cards.forEach(cardId => {
+            const card = document.getElementById(cardId);
+            if (card) {
+                // Add loading indicator
+                const loadingIndicator = document.createElement('div');
+                loadingIndicator.className = 'card-loading-indicator';
+                loadingIndicator.innerHTML = '<div class="loading-spinner"></div><span>Loading...</span>';
+                loadingIndicator.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 8px;
+                    font-size: 12px;
+                    color: #666;
+                    opacity: 0.7;
+                `;
+
+                const spinner = loadingIndicator.querySelector('.loading-spinner');
+                spinner.style.cssText = `
+                    width: 12px;
+                    height: 12px;
+                    border: 2px solid #ddd;
+                    border-top: 2px solid #007cbf;
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                `;
+
+                card.appendChild(loadingIndicator);
+                card.setAttribute('data-loading', 'true');
+            }
+        });
+
+        // Add CSS animation for spinner
+        if (!document.querySelector('#loading-spinner-styles')) {
+            const style = document.createElement('style');
+            style.id = 'loading-spinner-styles';
+            style.textContent = `
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Remove loading states after a short delay to simulate loading completion
+        setTimeout(() => {
+            this.hideCardLoadingStates();
+        }, 1500);
+    }
+
+    hideCardLoadingStates() {
+        const cards = document.querySelectorAll('[data-loading="true"]');
+        cards.forEach(card => {
+            const loadingIndicator = card.querySelector('.card-loading-indicator');
+            if (loadingIndicator) {
+                loadingIndicator.remove();
+            }
+            card.removeAttribute('data-loading');
+        });
+        this.info('Card loading states removed');
     }
 
     initializeSearchControl() {

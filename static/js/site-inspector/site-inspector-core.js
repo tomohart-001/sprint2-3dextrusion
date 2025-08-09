@@ -610,191 +610,51 @@ class SiteInspectorCore extends BaseManager {
             // Initialize MapboxGL Draw with better error handling
             await this.initializeDrawControl();
 
-            // Initialize managers with better error handling and fallbacks
-            this.info('Creating manager instances...');
-
-            const managerInitResults = {};
-
-            // Initialize SiteBoundaryCore (critical)
-            try {
-                // Wait for SiteBoundaryCore to be available
-                let siteBoundaryCoreClass = null;
-                let attempts = 0;
-                const maxAttempts = 10;
-
-                while (!siteBoundaryCoreClass && attempts < maxAttempts) {
-                    if (typeof SiteBoundaryCore !== 'undefined') {
-                        siteBoundaryCoreClass = SiteBoundaryCore;
-                        break;
-                    }
-                    attempts++;
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                }
-
-                if (siteBoundaryCoreClass) {
-                    this.siteBoundaryCore = new siteBoundaryCoreClass(this.map, this.draw);
-                    await this.siteBoundaryCore.initialize();
-                    managerInitResults.siteBoundary = 'success';
-                    this.info('✅ SiteBoundaryCore initialized');
-                } else {
-                    throw new Error('SiteBoundaryCore class not available after waiting');
-                }
-            } catch (error) {
-                this.error('Failed to initialize SiteBoundaryCore:', error);
-                managerInitResults.siteBoundary = 'failed';
-
-                // Create a minimal fallback with drawing functionality
-                const self = this;
-                this.siteBoundaryCore = {
-                    initialize: () => Promise.resolve(),
-                    hasSiteBoundary: () => false,
-                    getSitePolygon: () => null,
-                    getPolygonEdges: () => [],
-                    isDrawingActive: () => false,
-                    calculateBuildableArea: () => Promise.reject(new Error('Not available')),
-                    previewBuildableArea: () => Promise.resolve(),
-                    getSiteData: () => ({}),
-                    toggleDrawingMode: () => {
-                        self.warn('SiteBoundaryCore not available - drawing disabled');
-                        alert('Site boundary drawing is currently unavailable. Please refresh the page.');
-                    },
-                    startDrawingMode: function() { this.toggleDrawingMode(); },
-                    stopDrawingMode: () => {},
-                    clearBoundary: () => {}
-                };
-            }
-
-            // Initialize PropertySetbacksManager (critical)
-            try {
-                this.propertySetbacksManager = new PropertySetbacksManager(this.map);
-                await this.propertySetbacksManager.initialize();
-                managerInitResults.propertySetbacks = 'success';
-                this.info('✅ PropertySetbacksManager initialized');
-            } catch (error) {
-                this.error('Failed to initialize PropertySetbacksManager:', error);
-                managerInitResults.propertySetbacks = 'failed';
-            }
-
-            // Initialize FloorplanManager
-            try {
-                // Wait a bit for the script to load if needed
-                let floorplanManagerClass = null;
-                let attempts = 0;
-                const maxAttempts = 10;
-
-                while (!floorplanManagerClass && attempts < maxAttempts) {
-                    if (typeof FloorplanManager !== 'undefined') {
-                        floorplanManagerClass = FloorplanManager;
-                        break;
-                    }
-                    attempts++;
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                }
-
-                if (floorplanManagerClass) {
-                    this.floorplanManager = new floorplanManagerClass(this.map);
-                    await this.floorplanManager.initialize();
-                    this.info('✅ FloorplanManager initialized');
-                    managerInitResults.floorplan = 'success';
-                } else {
-                    this.warn('FloorplanManager class not available after waiting');
-                    // Create a minimal fallback with drawing functionality
-                    const self = this;
-                    this.floorplanManager = {
-                        initialize: () => Promise.resolve(),
-                        cleanup: () => {},
-                        isDrawing: false,
-                        stopDrawing: () => {},
-                        removeFloorplanFromMap: () => {},
-                        hasStructures: () => false,
-                        getStructures: () => [],
-                        getCurrentFloorplanCoordinates: () => null,
-                        toggleDrawingMode: () => {
-                            self.warn('FloorplanManager not available - drawing disabled');
-                            alert('Structure drawing is currently unavailable. Please refresh the page.');
-                        },
-                        startDrawing: function() { this.toggleDrawingMode(); },
-                        stopDrawing: () => {},
-                        clearStructure: () => {}
-                    };
-                    managerInitResults.floorplan = 'fallback';
-                }
-            } catch (error) {
-                this.error('Failed to initialize FloorplanManager:', error);
-                managerInitResults.floorplan = 'failed';
-
-                // Create error fallback
-                this.floorplanManager = {
-                    initialize: () => Promise.resolve(),
-                    cleanup: () => {},
-                    isDrawing: false,
-                    stopDrawing: () => {},
-                    removeFloorplanFromMap: () => {},
-                    hasStructures: () => false,
-                    getStructures: () => [],
-                    getCurrentFloorplanCoordinates: () => null,
-                    toggleDrawingMode: () => {
-                        alert('Structure drawing failed to initialize. Error: ' + error.message);
-                    },
-                    startDrawing: function() { this.toggleDrawingMode(); },
-                    stopDrawing: () => {},
-                    clearStructure: () => {}
-                };
-            }
-
-            // Initialize Map Features Manager
-            try {
-                // Ensure MapFeaturesManager class is available
-                if (typeof MapFeaturesManager === 'undefined') {
-                    throw new Error('MapFeaturesManager class not found');
-                }
-
-                this.mapFeaturesManager = new MapFeaturesManager(this.map);
-                await this.mapFeaturesManager.initialize();
-
-                // Make mapFeaturesManager globally accessible
-                window.mapFeaturesManager = this.mapFeaturesManager;
-
-                managerInitResults.mapFeatures = 'success';
-                this.info('✅ MapFeaturesManager initialized');
-            } catch (error) {
-                this.error('Failed to initialize MapFeaturesManager:', error);
-                managerInitResults.mapFeatures = 'failed';
-
-                // Create a minimal fallback for map controls functionality
-                this.createMapFeaturesFallback();
-            }
-
-            // Initialize UIPanelManager (critical for UI)
+            // Initialize UI Panel Manager first to show the panel immediately
+            this.info('Initializing UIPanelManager first for immediate UI...');
             try {
                 this.uiPanelManager = new UIPanelManager();
                 await this.uiPanelManager.initialize();
-                managerInitResults.uiPanel = 'success';
-                this.info('✅ UIPanelManager initialized');
+                this.info('✅ UIPanelManager initialized - panel visible');
             } catch (error) {
                 this.error('Failed to initialize UIPanelManager:', error);
-                managerInitResults.uiPanel = 'failed';
+                // Create minimal fallback
+                this.uiPanelManager = {
+                    initialize: () => Promise.resolve(),
+                    showError: (msg) => alert(msg),
+                    showSuccess: (msg) => console.log(msg)
+                };
             }
 
-            // Initialize Extrusion3DManager
-            try {
-                if (typeof Extrusion3DManager !== 'undefined') {
-                    this.extrusion3DManager = new Extrusion3DManager(this.map);
-                    await this.extrusion3DManager.initialize();
-                    managerInitResults.extrusion3D = 'success';
-                    this.info('✅ Extrusion3DManager initialized');
-                } else {
-                    this.warn('Extrusion3DManager class not available - continuing without 3D features');
-                    managerInitResults.extrusion3D = 'skipped';
-                }
-            } catch (error) {
-                this.error('Failed to initialize Extrusion3DManager:', error);
-                managerInitResults.extrusion3D = 'failed';
-                // Continue without 3D features
-            }
+            // Initialize managers in parallel to reduce total loading time
+            this.info('Creating manager instances in parallel...');
+
+            const managerInitResults = {};
+
+            // Create all manager initialization promises
+            const managerPromises = [
+                this.initializeSiteBoundaryCore().then(result => {
+                    managerInitResults.siteBoundary = result;
+                }),
+                this.initializePropertySetbacksManager().then(result => {
+                    managerInitResults.propertySetbacks = result;
+                }),
+                this.initializeFloorplanManager().then(result => {
+                    managerInitResults.floorplan = result;
+                }),
+                this.initializeMapFeaturesManager().then(result => {
+                    managerInitResults.mapFeatures = result;
+                }),
+                this.initializeExtrusion3DManager().then(result => {
+                    managerInitResults.extrusion3D = result;
+                })
+            ];
+
+            // Wait for all managers to initialize in parallel
+            await Promise.allSettled(managerPromises);
 
             // Check if critical managers failed
-            const criticalManagers = ['siteBoundary', 'propertySetbacks', 'uiPanel'];
+            const criticalManagers = ['siteBoundary', 'propertySetbacks'];
             const failedCritical = criticalManagers.filter(manager => managerInitResults[manager] === 'failed');
 
             if (failedCritical.length > 0) {
@@ -807,6 +667,147 @@ class SiteInspectorCore extends BaseManager {
         } catch (error) {
             this.error('Failed to initialize managers:', error);
             throw error;
+        }
+    }
+
+    async initializeSiteBoundaryCore() {
+        try {
+            // Check immediately if class is available
+            if (typeof SiteBoundaryCore !== 'undefined') {
+                this.siteBoundaryCore = new SiteBoundaryCore(this.map, this.draw);
+                await this.siteBoundaryCore.initialize();
+                this.info('✅ SiteBoundaryCore initialized');
+                return 'success';
+            } else {
+                throw new Error('SiteBoundaryCore class not available');
+            }
+        } catch (error) {
+            this.error('Failed to initialize SiteBoundaryCore:', error);
+            // Create a minimal fallback
+            const self = this;
+            this.siteBoundaryCore = {
+                initialize: () => Promise.resolve(),
+                hasSiteBoundary: () => false,
+                getSitePolygon: () => null,
+                getPolygonEdges: () => [],
+                isDrawingActive: () => false,
+                calculateBuildableArea: () => Promise.reject(new Error('Not available')),
+                previewBuildableArea: () => Promise.resolve(),
+                getSiteData: () => ({}),
+                toggleDrawingMode: () => {
+                    self.warn('SiteBoundaryCore not available - drawing disabled');
+                    alert('Site boundary drawing is currently unavailable. Please refresh the page.');
+                },
+                startDrawingMode: function() { this.toggleDrawingMode(); },
+                stopDrawingMode: () => {},
+                clearBoundary: () => {}
+            };
+            return 'failed';
+        }
+    }
+
+    async initializePropertySetbacksManager() {
+        try {
+            this.propertySetbacksManager = new PropertySetbacksManager(this.map);
+            await this.propertySetbacksManager.initialize();
+            this.info('✅ PropertySetbacksManager initialized');
+            return 'success';
+        } catch (error) {
+            this.error('Failed to initialize PropertySetbacksManager:', error);
+            return 'failed';
+        }
+    }
+
+    async initializeFloorplanManager() {
+        try {
+            // Check immediately if class is available
+            if (typeof FloorplanManager !== 'undefined') {
+                this.floorplanManager = new FloorplanManager(this.map);
+                await this.floorplanManager.initialize();
+                this.info('✅ FloorplanManager initialized');
+                return 'success';
+            } else {
+                this.warn('FloorplanManager class not available');
+                // Create a minimal fallback
+                const self = this;
+                this.floorplanManager = {
+                    initialize: () => Promise.resolve(),
+                    cleanup: () => {},
+                    isDrawing: false,
+                    stopDrawing: () => {},
+                    removeFloorplanFromMap: () => {},
+                    hasStructures: () => false,
+                    getStructures: () => [],
+                    getCurrentFloorplanCoordinates: () => null,
+                    toggleDrawingMode: () => {
+                        self.warn('FloorplanManager not available - drawing disabled');
+                        alert('Structure drawing is currently unavailable. Please refresh the page.');
+                    },
+                    startDrawing: function() { this.toggleDrawingMode(); },
+                    stopDrawing: () => {},
+                    clearStructure: () => {}
+                };
+                return 'fallback';
+            }
+        } catch (error) {
+            this.error('Failed to initialize FloorplanManager:', error);
+            // Create error fallback
+            this.floorplanManager = {
+                initialize: () => Promise.resolve(),
+                cleanup: () => {},
+                isDrawing: false,
+                stopDrawing: () => {},
+                removeFloorplanFromMap: () => {},
+                hasStructures: () => false,
+                getStructures: () => [],
+                getCurrentFloorplanCoordinates: () => null,
+                toggleDrawingMode: () => {
+                    alert('Structure drawing failed to initialize. Error: ' + error.message);
+                },
+                startDrawing: function() { this.toggleDrawingMode(); },
+                stopDrawing: () => {},
+                clearStructure: () => {}
+            };
+            return 'failed';
+        }
+    }
+
+    async initializeMapFeaturesManager() {
+        try {
+            if (typeof MapFeaturesManager === 'undefined') {
+                throw new Error('MapFeaturesManager class not found');
+            }
+
+            this.mapFeaturesManager = new MapFeaturesManager(this.map);
+            await this.mapFeaturesManager.initialize();
+
+            // Make mapFeaturesManager globally accessible
+            window.mapFeaturesManager = this.mapFeaturesManager;
+
+            this.info('✅ MapFeaturesManager initialized');
+            return 'success';
+        } catch (error) {
+            this.error('Failed to initialize MapFeaturesManager:', error);
+            // Create a minimal fallback for map controls functionality
+            this.createMapFeaturesFallback();
+            return 'failed';
+        }
+    }
+
+    async initializeExtrusion3DManager() {
+        try {
+            if (typeof Extrusion3DManager !== 'undefined') {
+                this.extrusion3DManager = new Extrusion3DManager(this.map);
+                await this.extrusion3DManager.initialize();
+                this.info('✅ Extrusion3DManager initialized');
+                return 'success';
+            } else {
+                this.warn('Extrusion3DManager class not available - continuing without 3D features');
+                return 'skipped';
+            }
+        } catch (error) {
+            this.error('Failed to initialize Extrusion3DManager:', error);
+            return 'failed';
         }
     }
 
