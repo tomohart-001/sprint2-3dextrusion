@@ -574,6 +574,14 @@ if (typeof DrawStructureManager === 'undefined') {
         }
 
         // Public getters
+        toggleDrawing() {
+            if (this.isDrawing) {
+                this.stopDrawing();
+            } else {
+                this.startDrawing();
+            }
+        }
+
         isDrawingActive() {
             return this.isDrawing;
         }

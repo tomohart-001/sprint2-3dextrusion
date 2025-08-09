@@ -68,7 +68,8 @@ if (typeof FloorplanManager === 'undefined') {
             // Initialize the DrawStructureManager
             // Pass the map instance and draw control to it
             if (typeof DrawStructureManager !== 'undefined') {
-                this.drawStructureManager = new DrawStructureManager(this.map);
+                this.drawStructureManager = new DrawStructureManager(this.map, this);
+                await this.drawStructureManager.initialize();
                 this.info('DrawStructureManager initialized');
             } else {
                 this.warn('DrawStructureManager class not found. Drawing functionality will be limited.');
@@ -222,8 +223,10 @@ if (typeof FloorplanManager === 'undefined') {
 
 
     toggleDrawingMode() {
-        this.info('toggleDrawingMode called');
+        this.info('toggleDrawingMode called - checking draw control availability');
+        
         if (this.drawStructureManager) {
+            this.info(this.isDrawingActive() ? 'Currently drawing - stopping drawing mode' : 'Not currently drawing - starting drawing mode');
             this.drawStructureManager.toggleDrawing();
         } else {
             // Fallback logic if DrawStructureManager is not available
