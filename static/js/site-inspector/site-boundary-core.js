@@ -263,11 +263,47 @@ class SiteBoundaryCore extends MapManagerBase {
     }
 
     // ---------- Safe wrappers ----------
-    safeToggleDrawingMode() { try { this.toggleDrawingMode(); } catch (e) { this.error('toggleDrawingMode error', e); this.showUserError('Failed to toggle drawing mode. Please refresh.'); } }
-    safeStopDrawingMode()   { try { this.stopDrawingMode(); } catch (e) { this.error('stopDrawingMode error', e); } }
-    safeClearBoundary()     { try { this.clearBoundary(); } catch (e) { this.error('clearBoundary error', e); } }
-    safeConfirmBoundary()   { try { this.confirmBoundary(); } catch (e) { this.error('confirmBoundary error', e); } }
-    safeUseLegalBoundary()  { try { this.useLegalPropertyBoundary(); } catch (e) { this.error('useLegalPropertyBoundary error', e); this.showUserError('Failed to use legal property boundary: ' + e.message); } }
+    safeToggleDrawingMode() { 
+        try { 
+            this.toggleDrawingMode(); 
+        } catch (e) { 
+            this.error('toggleDrawingMode error', e); 
+            this.showUserError('Failed to toggle drawing mode. Please refresh.'); 
+        } 
+    }
+    
+    safeStopDrawingMode() { 
+        try { 
+            this.stopDrawingMode(); 
+        } catch (e) { 
+            this.error('stopDrawingMode error', e); 
+        } 
+    }
+    
+    safeClearBoundary() { 
+        try { 
+            this.clearBoundary(); 
+        } catch (e) { 
+            this.error('clearBoundary error', e); 
+        } 
+    }
+    
+    safeConfirmBoundary() { 
+        try { 
+            this.confirmBoundary(); 
+        } catch (e) { 
+            this.error('confirmBoundary error', e); 
+        } 
+    }
+    
+    safeUseLegalBoundary() { 
+        try { 
+            this.useLegalPropertyBoundary(); 
+        } catch (e) { 
+            this.error('useLegalPropertyBoundary error', e); 
+            this.showUserError('Failed to use legal property boundary: ' + e.message); 
+        } 
+    }
 
     // ---------- Readiness / buttons ----------
     enableDrawingTools() {
@@ -321,21 +357,25 @@ class SiteBoundaryCore extends MapManagerBase {
 
     validateDrawingReadiness() {
         if (!this.map) {
+            this.error('Map is not available');
             this.showUserError('Map is not available. Please refresh the page.');
             return false;
         }
         
         if (!this.map.isStyleLoaded()) {
+            this.warn('Map style is still loading');
             this.showUserError('Map is still loading. Please wait a moment and try again.');
             return false;
         }
         
         if (!this.draw) {
+            this.error('Draw instance is not available');
             this.showUserError('Drawing tools are not initialized. Please refresh the page.');
             return false;
         }
         
         if (typeof this.draw.changeMode !== 'function') {
+            this.error('Draw.changeMode is not a function');
             this.showUserError('Drawing tools are not properly configured. Please refresh the page.');
             return false;
         }
@@ -344,7 +384,13 @@ class SiteBoundaryCore extends MapManagerBase {
         try {
             const currentMode = this.draw.getMode();
             this.debug('Current draw mode:', currentMode);
+            if (!currentMode) {
+                this.error('Draw control has no mode');
+                this.showUserError('Drawing control is not properly initialized. Please refresh the page.');
+                return false;
+            }
         } catch (error) {
+            this.error('Error checking draw mode:', error);
             this.showUserError('Drawing control is not properly connected to the map. Please refresh the page.');
             return false;
         }
@@ -462,22 +508,28 @@ class SiteBoundaryCore extends MapManagerBase {
         this.info('Drawing preview listeners removal deferred to cleanup');
     }
 
-    handleDrawingClick = (e) => {
+    handleDrawingClick(e) {
         if (!this.isDrawing) return;
         try {
             const point = [e.lngLat.lng, e.lngLat.lat];
             this.drawingPoints.push(point);
             this.updateDrawingPreview();
             this.addDrawingPointMarker(point, this.drawingPoints.length - 1);
-        } catch (error) { this.error('Error handling drawing click:', error); }
+        } catch (error) { 
+            this.error('Error handling drawing click:', error); 
+        }
     }
 
-    handleDrawingMouseMove = (e) => {
+    handleDrawingMouseMove(e) {
         if (!this.isDrawing || this.drawingPoints.length === 0) return;
-        try { this.updateLiveDrawingPreview([e.lngLat.lng, e.lngLat.lat]); } catch (error) { /* suppress */ }
+        try { 
+            this.updateLiveDrawingPreview([e.lngLat.lng, e.lngLat.lat]); 
+        } catch (error) { 
+            /* suppress */ 
+        }
     }
 
-    handleDrawingUpdate = (e) => {
+    handleDrawingUpdate(e) {
         if (!this.isDrawing) return;
         try {
             const coords = e?.features?.[0]?.geometry?.coordinates?.[0];
@@ -485,10 +537,12 @@ class SiteBoundaryCore extends MapManagerBase {
                 this.drawingPoints = coords.slice(0, -1); // remove closing point
                 this.updateDrawingPreview();
             }
-        } catch (error) { this.warn('Error handling drawing update:', error); }
+        } catch (error) { 
+            this.warn('Error handling drawing update:', error); 
+        }
     }
 
-    handleDrawingSelectionChange = (e) => {
+    handleDrawingSelectionChange(e) {
         this.debug('Drawing selection change:', e);
     }
 
@@ -614,10 +668,38 @@ class SiteBoundaryCore extends MapManagerBase {
     }
 
     // ---------- Draw events ----------
-    safeHandlePolygonCreated(e) { try { this.handlePolygonCreated(e); } catch (error) { this.error('polygon create error:', error); this.resetDrawingState(); } }
-    safeHandlePolygonUpdated(e) { try { this.handlePolygonUpdated(e); } catch (error) { this.error('polygon update error:', error); } }
-    safeHandlePolygonDeleted(e) { try { this.handlePolygonDeleted(e); } catch (error) { this.error('polygon delete error:', error); } }
-    safeHandleModeChange(e)     { try { this.handleModeChange(e); } catch (error) { this.error('mode change error:', error); } }
+    safeHandlePolygonCreated(e) { 
+        try { 
+            this.handlePolygonCreated(e); 
+        } catch (error) { 
+            this.error('polygon create error:', error); 
+            this.resetDrawingState(); 
+        } 
+    }
+    
+    safeHandlePolygonUpdated(e) { 
+        try { 
+            this.handlePolygonUpdated(e); 
+        } catch (error) { 
+            this.error('polygon update error:', error); 
+        } 
+    }
+    
+    safeHandlePolygonDeleted(e) { 
+        try { 
+            this.handlePolygonDeleted(e); 
+        } catch (error) { 
+            this.error('polygon delete error:', error); 
+        } 
+    }
+    
+    safeHandleModeChange(e) { 
+        try { 
+            this.handleModeChange(e); 
+        } catch (error) { 
+            this.error('mode change error:', error); 
+        } 
+    }
 
     handleModeChange(e) {
         if (!e || typeof e.mode !== 'string') return;
