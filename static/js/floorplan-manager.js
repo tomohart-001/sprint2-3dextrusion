@@ -872,12 +872,15 @@ if (typeof FloorplanManager === 'undefined') {
             this.info('Starting structure drawing mode...');
 
             // Emit tool activation event
-            window.eventBus.emit('tool-activated', 'floorplan');
+            if (window.eventBus) {
+                window.eventBus.emit('tool-activated', 'floorplan');
+            }
 
             // Clear any existing structure visualizations
             this.removeStructureVisualization();
 
             // Initialize drawing state
+            this.isDrawing = true;
             this.state.isDrawing = true;
             this.state.drawingPoints = [];
             this.updateDrawButton(true);
@@ -898,6 +901,9 @@ if (typeof FloorplanManager === 'undefined') {
             const newMode = this.draw ? this.draw.getMode() : 'unknown';
             this.info('New draw mode:', newMode);
 
+            // Show user feedback
+            this.showStatus('Click on the map to start drawing your structure footprint', 'info');
+
             this.info('✅ Structure drawing mode started successfully');
 
         } catch (error) {
@@ -911,16 +917,27 @@ if (typeof FloorplanManager === 'undefined') {
         if (!this.draw) return;
 
         try {
+            this.isDrawing = false;
             this.state.isDrawing = false;
             this.state.drawingPoints = [];
             this.removeDrawingPreview();
             this.clearDrawingVisualization();
-            this.draw.changeMode('simple_select');
+            
+            // Safely change draw mode back to simple_select
+            if (this.draw && typeof this.draw.changeMode === 'function') {
+                const currentMode = this.draw.getMode();
+                if (currentMode !== 'simple_select') {
+                    this.draw.changeMode('simple_select');
+                }
+            }
+            
             this.updateDrawButton(false);
             this.info('Draw mode reset to simple_select, preserving site boundary integrity');
             this.info('Structure drawing mode stopped - site boundary preserved');
         } catch (error) {
             this.error('Failed to stop structure drawing mode:', error);
+            // Still try to reset state even if there's an error
+            this.resetDrawingState();
         }
     }
 
@@ -1253,15 +1270,20 @@ if (typeof FloorplanManager === 'undefined') {
 
             // Get existing points
             const existingSource = this.map.getSource('structure-drawing-points');
-            if (existingSource && existingSource._data) {
-                const currentData = existingSource._data;
+            if (existingSource) {
+                let currentData;
+                try {
+                    currentData = existingSource._data || { type: 'FeatureCollection', features: [] };
+                } catch (e) {
+                    currentData = { type: 'FeatureCollection', features: [] };
+                }
+                
+                if (!currentData.features) {
+                    currentData.features = [];
+                }
+                
                 currentData.features.push(pointFeature);
                 existingSource.setData(currentData);
-            } else {
-                existingSource.setData({
-                    type: 'FeatureCollection',
-                    features: [pointFeature]
-                });
             }
 
         } catch (error) {
@@ -1290,6 +1312,74 @@ if (typeof FloorplanManager === 'undefined') {
         } catch (error) {
             this.warn('Error clearing drawing visualization:', error);
         }
+    }
+
+    validateDrawingReadiness() {
+        // Check if map is available
+        if (!this.map) {
+            this.error('Map instance not available');
+            this.showStatus('Map not ready for drawing', 'error');
+            return false;
+        }
+
+        // Check if draw control is available
+        if (!this.draw) {
+            // Try to get it from siteInspectorCore
+            const core = window.siteInspectorCore;
+            if (core && core.draw) {
+                this.draw = core.draw;
+                this.info('Draw control obtained from siteInspectorCore');
+            } else {
+                this.error('Draw control not available');
+                this.showStatus('Drawing tools not ready. Please refresh the page.', 'error');
+                return false;
+            }
+        }
+
+        // Verify draw control has required methods
+        if (typeof this.draw.changeMode !== 'function') {
+            this.error('Draw control not properly initialized');
+            this.showStatus('Drawing tools are not ready. Please refresh the page.', 'error');
+            return false;
+        }
+
+        return true;
+    }
+
+    resetDrawingState() {
+        this.isDrawing = false;
+        this.state.drawingPoints = [];
+        this.state.currentDrawMode = null;
+        this.updateDrawingUI(false);
+        this.clearDrawingVisualization();
+    }
+
+    updateDrawButton(isActive) {
+        if (this.drawButton) {
+            if (isActive) {
+                this.drawButton.textContent = 'Stop Drawing';
+                this.drawButton.classList.add('active');
+            } else {
+                this.drawButton.textContent = 'Draw Structure';
+                this.drawButton.classList.remove('active');
+            }
+            this.drawButton.disabled = false;
+        }
+    }
+
+    updateStructureUI() {
+        // Update UI to reflect current structure state
+        const hasStructure = this.state.hasFloorplan;
+        this.updateStructureControls(hasStructure);
+        
+        if (hasStructure) {
+            this.showStatus('Structure footprint ready', 'success');
+        }
+    }
+
+    removeFloorplanFromMap() {
+        // Alias for removeStructureVisualization for compatibility
+        this.removeStructureVisualization();
     }
 
     // Need to rename startDrawingMode and stopDrawingMode to startDrawing and stopDrawing respectively
