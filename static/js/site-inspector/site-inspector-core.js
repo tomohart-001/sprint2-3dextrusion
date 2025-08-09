@@ -111,15 +111,15 @@ class SiteInspectorCore extends BaseManager {
 
             // Also check session storage for project ID
             if (!projectId) {
-                projectId = sessionStorage.getItem('project_id') || 
-                           sessionStorage.getItem('current_project_id') || 
+                projectId = sessionStorage.getItem('project_id') ||
+                           sessionStorage.getItem('current_project_id') ||
                            sessionStorage.getItem('selectedProjectId');
             }
 
             // Check for project address in session storage first
-            const sessionProjectAddress = sessionStorage.getItem('current_project_address') || 
+            const sessionProjectAddress = sessionStorage.getItem('current_project_address') ||
                                          sessionStorage.getItem('project_site_address');
-            
+
             // If we have the address in session and it's valid, use it directly
             if (sessionProjectAddress && sessionProjectAddress !== 'undefined' && sessionProjectAddress.trim() !== '') {
                 this.info('✅ Using project address from session:', sessionProjectAddress);
@@ -130,14 +130,14 @@ class SiteInspectorCore extends BaseManager {
             // Validate and clean project ID
             if (!projectId || !/^\d+$/.test(String(projectId).trim())) {
                 this.info('No valid project ID found, checking for other sources...');
-                
+
                 // Check if project data is available in template
                 if (window.projectData && window.projectData.address && window.projectData.address.trim() !== '') {
                     this.siteData.project_address = window.projectData.address;
                     this.info('✅ Using project address from template:', window.projectData.address);
                     return await this.geocodeProjectAddress(window.projectData.address);
                 }
-                
+
                 return false;
             }
 
@@ -930,7 +930,7 @@ class SiteInspectorCore extends BaseManager {
         // Update legend to show property boundary
         const legend = document.querySelector('.map-legend');
         const propertyBoundaryItem = document.querySelector('.legend-property-boundary-item');
-        
+
         if (legend) {
             if (hasProperty) {
                 legend.classList.add('has-property-boundary');
@@ -2274,7 +2274,7 @@ class SiteInspectorCore extends BaseManager {
                     'fill-color': [
                         'case',
                         ['==', ['get', 'type'], 'containing-property'],
-                        '#ff9500', // Orange for containing property
+                        '#32cd32', // Light green for containing property
                         '#87ceeb'  // Light blue for nearby properties
                     ],
                     'fill-opacity': [
@@ -2295,8 +2295,8 @@ class SiteInspectorCore extends BaseManager {
                     'line-color': [
                         'case',
                         ['==', ['get', 'type'], 'containing-property'],
-                        '#ff9500', // Orange for containing property
-                        '#4682b4'  // Steel blue for nearby properties
+                        '#32cd32', // Darker green for containing property border
+                        '#5f9ea0'  // Darker blue for nearby properties border
                     ],
                     'line-width': [
                         'case',
