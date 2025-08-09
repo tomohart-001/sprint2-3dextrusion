@@ -100,15 +100,9 @@ if (typeof FloorplanManager === 'undefined') {
         this.info('Setting up event handlers...');
 
         // UI Event Handlers with better error handling
-        if (this.drawButton) {
-            this.drawButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.info('Draw structure button clicked');
-                this.toggleDrawingMode();
-            });
-            this.info('✅ Draw structure button found and event listener attached');
-        } else {
+        this.setupDrawButtonListener();
+
+        if (!this.drawButton) {
             this.warn('Draw structure button not found in DOM - checking alternatives...');
 
             const alternativeButtons = [
@@ -124,12 +118,7 @@ if (typeof FloorplanManager === 'undefined') {
             for (let i = 0; i < alternativeButtons.length; i++) {
                 if (alternativeButtons[i]) {
                     this.drawButton = alternativeButtons[i];
-                    this.drawButton.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        this.info('Draw structure button clicked (alternative selector)');
-                        this.toggleDrawingMode();
-                    });
+                    this.setupDrawButtonListener(); // Re-setup listener for the found button
                     this.info('✅ Found alternative draw button and attached listener');
                     break;
                 }
@@ -187,6 +176,18 @@ if (typeof FloorplanManager === 'undefined') {
         this.info('Event handlers setup completed');
     }
 
+    setupDrawButtonListener() {
+        if (this.drawButton) {
+            this.drawButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.info('Draw structure button clicked');
+                this.toggleDrawingMode();
+            });
+            this.info('✅ Draw structure button listener attached');
+        }
+    }
+
     // Fallback for setting up draw event handlers if DrawStructureManager is not available
     setupDrawEventHandlersFallback() {
         this.info('Setting up fallback draw event handlers...');
@@ -226,14 +227,13 @@ if (typeof FloorplanManager === 'undefined') {
 
 
     toggleDrawingMode() {
-        this.info('toggleDrawingMode called - checking draw control availability');
+        this.info('Toggle drawing mode called - current state:', this.isDrawing);
 
-        if (this.drawStructureManager) {
-            this.info(this.isDrawingActive() ? 'Currently drawing - stopping drawing mode' : 'Not currently drawing - starting drawing mode');
+        if (this.drawStructureManager && typeof this.drawStructureManager.toggleDrawing === 'function') {
+            this.info('Using DrawStructureManager for toggle');
             this.drawStructureManager.toggleDrawing();
         } else {
-            // Fallback logic if DrawStructureManager is not available
-            this.warn('DrawStructureManager not available, using fallback toggle logic');
+            this.warn('DrawStructureManager not available, using fallback toggle');
             if (this.isDrawing) {
                 this.stopDrawing();
             } else {
@@ -243,36 +243,16 @@ if (typeof FloorplanManager === 'undefined') {
     }
 
     startDrawing() {
-        if (this.drawStructureManager) {
+        if (this.drawStructureManager && typeof this.drawStructureManager.startDrawing === 'function') {
             this.drawStructureManager.startDrawing();
         } else {
-            // Fallback logic
-            this.warn('DrawStructureManager not available, using fallback startDrawing logic');
-            if (!this.draw) {
-                this.error('Cannot start drawing - draw control not available');
-                alert('Structure drawing is currently unavailable. Please refresh the page.');
-                return;
-            }
-            try {
-                this.info('Starting structure drawing mode (fallback)...');
-                if (window.eventBus) {
-                    window.eventBus.emit('tool-activated', 'floorplan');
-                }
-                this.clearExistingStructures();
-                if (typeof this.draw.changeMode === 'function') {
-                    this.draw.changeMode('draw_polygon');
-                }
-                this.isDrawing = true;
-                this.state.currentDrawMode = 'structure';
-                this.updateDrawingUI(true);
-                this.showStatus('Click on the map to start drawing your structure footprint', 'info');
-                this.info('✅ Structure drawing mode started successfully (fallback)');
-            } catch (error) {
-                this.error('Failed to start drawing mode (fallback):', error);
-                this.showStatus('Failed to start drawing mode: ' + error.message, 'error');
-                this.isDrawing = false;
-                this.updateDrawingUI(false);
-            }
+            this.warn('DrawStructureManager not available, using fallback start drawing');
+            this.isDrawing = true;
+            this.updateDrawButton(true);
+            this.showStatus('Click on the map to start drawing structure footprint', 'info');
+
+            // Emit event for UI updates
+            window.eventBus?.emit?.('tool-activated', 'floorplan');
         }
     }
 
@@ -317,38 +297,13 @@ if (typeof FloorplanManager === 'undefined') {
     }
 
     stopDrawing() {
-        if (this.drawStructureManager) {
+        if (this.drawStructureManager && typeof this.drawStructureManager.stopDrawing === 'function') {
             this.drawStructureManager.stopDrawing();
         } else {
-            // Fallback logic
-            this.warn('DrawStructureManager not available, using fallback stopDrawing logic');
-            if (!this.draw) return;
-
-            try {
-                this.isDrawing = false;
-                this.state.isDrawing = false;
-                this.state.drawingPoints = [];
-                this.removeDrawingPreview();
-                this.clearDrawingVisualization();
-
-                // Safely change draw mode back to simple_select
-                if (this.draw && typeof this.draw.changeMode === 'function') {
-                    try {
-                        const currentMode = this.draw.getMode();
-                        if (currentMode !== 'simple_select') {
-                            this.draw.changeMode('simple_select');
-                        }
-                    } catch (modeError) {
-                        this.warn('Could not change draw mode:', modeError);
-                    }
-                }
-
-                this.info('Structure drawing mode stopped - site boundary preserved');
-            } catch (error) {
-                this.error('Failed to stop structure drawing mode:', error);
-                // Still try to reset state even if there's an error
-                this.resetDrawingState();
-            }
+            this.warn('DrawStructureManager not available, using fallback stop drawing');
+            this.isDrawing = false;
+            this.updateDrawButton(false);
+            this.showStatus('Drawing stopped', 'info');
         }
     }
 

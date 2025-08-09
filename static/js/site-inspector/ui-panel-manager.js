@@ -6,1044 +6,764 @@
 class UIPanelManager extends BaseManager {
     constructor() {
         super('UIPanelManager');
+
+        this._inited = false;
+
         this.panelState = {
             inspector: false,
             siteInfo: false
         };
+
         this.cardStates = {
             siteBoundary: 'expanded',
             setbacks: 'collapsed',
             floorplan: 'collapsed',
-            extrusion: 'collapsed'  // Start collapsed like other cards
+            extrusion: 'collapsed'
         };
+
+        // Listener lifecycle
+        this._uiAbort = null;
+        this._cardsAbort = null;
+        this._modalAbort = null;
+        this._globalAbort = null;
     }
 
     initialize() {
+        if (this._inited) {
+            this.warn('UIPanelManager already initialized');
+            return;
+        }
+
         this.info('Initializing UI Panel Manager...');
+
+        this._uiAbort = new AbortController();
+        this._cardsAbort = new AbortController();
+        this._modalAbort = new AbortController();
+        this._globalAbort = new AbortController();
+
         this.setupEventListeners();
         this.setupCardEventListeners();
         this.initializePanelStates();
         this.initializeAdditionalElements();
 
+        this._inited = true;
         this.info('UI Panel Manager initialized successfully');
     }
 
+    /* -----------------------------
+       Helpers
+    ------------------------------ */
+    $(id) { return document.getElementById(id); }
+
+    _toggle(el, className, on) {
+        if (!el) return;
+        el.classList[on ? 'add' : 'remove'](className);
+    }
+
+    _show(el) { if (el) el.style.display = 'block'; }
+    _hide(el) { if (el) el.style.display = 'none'; }
+
+    /* -----------------------------
+       Additional init
+    ------------------------------ */
     initializeAdditionalElements() {
         // Update location info if available
-        const locationSpan = document.getElementById('siteLocation');
+        const locationSpan = this.$('siteLocation');
         if (locationSpan) {
-            const siteData = window.siteInspectorCore ? window.siteInspectorCore.getSiteData() : {};
-            const location = siteData.project_address || siteData.location || 'Not specified';
+            const siteData = window.siteInspectorCore ? window.siteInspectorCore.getSiteData?.() : {};
+            const location = siteData?.project_address || siteData?.location || 'Not specified';
             locationSpan.textContent = location;
         }
 
-        // Add CSS for animations
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideInRight {
-                from {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-            }
-
-            @keyframes slideOutRight {
-                from {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-                to {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-            }
-        `;
-        document.head.appendChild(style);
+        // Add CSS for animations (once)
+        if (!document.querySelector('#uipanel-animations')) {
+            const style = document.createElement('style');
+            style.id = 'uipanel-animations';
+            style.textContent = `
+                @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+                @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            `;
+            document.head.appendChild(style);
+        }
     }
 
+    /* -----------------------------
+       Core event listeners
+    ------------------------------ */
     setupEventListeners() {
+        const signal = this._uiAbort.signal;
+
         // Inspector panel toggle
-        const panelToggleBtn = document.getElementById('panelToggleBtn');
-        if (panelToggleBtn) {
-            panelToggleBtn.addEventListener('click', () => this.toggleInspectorPanel());
-        }
+        const panelToggleBtn = this.$('panelToggleBtn');
+        panelToggleBtn?.addEventListener('click', () => this.toggleInspectorPanel(), { signal });
 
         const panelClose = document.querySelector('.panel-close');
-        if (panelClose) {
-            panelClose.addEventListener('click', () => this.toggleInspectorPanel());
-        }
+        panelClose?.addEventListener('click', () => this.toggleInspectorPanel(), { signal });
 
         // Site info panel toggle
-        const siteInfoToggleBtn = document.getElementById('siteInfoToggleBtn');
-        if (siteInfoToggleBtn) {
-            siteInfoToggleBtn.addEventListener('click', () => this.toggleSiteInfoExpanded());
-        }
+        const siteInfoToggleBtn = this.$('siteInfoToggleBtn');
+        siteInfoToggleBtn?.addEventListener('click', () => this.toggleSiteInfoExpanded(), { signal });
 
-        // Setup cut & fill analysis button
-        const cutFillAnalysisBtn = document.getElementById('cutFillAnalysisBtn');
-        if (cutFillAnalysisBtn) {
-            cutFillAnalysisBtn.addEventListener('click', () => {
-                this.generateCutFillAnalysis();
+        // Cut & fill & save (if present)
+        this.$('cutFillAnalysisBtn')?.addEventListener('click', () => this.generateCutFillAnalysis(), { signal });
+        this.$('saveProgressBtn')?.addEventListener('click', () => this.saveCurrentProgress(), { signal });
+
+        // Event bus listeners (guarded)
+        const bus = window.eventBus;
+        if (bus?.on) {
+            bus.on('boundary-applied', () => {
+                this.collapseSiteBoundaryCard();
+                this.expandSetbacksCard();
             });
-        }
 
-        // Setup save progress button
-        const saveProgressBtn = document.getElementById('saveProgressBtn');
-        if (saveProgressBtn) {
-            saveProgressBtn.addEventListener('click', () => {
-                this.saveCurrentProgress();
+            bus.on('site-boundary-loaded', () => {
+                this.collapseSiteBoundaryCard();
+                setTimeout(() => {
+                    const psm = window.siteInspectorCore?.propertySetbacksManager;
+                    if (!psm?.currentBuildableArea) this.expandSetbacksCard();
+                }, 100);
             });
+
+            bus.on('setbacks-applied', () => {
+                this.collapseSetbacksCard();
+                this.expandFloorplanCard();
+            });
+
+            // (Fixed) was duplicated in original
+            bus.on('floorplan-applied', () => {
+                this.collapseFloorplanCard();
+                this.expandExtrusionCard();
+            });
+
+            // Structure created -> show extrusion
+            bus.on('structure-created', () => {
+                this.expandExtrusionCard();
+                this.updateExtrudeStructureButtonState();
+            });
+
+            bus.on('extrusion-applied', () => this.updateExtrusionCardStatus());
+            bus.on('structure-deleted', () => this.updateExtrudeStructureButtonState());
+            bus.on('structure-selection-changed', () => this.updateExtrudeStructureButtonState());
         }
 
-        // Listen for workflow events
-        window.eventBus.on('boundary-applied', () => {
-            this.collapseSiteBoundaryCard();
-            this.expandSetbacksCard();
-        });
-
-        // Auto-collapse Site Boundary card when existing boundary is loaded
-        window.eventBus.on('site-boundary-loaded', () => {
-            this.collapseSiteBoundaryCard();
-            // Only expand setbacks card if no existing buildable area
-            setTimeout(() => {
-                const propertySetbacksManager = window.siteInspectorCore?.propertySetbacksManager;
-                if (!propertySetbacksManager?.currentBuildableArea) {
-                    this.expandSetbacksCard();
-                }
-            }, 100);
-        });
-
-        window.eventBus.on('setbacks-applied', () => {
-            this.collapseSetbacksCard();
-            this.expandFloorplanCard();
-        });
-
-        window.eventBus.on('floorplan-applied', () => {
-            this.collapseFloorplanCard();
-            this.expandExtrusionCard();
-        });
-
-        window.eventBus.on('structure-placement-applied', () => {
-            this.collapseStructurePlacementCard();
-            this.expandExtrusionCard();
-        });
-
-        window.eventBus.on('floorplan-applied', () => {
-            this.collapseFloorplanCard();
-            this.expandExtrusionCard();
-        });
-
-        // Listen for structure creation to trigger extrusion card
-        window.eventBus.on('structure-created', () => {
-            this.expandExtrusionCard();
-        });
-
-        window.eventBus.on('extrusion-applied', () => {
-            // Keep extrusion card open to allow multiple extrusions
-            this.updateExtrusionCardStatus();
-        });
-
-        // Listen for structure events to update button state
-        window.eventBus.on('structure-created', () => {
-            this.updateExtrudeStructureButtonState();
-        });
-
-        window.eventBus.on('structure-deleted', () => {
-            this.updateExtrudeStructureButtonState();
-        });
-
-        window.eventBus.on('structure-selection-changed', () => {
-            this.updateExtrudeStructureButtonState();
-        });
-
-        // Clear Site Inspector functionality
+        // Clear & minimize
         this.setupClearSiteInspectorListeners();
-
-        // Minimize panel functionality
         this.setupMinimizePanelListener();
+
+        // Initialize search UI
+        this.initializeSearchControl();
+
+        this.debug('Core event listeners attached');
     }
 
     setupCardEventListeners() {
-        // Add click handlers to collapsed cards
-        const siteBoundaryControls = document.getElementById('siteBoundaryControls');
-        if (siteBoundaryControls) {
-            siteBoundaryControls.addEventListener('click', (event) => {
-                if (siteBoundaryControls.classList.contains('collapsed')) {
-                    // Always allow expansion when clicking on collapsed card
-                    this.expandSiteBoundaryCard();
-                }
-            });
-        }
+        const signal = this._cardsAbort.signal;
 
-        const boundaryControls = document.getElementById('boundaryControls');
-        if (boundaryControls) {
-            boundaryControls.addEventListener('click', (event) => {
-                if (boundaryControls.classList.contains('collapsed')) {
-                    this.expandSetbacksCard();
-                }
-            });
-        }
+        const siteBoundaryControls = this.$('siteBoundaryControls');
+        siteBoundaryControls?.addEventListener('click', () => {
+            if (siteBoundaryControls.classList.contains('collapsed')) this.expandSiteBoundaryCard();
+        }, { signal });
 
-        const floorplanControls = document.getElementById('floorplanControls');
-        if (floorplanControls) {
-            floorplanControls.addEventListener('click', (event) => {
-                if (floorplanControls.classList.contains('collapsed')) {
-                    this.expandFloorplanCard();
-                }
-            });
-        }
+        const boundaryControls = this.$('boundaryControls');
+        boundaryControls?.addEventListener('click', () => {
+            if (boundaryControls.classList.contains('collapsed')) this.expandSetbacksCard();
+        }, { signal });
 
-        const gradientControls = document.getElementById('gradientControls');
-        if (gradientControls) {
-            gradientControls.addEventListener('click', (event) => {
-                if (gradientControls.classList.contains('collapsed')) {
-                    this.expandGradientCard();
-                }
-            });
-        }
+        const floorplanControls = this.$('floorplanControls');
+        floorplanControls?.addEventListener('click', () => {
+            if (floorplanControls.classList.contains('collapsed')) this.expandFloorplanCard();
+        }, { signal });
 
-        const extrusionControls = document.getElementById('extrusionControls');
-        if (extrusionControls) {
-            extrusionControls.addEventListener('click', (event) => {
-                if (extrusionControls.classList.contains('collapsed')) {
-                    this.expandExtrusionCard();
-                }
-            });
-        }
+        const gradientControls = this.$('gradientControls');
+        gradientControls?.addEventListener('click', () => {
+            if (gradientControls.classList.contains('collapsed')) this.expandGradientCard();
+        }, { signal });
+
+        const extrusionControls = this.$('extrusionControls');
+        extrusionControls?.addEventListener('click', () => {
+            if (extrusionControls.classList.contains('collapsed')) this.expandExtrusionCard();
+        }, { signal });
+
+        this.debug('Card event listeners attached');
     }
 
+    /* -----------------------------
+       Initial visual states
+    ------------------------------ */
     initializePanelStates() {
-        const panel = document.getElementById('inspectorPanel');
-        const topLeftControls = document.querySelector('.top-left-controls');
-        const mapLegend = document.getElementById('mapLegend');
-        const mapControlsContainer = document.getElementById('mapControlsContainer');
+        const panel = this.$('inspectorPanel');
+        const mapLegend = this.$('mapLegend');
+        const mapControlsContainer = this.$('mapControlsContainer');
+        const topLeftControls = document.querySelector('.top-left-controls'); // optional in some layouts
 
         if (panel) {
-            // Start expanded - add expanded class
             panel.classList.add('expanded');
             this.panelState.inspector = true;
         }
 
-        if (topLeftControls) {
-            topLeftControls.classList.add('shifted');
-        }
+        this._toggle(topLeftControls, 'shifted', true);
+        this._toggle(mapLegend, 'shifted', true);
+        this._toggle(mapControlsContainer, 'shifted', true);
 
-        if (mapLegend) {
-            mapLegend.classList.add('shifted');
-        }
+        // Ensure extrusion starts collapsed
+        const extrusionControls = this.$('extrusionControls');
+        this._toggle(extrusionControls, 'collapsed', true);
+        this.cardStates.extrusion = 'collapsed';
 
-        // Initialize map controls container in shifted state since panel starts expanded
-        if (mapControlsContainer) {
-            mapControlsContainer.classList.add('shifted');
-            this.info('Map controls container initialized in shifted state');
-        }
-
-        // Initialize the extrusion card in collapsed state
-        const extrusionControls = document.getElementById('extrusionControls');
-        if (extrusionControls) {
-            extrusionControls.classList.add('collapsed');
-            this.cardStates.extrusion = 'collapsed';
-            this.info('Extrusion card initialized as collapsed');
-        }
-
-        // Add loading states to all cards initially
+        // Loading shimmer for cards (once)
         this.showCardLoadingStates();
-
-        // Initialize search functionality
-        this.initializeSearchControl();
 
         this.info('Panel states initialized - inspector panel expanded by default');
     }
 
     showCardLoadingStates() {
-        const cards = [
-            'siteBoundaryControls',
-            'boundaryControls', 
-            'floorplanControls',
-            'extrusionControls'
-        ];
+        const cardIds = ['siteBoundaryControls', 'boundaryControls', 'floorplanControls', 'extrusionControls'];
 
-        cards.forEach(cardId => {
-            const card = document.getElementById(cardId);
-            if (card) {
-                // Add loading indicator
-                const loadingIndicator = document.createElement('div');
-                loadingIndicator.className = 'card-loading-indicator';
-                loadingIndicator.innerHTML = '<div class="loading-spinner"></div><span>Loading...</span>';
-                loadingIndicator.style.cssText = `
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 8px;
-                    font-size: 12px;
-                    color: #666;
-                    opacity: 0.7;
-                `;
+        cardIds.forEach(id => {
+            const card = this.$(id);
+            if (!card || card.hasAttribute('data-loading')) return;
 
-                const spinner = loadingIndicator.querySelector('.loading-spinner');
-                spinner.style.cssText = `
-                    width: 12px;
-                    height: 12px;
-                    border: 2px solid #ddd;
-                    border-top: 2px solid #007cbf;
-                    border-radius: 50%;
-                    animation: spin 1s linear infinite;
-                `;
-
-                card.appendChild(loadingIndicator);
-                card.setAttribute('data-loading', 'true');
-            }
+            const wrap = document.createElement('div');
+            wrap.className = 'card-loading-indicator';
+            wrap.style.cssText = `
+                display:flex;align-items:center;gap:8px;padding:8px;
+                font-size:12px;color:#666;opacity:0.7;
+            `;
+            wrap.innerHTML = `
+                <div class="loading-spinner" style="
+                    width:12px;height:12px;border:2px solid #ddd;border-top:2px solid #007cbf;
+                    border-radius:50%;animation:spin 1s linear infinite;"></div>
+                <span>Loading...</span>
+            `;
+            card.appendChild(wrap);
+            card.setAttribute('data-loading', 'true');
         });
 
-        // Add CSS animation for spinner
-        if (!document.querySelector('#loading-spinner-styles')) {
-            const style = document.createElement('style');
-            style.id = 'loading-spinner-styles';
-            style.textContent = `
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-
-        // Remove loading states after a short delay to simulate loading completion
-        setTimeout(() => {
-            this.hideCardLoadingStates();
-        }, 1500);
+        // Auto-remove after short delay
+        setTimeout(() => this.hideCardLoadingStates(), 1500);
     }
 
     hideCardLoadingStates() {
-        const cards = document.querySelectorAll('[data-loading="true"]');
-        cards.forEach(card => {
-            const loadingIndicator = card.querySelector('.card-loading-indicator');
-            if (loadingIndicator) {
-                loadingIndicator.remove();
-            }
+        document.querySelectorAll('[data-loading="true"]').forEach(card => {
+            card.querySelector('.card-loading-indicator')?.remove();
             card.removeAttribute('data-loading');
         });
         this.info('Card loading states removed');
     }
 
+    /* -----------------------------
+       Search control
+    ------------------------------ */
     initializeSearchControl() {
-        const searchControl = document.getElementById('searchControl');
-        const searchInput = document.getElementById('searchInput');
-        const searchButton = document.getElementById('searchButton');
-        const clearSearchButton = document.getElementById('clearSearchButton');
+        const signal = this._globalAbort.signal;
 
-        if (searchButton) {
-            searchButton.addEventListener('click', () => this.toggleSearchControl());
-        }
+        const searchButton = this.$('searchButton');
+        const searchInput = this.$('searchInput');
+        const clearSearchButton = this.$('clearSearchButton');
 
-        if (searchInput) {
-            searchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    this.performSearch(searchInput.value);
-                }
-            });
-        }
+        searchButton?.addEventListener('click', () => this.toggleSearchControl(), { signal });
 
-        if (clearSearchButton) {
-            clearSearchButton.addEventListener('click', () => this.clearSearch());
-        }
+        searchInput?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') this.performSearch(searchInput.value);
+            if (e.key === 'Escape') {
+                this.clearSearch();
+                searchInput.blur();
+            }
+        }, { signal });
+
+        clearSearchButton?.addEventListener('click', () => this.clearSearch(), { signal });
 
         this.info('Search control initialized');
     }
 
     toggleSearchControl() {
-        const searchControl = document.getElementById('searchControl');
-        const searchButton = document.getElementById('searchButton');
-
+        const searchControl = this.$('searchControl');
+        const searchButton = this.$('searchButton');
         if (!searchControl || !searchButton) return;
 
-        const isExpanded = searchControl.classList.contains('expanded');
+        const expanded = searchControl.classList.contains('expanded');
+        this._toggle(searchControl, 'expanded', !expanded);
+        this._toggle(searchButton, 'active', !expanded);
 
-        if (isExpanded) {
-            searchControl.classList.remove('expanded');
-            searchButton.classList.remove('active');
-            this.info('Search control collapsed');
-        } else {
-            searchControl.classList.add('expanded');
-            searchButton.classList.add('active');
-
-            // Focus on input when expanded
-            setTimeout(() => {
-                const searchInput = document.getElementById('searchInput');
-                if (searchInput) searchInput.focus();
-            }, 300);
-
+        if (!expanded) {
+            setTimeout(() => this.$('searchInput')?.focus(), 300);
             this.info('Search control expanded');
+        } else {
+            this.info('Search control collapsed');
         }
     }
 
     async performSearch(query) {
-        if (!query || query.trim() === '') {
-            this.showSearchError('Please enter a search term');
-            return;
-        }
-
-        const trimmedQuery = query.trim();
-        if (trimmedQuery.length < 2) {
-            this.showSearchError('Search term too short');
-            return;
-        }
+        const val = (query || '').trim();
+        if (!val) return this.showSearchError('Please enter a search term');
+        if (val.length < 2) return this.showSearchError('Search term too short');
 
         try {
-            this.info(`Searching for: ${trimmedQuery}`);
-
+            this.info(`Searching for: ${val}`);
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            const t = setTimeout(() => controller.abort(), 10000);
 
-            const response = await fetch('/api/geocode-location', {
+            const res = await fetch('/api/geocode-location', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ query: trimmedQuery }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: val }),
                 signal: controller.signal
             });
 
-            clearTimeout(timeoutId);
+            clearTimeout(t);
+            if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            const data = await res.json();
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            this.info('Search response received:', data);
-
-            if (data.success && data.location && data.location.lng && data.location.lat) {
-                // Get the map instance from the core
-                const map = window.siteInspectorCore?.getMap();
-                if (map && map.flyTo) {
-                    // Validate coordinates
-                    const lng = parseFloat(data.location.lng);
-                    const lat = parseFloat(data.location.lat);
-
-                    if (isNaN(lng) || isNaN(lat) || Math.abs(lng) > 180 || Math.abs(lat) > 90) {
-                        throw new Error('Invalid coordinates received');
-                    }
-
-                    // Fly to the searched location
-                    map.flyTo({
-                        center: [lng, lat],
-                        zoom: 18,
-                        duration: 2000,
-                        essential: true
-                    });
-
-                    this.info(`Location found and centered: ${data.location.display_name || trimmedQuery}`);
-
-                    // Show success feedback
-                    this.showSearchSuccess(`Found: ${data.location.display_name || trimmedQuery}`);
-                } else {
-                    this.error('Map not available for navigation');
-                    this.showSearchError('Map not ready for navigation');
+            if (data?.success && data.location?.lng != null && data.location?.lat != null) {
+                const map = window.siteInspectorCore?.getMap?.();
+                const lng = parseFloat(data.location.lng);
+                const lat = parseFloat(data.location.lat);
+                if (!map?.flyTo || isNaN(lng) || isNaN(lat) || Math.abs(lng) > 180 || Math.abs(lat) > 90) {
+                    throw new Error('Invalid map or coordinates');
                 }
-            } else {
-                this.warn(`Location not found: ${trimmedQuery}`, data);
-                this.showSearchError(data.message || 'Location not found. Please try a different search term.');
-            }
 
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                this.warn('Search request timed out');
-                this.showSearchError('Search timed out. Please try again.');
+                map.flyTo({ center: [lng, lat], zoom: 18, duration: 2000, essential: true });
+                this.showSearchSuccess(`Found: ${data.location.display_name || val}`);
+                this.info(`Location centered: ${data.location.display_name || val}`);
             } else {
-                this.error('Search failed:', error);
+                this.showSearchError(data?.message || 'Location not found. Please try a different search term.');
+                this.warn(`Location not found: ${val}`, data);
+            }
+        } catch (err) {
+            if (err.name === 'AbortError') {
+                this.showSearchError('Search timed out. Please try again.');
+                this.warn('Search request timed out');
+            } else {
                 this.showSearchError('Search failed. Please check your connection and try again.');
+                this.error('Search failed:', err);
             }
         }
     }
 
     showSearchSuccess(message) {
-        const searchStatus = document.getElementById('searchStatus');
-        if (searchStatus) {
-            searchStatus.textContent = message;
-            searchStatus.className = 'search-status success';
-            searchStatus.style.display = 'block';
-
-            setTimeout(() => {
-                searchStatus.style.display = 'none';
-            }, 3000);
-        }
+        const el = this.$('searchStatus');
+        if (!el) return;
+        el.textContent = message;
+        el.className = 'search-status success';
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 3000);
     }
 
     showSearchError(message) {
-        const searchStatus = document.getElementById('searchStatus');
-        if (searchStatus) {
-            searchStatus.textContent = message;
-            searchStatus.className = 'search-status error';
-            searchStatus.style.display = 'block';
-
-            setTimeout(() => {
-                searchStatus.style.display = 'none';
-            }, 3000);
-        }
+        const el = this.$('searchStatus');
+        if (!el) return;
+        el.textContent = message;
+        el.className = 'search-status error';
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 3000);
     }
 
     clearSearch() {
-        const searchInput = document.getElementById('searchInput');
-        const searchStatus = document.getElementById('searchStatus');
-
-        if (searchInput) searchInput.value = '';
-        if (searchStatus) searchStatus.style.display = 'none';
-
+        const input = this.$('searchInput');
+        const status = this.$('searchStatus');
+        if (input) input.value = '';
+        if (status) status.style.display = 'none';
         this.info('Search cleared');
     }
 
+    /* -----------------------------
+       Panel toggles
+    ------------------------------ */
     toggleInspectorPanel() {
-        const panel = document.getElementById('inspectorPanel');
+        const panel = this.$('inspectorPanel');
+        if (!panel) return this.error('Inspector panel element not found');
+
+        const mapLegend = this.$('mapLegend');
+        const mapControlsContainer = this.$('mapControlsContainer');
         const topLeftControls = document.querySelector('.top-left-controls');
-        const mapLegend = document.getElementById('mapLegend');
-        const mapControlsContainer = document.getElementById('mapControlsContainer');
 
-        if (!panel) {
-            this.error('Inspector panel element not found');
-            return;
-        }
+        const expanded = panel.classList.contains('expanded');
+        this._toggle(panel, 'expanded', !expanded);
+        this._toggle(topLeftControls, 'shifted', !expanded);
+        this._toggle(mapLegend, 'shifted', !expanded);
+        this._toggle(mapControlsContainer, 'shifted', !expanded);
 
-        const isExpanded = panel.classList.contains('expanded');
+        this.panelState.inspector = !expanded;
 
-        if (isExpanded) {
-            // Collapse panel
-            panel.classList.remove('expanded');
-            if (topLeftControls) topLeftControls.classList.remove('shifted');
-            if (mapLegend) mapLegend.classList.remove('shifted');
-            if (mapControlsContainer) mapControlsContainer.classList.remove('shifted');
-            this.panelState.inspector = false;
-            this.info('Inspector panel collapsed');
-        } else {
-            // Expand panel
-            panel.classList.add('expanded');
-            if (topLeftControls) topLeftControls.classList.add('shifted');
-            if (mapLegend) mapLegend.classList.add('shifted');
-            if (mapControlsContainer) mapControlsContainer.classList.add('shifted');
-            this.panelState.inspector = true;
-            this.info('Inspector panel expanded');
-        }
-
-        // Force a reflow to ensure CSS changes are applied
+        // Force reflow and notify
         panel.offsetHeight;
+        window.eventBus?.emit?.('inspector-panel-toggled', { expanded: this.panelState.inspector });
 
-        // Notify other managers about panel state change
-        window.eventBus.emit('inspector-panel-toggled', {
-            expanded: this.panelState.inspector
-        });
+        this.info(`Inspector panel ${!expanded ? 'expanded' : 'collapsed'}`);
     }
 
     toggleSiteInfoExpanded() {
-        const expandable = document.getElementById('siteInfoExpandable');
-        const btn = document.getElementById('siteInfoToggleBtn');
+        const expandable = this.$('siteInfoExpandable');
+        const btn = this.$('siteInfoToggleBtn');
+        if (!expandable || !btn) return;
 
-        if (expandable.classList.contains('expanded')) {
-            expandable.classList.remove('expanded');
-            btn.innerHTML = 'ℹ️';
-            this.panelState.siteInfo = false;
-            this.info('Site info collapsed');
-        } else {
-            expandable.classList.add('expanded');
-            btn.innerHTML = '✕';
-            this.panelState.siteInfo = true;
-            this.info('Site info expanded');
-        }
+        const expanded = expandable.classList.contains('expanded');
+        this._toggle(expandable, 'expanded', !expanded);
+        btn.innerHTML = expanded ? 'ℹ️' : '✕';
+        this.panelState.siteInfo = !expanded;
+
+        this.info(`Site info ${!expanded ? 'expanded' : 'collapsed'}`);
     }
 
-    // Card management methods
+    /* -----------------------------
+       Card management
+    ------------------------------ */
     collapseSiteBoundaryCard() {
-        const siteBoundaryControls = document.getElementById('siteBoundaryControls');
-        const boundaryAppliedCheck = document.getElementById('boundaryAppliedCheck');
-        const confirmBtn = document.getElementById('confirmBoundaryButton');
-        const drawBtn = document.getElementById('drawPolygonButton');
-        const clearBtn2 = document.getElementById('clearBoundaryButton2');
+        const controls = this.$('siteBoundaryControls');
+        const check = this.$('boundaryAppliedCheck');
+        const confirmBtn = this.$('confirmBoundaryButton');
+        const drawBtn = this.$('drawPolygonButton');
+        const clearBtn2 = this.$('clearBoundaryButton2');
 
-        if (siteBoundaryControls && boundaryAppliedCheck) {
-            siteBoundaryControls.classList.add('collapsed');
-            boundaryAppliedCheck.style.display = 'inline';
+        if (!controls) return this.error('Site boundary controls not found for collapse');
 
-            // Hide the confirm button since boundary is now confirmed
-            if (confirmBtn) confirmBtn.style.display = 'none';
+        controls.classList.add('collapsed');
+        if (check) check.style.display = 'inline';
+        if (confirmBtn) this._hide(confirmBtn);
+        if (drawBtn) this._hide(drawBtn);
+        if (clearBtn2) this._show(clearBtn2);
 
-            // Hide draw button and show clear button for existing boundaries
-            if (drawBtn) drawBtn.style.display = 'none';
-            if (clearBtn2) clearBtn2.style.display = 'inline-block';
-
-            this.cardStates.siteBoundary = 'collapsed';
-            this.info('Site Boundary card collapsed with success indicator');
-        } else {
-            this.error('Site boundary controls or check element not found for collapse');
-        }
+        this.cardStates.siteBoundary = 'collapsed';
+        this.info('Site Boundary card collapsed with success indicator');
     }
 
     expandSiteBoundaryCard() {
-        const siteBoundaryControls = document.getElementById('siteBoundaryControls');
-        const boundaryAppliedCheck = document.getElementById('boundaryAppliedCheck');
+        const controls = this.$('siteBoundaryControls');
+        const check = this.$('boundaryAppliedCheck');
+        if (!controls) return;
 
-        if (siteBoundaryControls) {
-            siteBoundaryControls.classList.remove('collapsed');
-            this.cardStates.siteBoundary = 'expanded';
-            if (boundaryAppliedCheck) {
-                boundaryAppliedCheck.style.display = 'none';
-            }
-            this.info('Site Boundary card expanded');
-        }
+        controls.classList.remove('collapsed');
+        if (check) this._hide(check);
+        this.cardStates.siteBoundary = 'expanded';
+        this.info('Site Boundary card expanded');
     }
 
     collapseSetbacksCard() {
-        const boundaryControls = document.getElementById('boundaryControls');
-        const setbacksAppliedCheck = document.getElementById('setbacksAppliedCheck');
+        const controls = this.$('boundaryControls');
+        const check = this.$('setbacksAppliedCheck');
+        if (!controls) return;
 
-        if (boundaryControls && setbacksAppliedCheck) {
-            boundaryControls.classList.add('collapsed');
-            setbacksAppliedCheck.style.display = 'inline';
-            this.cardStates.setbacks = 'collapsed';
-            this.info('Property Setbacks card collapsed with success indicator');
-        }
+        controls.classList.add('collapsed');
+        if (check) check.style.display = 'inline';
+
+        this.cardStates.setbacks = 'collapsed';
+        this.info('Property Setbacks card collapsed with success indicator');
     }
 
     expandSetbacksCard() {
-        const boundaryControls = document.getElementById('boundaryControls');
-        const setbacksAppliedCheck = document.getElementById('setbacksAppliedCheck');
+        const controls = this.$('boundaryControls');
+        const check = this.$('setbacksAppliedCheck');
+        if (!controls) return;
 
-        if (boundaryControls) {
-            boundaryControls.classList.remove('collapsed');
-            this.cardStates.setbacks = 'expanded';
-            if (setbacksAppliedCheck) {
-                setbacksAppliedCheck.style.display = 'none';
-            }
-            this.info('Property Setbacks card expanded');
-        }
+        controls.classList.remove('collapsed');
+        if (check) this._hide(check);
+
+        this.cardStates.setbacks = 'expanded';
+        this.info('Property Setbacks card expanded');
     }
 
     expandFloorplanCard() {
-        const floorplanControls = document.getElementById('floorplanControls');
-        const floorplanAppliedCheck = document.getElementById('floorplanAppliedCheck');
+        const controls = this.$('floorplanControls');
+        const check = this.$('floorplanAppliedCheck');
+        if (!controls) return;
 
-        if (floorplanControls) {
-            floorplanControls.classList.remove('collapsed');
-            this.cardStates.floorplan = 'expanded';
-            if (floorplanAppliedCheck) {
-                floorplanAppliedCheck.style.display = 'none';
-            }
-            this.info('Floor Plan card expanded');
-        }
+        controls.classList.remove('collapsed');
+        if (check) this._hide(check);
+
+        this.cardStates.floorplan = 'expanded';
+        this.info('Floor Plan card expanded');
     }
 
     collapseFloorplanCard() {
-        const floorplanControls = document.getElementById('floorplanControls');
-        const floorplanAppliedCheck = document.getElementById('floorplanAppliedCheck');
+        const controls = this.$('floorplanControls');
+        const check = this.$('floorplanAppliedCheck');
+        if (!controls) return;
 
-        if (floorplanControls && floorplanAppliedCheck) {
-            floorplanControls.classList.add('collapsed');
-            floorplanAppliedCheck.style.display = 'inline';
-            this.cardStates.floorplan = 'collapsed';
-            this.info('Floor Plan card collapsed with success indicator');
-        }
+        controls.classList.add('collapsed');
+        if (check) check.style.display = 'inline';
+
+        this.cardStates.floorplan = 'collapsed';
+        this.info('Floor Plan card collapsed with success indicator');
     }
 
     collapseStructurePlacementCard() {
-        const floorplanControls = document.getElementById('floorplanControls');
-        const floorplanAppliedCheck = document.getElementById('floorplanAppliedCheck');
+        const controls = this.$('floorplanControls');
+        const check = this.$('floorplanAppliedCheck');
+        if (!controls) return;
 
-        if (floorplanControls && floorplanAppliedCheck) {
-            floorplanControls.classList.add('collapsed');
-            floorplanAppliedCheck.style.display = 'inline';
-            floorplanAppliedCheck.textContent = '✅';
-            this.cardStates.floorplan = 'collapsed';
-            this.info('Structure Placement card collapsed with success indicator');
+        controls.classList.add('collapsed');
+        if (check) {
+            check.style.display = 'inline';
+            check.textContent = '✅';
         }
+        this.cardStates.floorplan = 'collapsed';
+        this.info('Structure Placement card collapsed with success indicator');
     }
 
     expandGradientCard() {
-        const gradientControls = document.getElementById('gradientControls');
-        const gradientAppliedCheck = document.getElementById('gradientAppliedCheck');
+        const controls = this.$('gradientControls');
+        const check = this.$('gradientAppliedCheck');
+        if (!controls) return;
 
-        if (gradientControls) {
-            gradientControls.classList.remove('collapsed');
-            this.cardStates.gradient = 'expanded';
-            if (gradientAppliedCheck) {
-                gradientAppliedCheck.style.display = 'none';
+        controls.classList.remove('collapsed');
+        if (check) this._hide(check);
+        this.cardStates.gradient = 'expanded';
+        this.info('Gradient card expanded');
+    }
+
+    expandExtrusionCard() {
+        const controls = this.$('extrusionControls');
+        const check = this.$('extrusionAppliedCheck');
+        if (!controls) return;
+
+        controls.classList.remove('collapsed');
+        controls.style.display = 'block';
+        controls.style.visibility = 'visible';
+        controls.style.opacity = '1';
+
+        // Force show inner content blocks
+        controls.querySelectorAll('.extrusion-content, .boundary-content').forEach(el => {
+            el.style.display = 'block';
+            el.style.visibility = 'visible';
+            el.style.opacity = '1';
+        });
+
+        this.cardStates.extrusion = 'expanded';
+        if (check) this._hide(check);
+
+        // Sync heights and structure management
+        this.updateExtrusionHeights();
+        this.showStructureManagementCard();
+
+        // Extrusions state
+        const ex = window.siteInspectorCore?.extrusion3DManager;
+        if (ex) {
+            ex.updateActiveExtrusionsDisplay?.();
+            if (ex.hasActiveExtrusions?.()) {
+                const removeAll = this.$('removeAll3DBtn');
+                if (removeAll) removeAll.style.display = 'block';
             }
-            this.info('Gradient card expanded');
+        }
+
+        this.updateExtrudeStructureButtonState();
+
+        this.info('3D Extrusion card expanded and made visible');
+    }
+
+    collapseExtrusionCard() {
+        const controls = this.$('extrusionControls');
+        const check = this.$('extrusionAppliedCheck');
+        if (!controls) return;
+
+        controls.classList.add('collapsed');
+        if (check) check.style.display = 'inline';
+        this.cardStates.extrusion = 'collapsed';
+
+        // Notify floorplan manager
+        const fm = window.siteInspectorCore?.floorplanManager;
+        fm?.disableExtrusionMode?.();
+
+        // Close structure management card
+        this.closeStructureCard();
+
+        this.info('3D Extrusion card collapsed with success indicator');
+    }
+
+    updateExtrusionHeights() {
+        const structureHeightInput = this.$('structureHeightInput');
+        const psm = window.siteInspectorCore?.propertySetbacksManager;
+        const heightLimit = psm?.getCurrentHeightLimit?.();
+
+        if (heightLimit && heightLimit > 0) {
+            this.info(`Updated extrusion heights from property setbacks: ${heightLimit}m`);
+            // Optionally prefill height input here if desired:
+            // if (structureHeightInput) structureHeightInput.value = heightLimit;
+        }
+
+        if (structureHeightInput && !structureHeightInput.value) {
+            structureHeightInput.value = 12;
         }
     }
 
+    updateExtrusionCardStatus() {
+        const check = this.$('extrusionAppliedCheck');
+        if (check) check.style.display = 'inline';
+        this.info('3D Extrusion card status updated with success indicator');
+    }
+
+    /* -----------------------------
+       Structure management panel
+    ------------------------------ */
     showStructureManagementCard() {
-        // Check if Structure Management card already exists
-        let structureCard = document.getElementById('structureManagementCard');
-
-        if (!structureCard) {
-            // Create the Structure Management card with collapsible button pattern
-            structureCard = document.createElement('div');
-            structureCard.id = 'structureManagementCard';
-            structureCard.className = 'structure-management-card';
-
-            structureCard.innerHTML = `
-                <div class="structure-toggle-btn" id="structureToggleBtn">
-                    🏗️
-                </div>
+        let card = this.$('structureManagementCard');
+        if (!card) {
+            card = document.createElement('div');
+            card.id = 'structureManagementCard';
+            card.className = 'structure-management-card';
+            card.innerHTML = `
+                <div class="structure-toggle-btn" id="structureToggleBtn">🏗️</div>
                 <div class="structure-card-content" id="structureCardContent">
                     <div class="structure-card-header">
                         <h3>Structure Management</h3>
                         <button class="structure-card-close" onclick="window.siteInspectorCore.uiPanelManager.closeStructureCard()">✕</button>
                     </div>
                     <div class="structure-list" id="structureList">
-                        <p style="color: #666; font-size: 13px;">No structures available. Draw a structure first.</p>
+                        <p style="color:#666;font-size:13px;">No structures available. Draw a structure first.</p>
                     </div>
                     <div class="structure-actions">
-                        <button class="structure-action-btn" onclick="window.siteInspectorCore.uiPanelManager.selectAllStructures()">
-                            Select All
-                        </button>
-                        <button class="structure-action-btn" onclick="window.siteInspectorCore.uiPanelManager.clearStructureSelection()">
-                            Clear Selection
-                        </button>
+                        <button class="structure-action-btn" onclick="window.siteInspectorCore.uiPanelManager.selectAllStructures()">Select All</button>
+                        <button class="structure-action-btn" onclick="window.siteInspectorCore.uiPanelManager.clearStructureSelection()">Clear Selection</button>
                     </div>
-                </div>
-            `;
+                </div>`;
+            document.body.appendChild(card);
 
-            // Add to the body
-            document.body.appendChild(structureCard);
-
-            // Setup toggle functionality
-            const toggleBtn = document.getElementById('structureToggleBtn');
-            if (toggleBtn) {
-                toggleBtn.addEventListener('click', () => this.toggleStructureManagementCard());
-            }
+            this.$('structureToggleBtn')?.addEventListener('click', () => this.toggleStructureManagementCard());
         }
 
-        // Auto-expand the card when shown
         this.expandStructureManagementCard();
         this.info('Structure Management card displayed and expanded');
     }
 
     toggleStructureManagementCard() {
-        const structureCard = document.getElementById('structureManagementCard');
-        if (!structureCard) return;
-
-        const isExpanded = structureCard.classList.contains('expanded');
-
-        if (isExpanded) {
-            this.collapseStructureManagementCard();
-        } else {
-            this.expandStructureManagementCard();
-        }
+        const card = this.$('structureManagementCard');
+        if (!card) return;
+        const expanded = card.classList.contains('expanded');
+        expanded ? this.collapseStructureManagementCard() : this.expandStructureManagementCard();
     }
 
     expandStructureManagementCard() {
-        const structureCard = document.getElementById('structureManagementCard');
-        const structureContent = document.getElementById('structureCardContent');
+        const card = this.$('structureManagementCard');
+        const content = this.$('structureCardContent');
+        if (!card || !content) return;
 
-        if (structureCard && structureContent) {
-            structureCard.classList.add('expanded');
-            structureContent.style.display = 'block';
+        card.classList.add('expanded');
+        content.style.display = 'block';
+        this.updateStructureList();
 
-            // Update structure list
-            this.updateStructureList();
-
-            this.info('Structure Management card expanded');
-        }
+        this.info('Structure Management card expanded');
     }
 
     collapseStructureManagementCard() {
-        const structureCard = document.getElementById('structureManagementCard');
-        const structureContent = document.getElementById('structureCardContent');
+        const card = this.$('structureManagementCard');
+        const content = this.$('structureCardContent');
+        if (!card || !content) return;
 
-        if (structureCard && structureContent) {
-            structureCard.classList.remove('expanded');
-            structureContent.style.display = 'none';
-            this.info('Structure Management card collapsed');
-        }
+        card.classList.remove('expanded');
+        content.style.display = 'none';
+        this.info('Structure Management card collapsed');
     }
 
     updateStructureList() {
-        const structureList = document.getElementById('structureList');
-        if (!structureList) return;
+        const list = this.$('structureList');
+        if (!list) return;
 
-        const floorplanManager = window.siteInspectorCore?.floorplanManager;
-        if (!floorplanManager || !floorplanManager.hasStructures || !floorplanManager.hasStructures()) {
-            structureList.innerHTML = '<p style="color: #666; font-size: 13px;">No structures available. Draw a structure first.</p>';
+        const fm = window.siteInspectorCore?.floorplanManager;
+        if (!fm || !fm.hasStructures?.() || fm.getStructures?.()?.length === 0) {
+            list.innerHTML = '<p style="color:#666;font-size:13px;">No structures available. Draw a structure first.</p>';
             return;
         }
 
-        // Get structures and update list
-        const structures = floorplanManager.getStructures ? floorplanManager.getStructures() : [];
-        if (structures.length === 0) {
-            structureList.innerHTML = '<p style="color: #666; font-size: 13px;">No structures available. Draw a structure first.</p>';
-        } else {
-            const listHtml = structures.map((structure, index) => `
-                <div class="structure-item" data-structure-id="${structure.id || index}">
-                    <span>Structure ${index + 1}</span>
-                    <div class="structure-item-actions">
-                        <button class="structure-item-btn" onclick="window.siteInspectorCore.uiPanelManager.selectStructure('${structure.id || index}')">Select</button>
-                        <button class="structure-item-btn delete" onclick="window.siteInspectorCore.uiPanelManager.deleteStructure('${structure.id || index}')">Delete</button>
-                    </div>
+        const structures = fm.getStructures();
+        const html = structures.map((s, i) => `
+            <div class="structure-item" data-structure-id="${s.id ?? i}">
+                <span>Structure ${i + 1}</span>
+                <div class="structure-item-actions">
+                    <button class="structure-item-btn" onclick="window.siteInspectorCore.uiPanelManager.selectStructure('${s.id ?? i}')">Select</button>
+                    <button class="structure-item-btn delete" onclick="window.siteInspectorCore.uiPanelManager.deleteStructure('${s.id ?? i}')">Delete</button>
                 </div>
-            `).join('');
-            structureList.innerHTML = listHtml;
-        }
+            </div>`).join('');
+        list.innerHTML = html;
     }
 
     updateExtrudeStructureButtonState() {
-        const extrudeStructureButton = document.getElementById('extrudeStructureButton');
-        if (!extrudeStructureButton) return;
+        const btn = this.$('extrudeStructureButton');
+        if (!btn) return;
 
-        const floorplanManager = window.siteInspectorCore?.floorplanManager;
-        if (!floorplanManager) {
-            extrudeStructureButton.disabled = true;
-            extrudeStructureButton.textContent = 'Extrude Structure Footprint';
-            return;
+        const fm = window.siteInspectorCore?.floorplanManager;
+        let has = false;
+
+        if (fm?.hasStructures) has = fm.hasStructures();
+        else if (fm?.currentStructure) has = true;
+        else if (fm?.state?.geojsonPolygon) has = true;
+        else {
+            try { has = !!(fm?.getCurrentFloorplanCoordinates?.()?.length); } catch { has = false; }
         }
 
-        // Check multiple ways for structure availability
-        let hasStructures = false;
-
-        if (floorplanManager.hasStructures && typeof floorplanManager.hasStructures === 'function') {
-            hasStructures = floorplanManager.hasStructures();
-        } else if (floorplanManager.currentStructure) {
-            hasStructures = true;
-        } else if (floorplanManager.state?.geojsonPolygon) {
-            hasStructures = true;
-        } else {
-            // Check if getCurrentFloorplanCoordinates returns valid data
-            try {
-                const coords = floorplanManager.getCurrentFloorplanCoordinates();
-                hasStructures = coords && coords.length > 0;
-            } catch (e) {
-                hasStructures = false;
-            }
-        }
-
-        if (hasStructures) {
-            extrudeStructureButton.disabled = false;
-            extrudeStructureButton.textContent = 'Extrude Structure Footprint';
-            extrudeStructureButton.classList.remove('secondary');
-            extrudeStructureButton.classList.add('primary');
-        } else {
-            extrudeStructureButton.disabled = true;
-            extrudeStructureButton.textContent = 'Draw Structure First';
-            extrudeStructureButton.classList.remove('primary');
-            extrudeStructureButton.classList.add('secondary');
-        }
+        btn.disabled = !has;
+        btn.textContent = has ? 'Extrude Structure Footprint' : 'Draw Structure First';
+        btn.classList.toggle('primary', !!has);
+        btn.classList.toggle('secondary', !has);
     }
 
-    closeStructureCard() {
-        this.collapseStructureManagementCard();
+    closeStructureCard() { this.collapseStructureManagementCard(); }
+
+    selectStructure(id) {
+        const fm = window.siteInspectorCore?.floorplanManager;
+        fm?.selectStructure?.(id);
+        this.updateExtrudeStructureButtonState();
     }
 
-    selectStructure(structureId) {
-        const floorplanManager = window.siteInspectorCore?.floorplanManager;
-        if (floorplanManager && floorplanManager.selectStructure) {
-            floorplanManager.selectStructure(structureId);
-            this.updateExtrudeStructureButtonState();
-        }
-    }
-
-    deleteStructure(structureId) {
-        const floorplanManager = window.siteInspectorCore?.floorplanManager;
-        if (floorplanManager && floorplanManager.deleteStructure) {
-            floorplanManager.deleteStructure(structureId);
-            this.updateStructureList();
-            this.updateExtrudeStructureButtonState();
-        }
+    deleteStructure(id) {
+        const fm = window.siteInspectorCore?.floorplanManager;
+        fm?.deleteStructure?.(id);
+        this.updateStructureList();
+        this.updateExtrudeStructureButtonState();
     }
 
     selectAllStructures() {
-        const floorplanManager = window.siteInspectorCore?.floorplanManager;
-        if (floorplanManager && floorplanManager.selectAllStructures) {
-            floorplanManager.selectAllStructures();
-            this.updateExtrudeStructureButtonState();
-        }
+        const fm = window.siteInspectorCore?.floorplanManager;
+        fm?.selectAllStructures?.();
+        this.updateExtrudeStructureButtonState();
     }
 
     clearStructureSelection() {
-        const floorplanManager = window.siteInspectorCore?.floorplanManager;
-        if (floorplanManager && floorplanManager.clearStructureSelection) {
-            floorplanManager.clearStructureSelection();
-            this.updateExtrudeStructureButtonState();
-        }
+        const fm = window.siteInspectorCore?.floorplanManager;
+        fm?.clearStructureSelection?.();
+        this.updateExtrudeStructureButtonState();
     }
 
-    expandExtrusionCard() {
-        const extrusionControls = document.getElementById('extrusionControls');
-        const extrusionAppliedCheck = document.getElementById('extrusionAppliedCheck');
-
-        if (extrusionControls) {
-            extrusionControls.classList.remove('collapsed');
-            extrusionControls.style.display = 'block'; // Ensure visibility
-            extrusionControls.style.visibility = 'visible'; // Override any hidden visibility
-            extrusionControls.style.opacity = '1'; // Override any opacity settings
-
-            // Force show the content div
-            const extrusionContent = extrusionControls.querySelector('.extrusion-content');
-            if (extrusionContent) {
-                extrusionContent.style.display = 'block';
-                extrusionContent.style.visibility = 'visible';
-                extrusionContent.style.opacity = '1';
-            }
-
-            // Also ensure the boundary-content div is visible
-            const boundaryContent = extrusionControls.querySelector('.boundary-content');
-            if (boundaryContent) {
-                boundaryContent.style.display = 'block';
-                boundaryContent.style.visibility = 'visible';
-                boundaryContent.style.opacity = '1';
-            }
-
-            this.cardStates.extrusion = 'expanded';
-            if (extrusionAppliedCheck) {
-                extrusionAppliedCheck.style.display = 'none';
-            }
-
-            // Update height inputs from property setbacks if available
-            this.updateExtrusionHeights();
-
-            // Show the Structure Management card in parallel
-            this.showStructureManagementCard();
-
-            // Initialize 3D extrusion manager if available
-            const extrusion3DManager = window.siteInspectorCore?.extrusion3DManager;
-            if (extrusion3DManager) {
-                // Update active extrusions display
-                extrusion3DManager.updateActiveExtrusionsDisplay();
-
-                // Show remove button if there are active extrusions
-                if (extrusion3DManager.hasActiveExtrusions()) {
-                    const removeAll3DBtn = document.getElementById('removeAll3DBtn');
-                    if (removeAll3DBtn) {
-                        removeAll3DBtn.style.display = 'block';
-                    }
-                }
-            }
-
-            // Update extrude structure button state based on structure availability
-            this.updateExtrudeStructureButtonState();
-
-            this.info('3D Extrusion card expanded and made visible');
-        }
-    }
-
-    collapseExtrusionCard() {
-        const extrusionControls = document.getElementById('extrusionControls');
-        const extrusionAppliedCheck = document.getElementById('extrusionAppliedCheck');
-
-        if (extrusionControls && extrusionAppliedCheck) {
-            extrusionControls.classList.add('collapsed');
-            extrusionAppliedCheck.style.display = 'inline';
-            this.cardStates.extrusion = 'collapsed';
-
-            // Disable extrusion mode in FloorplanManager
-            const floorplanManager = window.siteInspectorCore?.floorplanManager;
-            if (floorplanManager && floorplanManager.disableExtrusionMode) {
-                floorplanManager.disableExtrusionMode();
-            }
-
-            // Close structure management card
-            this.closeStructureCard();
-
-            this.info('3D Extrusion card collapsed with success indicator');
-        }
-    }
-
-    updateExtrusionHeights() {
-        // Update structure height input  
-        const structureHeightInput = document.getElementById('structureHeightInput');
-
-        // Get height from property setbacks manager
-        const propertySetbacksManager = window.siteInspectorCore?.propertySetbacksManager;
-        if (propertySetbacksManager) {
-            const heightLimit = propertySetbacksManager.getCurrentHeightLimit();
-            if (heightLimit && heightLimit > 0) {
-                this.info(`Updated extrusion heights from property setbacks: ${heightLimit}m`);
-            }
-        }
-
-        // Set default structure height if not already set
-        if (structureHeightInput && !structureHeightInput.value) {
-            structureHeightInput.value = 12; // Default structure height
-        }
-    }
-
-    updateExtrusionCardStatus() {
-        const extrusionAppliedCheck = document.getElementById('extrusionAppliedCheck');
-
-        if (extrusionAppliedCheck) {
-            extrusionAppliedCheck.style.display = 'inline';
-            this.info('3D Extrusion card status updated with success indicator');
-        }
-    }
-
-
-
+    /* -----------------------------
+       Cut & Fill + Save
+    ------------------------------ */
     async generateCutFillAnalysis() {
         try {
             this.info('Generating cut & fill analysis...');
+            const sic = window.siteInspectorCore;
+            if (!sic) throw new Error('Site Inspector not available');
 
-            const siteInspectorCore = window.siteInspectorCore;
-            if (!siteInspectorCore) {
-                throw new Error('Site Inspector not available');
-            }
+            const sb = sic.getManager?.('siteBoundary');
+            if (!sb?.hasSiteBoundary?.()) return this.showError('Please define a site boundary first');
 
-            // Check if we have site boundary data
-            const siteBoundaryManager = siteInspectorCore.getManager('siteBoundary');
-            if (!siteBoundaryManager || !siteBoundaryManager.hasSiteBoundary()) {
-                this.showError('Please define a site boundary first');
-                return;
-            }
+            const psm = sic.getManager?.('propertySetbacks');
+            if (!psm?.getCurrentBuildableArea?.()) return this.showError('Please apply property setbacks first to define the buildable area');
 
-            // Check if we have buildable area (setbacks applied)
-            const propertySetbacksManager = siteInspectorCore.getManager('propertySetbacks');
-            if (!propertySetbacksManager || !propertySetbacksManager.getCurrentBuildableArea()) {
-                this.showError('Please apply property setbacks first to define the buildable area');
-                return;
-            }
+            const siteData = sic.getSiteData?.() || {};
+            const terrainBounds = sic.captureTerrainBounds?.();
+            if (terrainBounds) siteData.terrainBounds = terrainBounds;
 
-            // Get site data with current map view
-            const siteData = siteInspectorCore.getSiteData();
+            const buildableArea = psm.getCurrentBuildableArea?.();
+            if (buildableArea) siteData.buildable_area = buildableArea;
 
-            // Capture current map bounds for terrain context
-            const terrainBounds = siteInspectorCore.captureTerrainBounds();
-            if (terrainBounds) {
-                siteData.terrainBounds = terrainBounds;
-                this.info('Captured terrain bounds for analysis:', terrainBounds);
-            }
-
-            // Get buildable area data
-            const buildableArea = propertySetbacksManager.getCurrentBuildableArea();
-            if (buildableArea) {
-                siteData.buildable_area = buildableArea;
-            }
-
-            // Open terrain viewer with site data for cut & fill analysis
-            const projectId = siteInspectorCore.getProjectIdFromUrl();
+            const projectId = sic.getProjectIdFromUrl?.();
             const terrainUrl = `/terrain-viewer${projectId ? `?project_id=${projectId}` : ''}`;
 
-            // Store site data in session for terrain viewer
             try {
-                const response = await fetch('/api/store-session-data', {
+                const res = await fetch('/api/store-session-data', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        site_data: siteData,
-                        terrain_bounds: terrainBounds 
-                    })
+                    body: JSON.stringify({ site_data: siteData, terrain_bounds: terrainBounds })
                 });
-
-                if (response.ok) {
+                if (res.ok) {
                     this.showSuccess('Opening cut & fill analysis...');
                     window.open(terrainUrl, '_blank');
                 } else {
                     throw new Error('Failed to store site data');
                 }
-            } catch (error) {
-                this.warn('Could not store site data, opening terrain viewer anyway');
+            } catch (err) {
+                this.warn('Could not store site data, opening terrain viewer anyway', err);
                 window.open(terrainUrl, '_blank');
             }
-
         } catch (error) {
             this.error('Failed to generate cut & fill analysis:', error);
             this.showError('Failed to generate cut & fill analysis: ' + error.message);
@@ -1053,10 +773,8 @@ class UIPanelManager extends BaseManager {
     async saveCurrentProgress() {
         try {
             this.info('Saving current progress...');
-
-            // Show saving indicator
+            // TODO: plug into backend as needed
             this.showSuccess('Progress saved successfully!');
-
         } catch (error) {
             this.error('Failed to save progress:', error);
             this.showError('Failed to save progress');
@@ -1065,426 +783,201 @@ class UIPanelManager extends BaseManager {
 
     updateBoundaryAppliedState() {
         this.info('Boundary applied state updated in UI');
-
-        // Collapse Site Boundary card with success indicator
         this.collapseSiteBoundaryCard();
-
-        // Expand Property Setbacks card
         this.expandSetbacksCard();
-
-        // Enable draw structure button
         this.enableDrawStructureButton();
-
-        // Update legend
         window.siteInspectorCore?.updateSiteBoundaryLegend?.(true);
     }
 
-    resetAllPanelStates() {
-        this.info('Resetting all panel states to initial configuration');
-
-        // Expand site boundary card
-        this.expandSiteBoundaryCard();
-
-        // Collapse other cards
-        this.collapsePropertySetbacksCard();
-        this.collapseStructureManagementCard();
-        this.collapseExtrusionCard();
-
-        // Hide success indicators
-        const successIndicators = document.querySelectorAll('.boundary-applied-check, .setbacks-applied-check, .floorplan-applied-check, .extrusion-applied-check');
-        successIndicators.forEach(indicator => {
-            indicator.style.display = 'none';
-        });
-
-        // Disable draw structure button until boundary is applied
-        const drawButton = document.getElementById('drawFloorplanButton');
-        if (drawButton) {
-            drawButton.disabled = true;
-            drawButton.style.opacity = '0.5';
-            drawButton.style.cursor = 'not-allowed';
-        }
-
-        this.info('All panel states reset to initial configuration');
-    }
-
-    hideExtrusionControls() {
-        const buildableArea3DControls = document.getElementById('buildableArea3DControls');
-        const extrusionControls = document.getElementById('extrusionControls');
-        const remove3DButton = document.getElementById('remove3DButton');
-
-        if (buildableArea3DControls) {
-            buildableArea3DControls.style.display = 'none';
-        }
-        if (extrusionControls) {
-            extrusionControls.style.display = 'none';
-        }
-        if (remove3DButton) {
-            remove3DButton.style.display = 'none';
-        }
-
-        this.info('Extrusion controls hidden');
-    }
-
-    hideAllDependentPanels() {
-        try {
-            // Hide all panels that depend on site boundary
-            this.collapseSetbacksCard();
-            this.collapseFloorplanCard();
-            this.collapseExtrusionCard();
-
-            // Reset checkmarks
-            const checkmarks = ['setbacksAppliedCheck', 'floorplanAppliedCheck', 'extrusionAppliedCheck'];
-            checkmarks.forEach(checkId => {
-                const element = document.getElementById(checkId);
-                if (element) {
-                    element.style.display = 'none';
-                }
-            });
-
-            this.info('All dependent panels hidden');
-        } catch (error) {
-            this.error('Error hiding dependent panels:', error);
-        }
-    }
-
-
-
-    showSuccess(message) {
-        // Create and show success notification
-        const successDiv = document.createElement('div');
-        successDiv.className = 'success-notification';
-        successDiv.textContent = message;
-        successDiv.style.cssText = `
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-            border-radius: 8px;
-            padding: 12px 16px;
-            font-size: 14px;
-            font-weight: 500;
-            z-index: 2000;
-            animation: slideInRight 0.3s ease-out;
-        `;
-
-        document.body.appendChild(successDiv);
-
-        // Remove after 3 seconds
-        setTimeout(() => {
-            successDiv.style.animation = 'slideOutRight 0.3s ease-in';
-            setTimeout(() => {
-                if (successDiv.parentNode) {
-                    successDiv.parentNode.removeChild(successDiv);
-                }
-            }, 300);
-        }, 3000);
-
-        this.info('Success notification shown:', message);
-    }
-
-    showError(message) {
-        // Create and show error notification
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-notification';
-        errorDiv.textContent = message;
-        errorDiv.style.cssText = `
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-            border-radius: 8px;
-            padding: 12px 16px;
-            font-size: 14px;
-            font-weight: 500;
-            z-index: 2000;
-            animation: slideInRight 0.3s ease-out;
-        `;
-
-        document.body.appendChild(errorDiv);
-
-        // Remove after 5 seconds
-        setTimeout(() => {
-            errorDiv.style.animation = 'slideOutRight 0.3s ease-in';
-            setTimeout(() => {
-                if (errorDiv.parentNode) {
-                    errorDiv.parentNode.removeChild(errorDiv);
-                }
-            }, 300);
-        }, 5000);
-
-        this.error('Error notification shown:', message);
-    }
-
-    getPanelState(panelName) {
-        return this.panelState[panelName] || false;
-    }
-
-    getCardState(cardName) {
-        return this.cardStates[cardName] || 'collapsed';
-    }
-
-    isInspectorPanelExpanded() {
-        return this.panelState.inspector;
-    }
-
-    isSiteInfoExpanded() {
-        return this.panelState.siteInfo;
-    }
-
+    /* -----------------------------
+       Clear / Reset flows
+    ------------------------------ */
     setupClearSiteInspectorListeners() {
-        // Clear Site Inspector button
-        const clearButton = document.getElementById('clearSiteInspectorButton');
-        if (clearButton) {
-            clearButton.addEventListener('click', () => this.showClearConfirmationModal());
-        }
+        const signal = this._modalAbort.signal;
 
-        // Modal event listeners
-        const modal = document.getElementById('clearConfirmationModal');
-        const confirmBtn = document.getElementById('clearConfirmBtn');
-        const cancelBtn = document.getElementById('clearCancelBtn');
+        this.$('clearSiteInspectorButton')?.addEventListener('click', () => this.showClearConfirmationModal(), { signal });
 
-        if (confirmBtn) {
-            confirmBtn.addEventListener('click', () => this.clearAllSiteData());
-        }
+        const modal = this.$('clearConfirmationModal');
+        const confirmBtn = this.$('clearConfirmBtn');
+        const cancelBtn = this.$('clearCancelBtn');
 
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', () => this.hideClearConfirmationModal());
-        }
+        confirmBtn?.addEventListener('click', () => this.clearAllSiteData(), { signal });
+        cancelBtn?.addEventListener('click', () => this.hideClearConfirmationModal(), { signal });
 
-        // Close modal on outside click
-        if (modal) {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    this.hideClearConfirmationModal();
-                }
-            });
-        }
+        modal?.addEventListener('click', (e) => { if (e.target === modal) this.hideClearConfirmationModal(); }, { signal });
 
-        // Close modal on escape key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
-                this.hideClearConfirmationModal();
-            }
-        });
+            if (e.key === 'Escape' && modal && modal.style.display === 'flex') this.hideClearConfirmationModal();
+        }, { signal });
     }
 
     showClearConfirmationModal() {
-        const modal = document.getElementById('clearConfirmationModal');
-        if (modal) {
-            modal.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
-
-            // Focus on cancel button for safety
-            const cancelBtn = document.getElementById('clearCancelBtn');
-            if (cancelBtn) {
-                setTimeout(() => cancelBtn.focus(), 100);
-            }
-        }
+        const modal = this.$('clearConfirmationModal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => this.$('clearCancelBtn')?.focus(), 100);
     }
 
     hideClearConfirmationModal() {
-        const modal = document.getElementById('clearConfirmationModal');
-        if (modal) {
-            modal.style.display = 'none';
-            document.body.style.overflow = '';
-        }
+        const modal = this.$('clearConfirmationModal');
+        if (!modal) return;
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
     }
 
-    clearAllSiteData() {
+    async clearAllSiteData() {
         try {
             this.info('Starting comprehensive site data clearing...');
-
-            // Hide the confirmation modal first
             this.hideClearConfirmationModal();
 
-            // Show loading state
-            const clearButton = document.getElementById('clearSiteInspectorButton');
-            if (clearButton) {
-                clearButton.disabled = true;
-                clearButton.innerHTML = '🔄 Clearing...';
+            const clearBtn = this.$('clearSiteInspectorButton');
+            if (clearBtn) {
+                clearBtn.disabled = true;
+                clearBtn.innerHTML = '🔄 Clearing...';
             }
 
-            // Emit comprehensive clearing event to all managers
-            window.eventBus.emit('clear-all-site-data');
+            window.eventBus?.emit?.('clear-all-site-data');
 
-            // Clear all manager data through the core
-            if (window.siteInspectorCore) {
-                // Clear 3D extrusions first
-                if (window.siteInspectorCore.extrusion3DManager) {
-                    window.siteInspectorCore.extrusion3DManager.clearAllExtrusions();
-                }
+            const sic = window.siteInspectorCore;
+            if (sic) {
+                sic.extrusion3DManager?.clearAllExtrusions?.();
 
-                // Clear floorplan data
-                if (window.siteInspectorCore.floorplanManager) {
-                    if (typeof window.siteInspectorCore.floorplanManager.clearAll === 'function') {
-                        window.siteInspectorCore.floorplanManager.clearAll();
-                    }
-                }
-
-                // Clear property setbacks and buildable area
-                if (window.siteInspectorCore.propertySetbacksManager) {
-                    window.siteInspectorCore.propertySetbacksManager.clearAllSetbackData();
-                }
-
-                // Clear site boundary last (this will trigger other clearings via events)
-                if (window.siteInspectorCore.siteBoundaryCore) {
-                    window.siteInspectorCore.siteBoundaryCore.clearBoundary();
-                }
+                if (sic.floorplanManager?.clearAll) sic.floorplanManager.clearAll();
+                sic.propertySetbacksManager?.clearAllSetbackData?.();
+                sic.siteBoundaryCore?.clearBoundary?.();
             }
 
-            // Reset all UI panels to initial state
             this.resetAllPanelsToInitialState();
 
-            // Site info display will be handled by the core system
-
-            // Reset map view to original position if possible
-            if (window.siteInspectorCore && window.siteInspectorCore.map) {
-                const map = window.siteInspectorCore.map;
-                if (window.siteInspectorCore.siteData && window.siteInspectorCore.siteData.center) {
-                    map.flyTo({
-                        center: [window.siteInspectorCore.siteData.center.lng, window.siteInspectorCore.siteData.center.lat],
-                        zoom: 17,
-                        pitch: 0,
-                        bearing: 0,
-                        duration: 1000
-                    });
-                }
+            // Reset map view
+            const map = sic?.map;
+            const center = sic?.siteData?.center;
+            if (map && center) {
+                map.flyTo({ center: [center.lng, center.lat], zoom: 17, pitch: 0, bearing: 0, duration: 1000 });
             }
 
-            // Show success message
             setTimeout(() => {
                 this.showSuccess('All site data has been cleared successfully');
-
-                // Re-enable the clear button
-                if (clearButton) {
-                    clearButton.disabled = false;
-                    clearButton.innerHTML = 'Clear Site Inspector';
+                if (clearBtn) {
+                    clearBtn.disabled = false;
+                    clearBtn.innerHTML = 'Clear Site Inspector';
                 }
             }, 500);
 
             this.info('Site data clearing completed successfully');
-
         } catch (error) {
             this.error('Error clearing site data:', error);
             this.showError('Failed to clear site data: ' + error.message);
 
-            // Re-enable the clear button
-            const clearButton = document.getElementById('clearSiteInspectorButton');
-            if (clearButton) {
-                clearButton.disabled = false;
-                clearButton.innerHTML = 'Clear Site Inspector';
+            const clearBtn = this.$('clearSiteInspectorButton');
+            if (clearBtn) {
+                clearBtn.disabled = false;
+                clearBtn.innerHTML = 'Clear Site Inspector';
             }
         }
     }
 
     setupMinimizePanelListener() {
-        const minimizeButton = document.getElementById('minimizePanelButton');
-        if (minimizeButton) {
-            minimizeButton.addEventListener('click', () => {
-                this.toggleInspectorPanel();
-                this.info('Panel minimized via minimize button');
-            });
-        }
+        const btn = this.$('minimizePanelButton');
+        btn?.addEventListener('click', () => {
+            this.toggleInspectorPanel();
+            this.info('Panel minimized via minimize button');
+        }, { signal: this._globalAbort.signal });
     }
 
     resetAllPanelsToInitialState() {
-        // Collapse all cards except site info
-        const cards = [
-            { id: 'siteBoundaryCard', expanded: false },
-            { id: 'propertySetbacksCard', expanded: false },
-            { id: 'floorplanCard', expanded: false }
-        ];
+        // Collapse cards that exist in current HTML
+        [
+            this.$('boundaryControls'),
+            this.$('floorplanControls'),
+            this.$('extrusionControls')
+        ].forEach(el => el?.classList.add('collapsed'));
 
-        cards.forEach(card => {
-            const element = document.getElementById(card.id);
-            if (element) {
-                if (card.expanded) {
-                    element.classList.remove('collapsed');
-                } else {
-                    element.classList.add('collapsed');
-                }
-            }
-        });
+        // Expand site boundary card
+        this.expandSiteBoundaryCard();
 
-        // Reset button states
-        const buttons = [
-            { id: 'drawPolygonButton', text: 'Draw Site Boundary', active: false },
-            { id: 'edgeSelectionButton', text: 'Select Front & Back Edges', active: false }
-        ];
+        // Hide success indicators
+        ['boundaryAppliedCheck', 'setbacksAppliedCheck', 'floorplanAppliedCheck', 'extrusionAppliedCheck']
+            .forEach(id => { const el = this.$(id); if (el) el.style.display = 'none'; });
 
-        buttons.forEach(btn => {
-            const element = document.getElementById(btn.id);
-            if (element) {
-                element.textContent = btn.text;
-                element.disabled = !btn.active;
-                element.classList.remove('active');
-                if (!btn.active) {
-                    element.style.opacity = '0.6';
-                } else {
-                    element.style.opacity = '1';
-                }
-            }
-        });
+        // Disable draw structure button until boundary is applied
+        const drawBtn = this.$('drawFloorplanButton');
+        if (drawBtn) {
+            drawBtn.disabled = true;
+            drawBtn.style.opacity = '0.5';
+            drawBtn.style.cursor = 'not-allowed';
+        }
 
-        // Hide all dependent sections
-        const sectionsToHide = [
+        // Hide dependent sections
+        [
             'selectedEdgesDisplay',
-            'setbackInputsContainer', 
+            'setbackInputsContainer',
             'buildableAreaControls',
             'buildableArea3DControls',
             'extrusionControls',
             'floorplanUploadSection',
             'activeExtrusionsDisplay'
-        ];
+        ].forEach(id => this.$(id) && (this.$(id).style.display = 'none'));
 
-        sectionsToHide.forEach(sectionId => {
-            const element = document.getElementById(sectionId);
-            if (element) {
-                element.style.display = 'none';
-            }
-        });
+        // Reset input defaults
+        const defaults = { frontSetback: '4.5', backSetback: '3.5', sideSetback: '1.5', heightLimit: '9' };
+        Object.entries(defaults).forEach(([id, value]) => { const el = this.$(id); if (el) el.value = value; });
 
-        // Reset input fields to defaults
-        const inputs = [
-            { id: 'frontSetback', value: '4.5' },
-            { id: 'backSetback', value: '3.5' },
-            { id: 'sideSetback', value: '1.5' },
-            { id: 'heightLimit', value: '9' }
-        ];
-
-        inputs.forEach(input => {
-            const element = document.getElementById(input.id);
-            if (element) {
-                element.value = input.value;
-            }
-        });
-
-        // Clear any warning messages
-        ['frontSetback', 'backSetback', 'sideSetback', 'heightLimit'].forEach(inputId => {
-            const warningElement = document.getElementById(inputId + 'Warning');
-            if (warningElement) {
-                warningElement.style.display = 'none';
-            }
-        });
+        // Hide warnings
+        ['frontSetback', 'backSetback', 'sideSetback', 'heightLimit']
+            .forEach(id => { const w = this.$(id + 'Warning'); if (w) w.style.display = 'none'; });
 
         this.info('All UI panels reset to initial state');
     }
 
     enableDrawStructureButton() {
-        const drawButton = document.getElementById('drawFloorplanButton');
-        if (drawButton) {
-            drawButton.disabled = false;
-            drawButton.style.opacity = '1';
-            drawButton.style.cursor = 'pointer';
+        const drawBtn = this.$('drawFloorplanButton');
+        if (drawBtn) {
+            drawBtn.disabled = false;
+            drawBtn.style.opacity = '1';
+            drawBtn.style.cursor = 'pointer';
             this.info('Draw structure button enabled');
         }
     }
+
+    /* -----------------------------
+       Toast helpers
+    ------------------------------ */
+    showSuccess(message) { this._toast(message, 'success'); }
+    showError(message) { this._toast(message, 'error'); }
+
+    _toast(message, type) {
+        const div = document.createElement('div');
+        div.className = `${type}-notification`;
+        div.textContent = message;
+        div.style.cssText = `
+            position: fixed; top: 80px; right: 20px; z-index: 2000;
+            border-radius: 8px; padding: 12px 16px; font-size: 14px; font-weight: 500;
+            animation: slideInRight 0.3s ease-out;
+            ${type === 'success'
+                ? 'background:#d4edda;color:#155724;border:1px solid #c3e6cb;'
+                : 'background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;'}
+        `;
+        document.body.appendChild(div);
+        setTimeout(() => {
+            div.style.animation = 'slideOutRight 0.3s ease-in';
+            setTimeout(() => div.remove(), 300);
+        }, type === 'success' ? 3000 : 5000);
+        this.info(`${type === 'success' ? 'Success' : 'Error'} notification shown:`, message);
+    }
+
+    /* -----------------------------
+       Cleanup
+    ------------------------------ */
+    destroy() {
+        this._uiAbort?.abort();
+        this._cardsAbort?.abort();
+        this._modalAbort?.abort();
+        this._globalAbort?.abort();
+        this._inited = false;
+        this.info('UIPanelManager destroyed (listeners removed)');
+    }
 }
-
-
 
 window.UIPanelManager = UIPanelManager;
