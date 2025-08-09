@@ -2856,6 +2856,11 @@ body {
     box-shadow: 0 4px 16px rgba(84, 123, 247, 0.2);
     position: relative;
     overflow: hidden;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 #drawFloorplanButton::before {
@@ -2894,4 +2899,34 @@ body {
 #drawFloorplanButton.active {
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+}
+
+/* Ensure the draw-button class works for Draw Structure Footprint */
+button[id*="draw"].draw-button,
+#drawFloorplanButton.draw-button {
+    background: linear-gradient(135deg, #547bf7 0%, #4a6bda 100%);
+    color: white;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-shadow: 0 4px 16px rgba(84, 123, 247, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+button[id*="draw"].draw-button:hover,
+#drawFloorplanButton.draw-button:hover {
+    background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(84, 123, 247, 0.35);
 }

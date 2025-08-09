@@ -130,11 +130,16 @@ if (typeof DrawStructureManager === 'undefined') {
                 // Set up drawing preview sources and layers
                 this.setupDrawingPreviewLayers();
 
+                // Start polygon drawing mode BEFORE setting up preview
+                this.draw.changeMode('draw_polygon');
+
                 // Set up drawing event listeners for live preview
                 this.setupDrawingPreview();
 
-                // Start polygon drawing mode
-                this.draw.changeMode('draw_polygon');
+                // Change cursor to indicate drawing mode
+                if (this.map.getCanvas()) {
+                    this.map.getCanvas().style.cursor = 'crosshair';
+                }
 
                 // Show user feedback
                 this.floorplanManager.showStatus('Click on the map to start drawing your structure footprint', 'info');
@@ -157,6 +162,11 @@ if (typeof DrawStructureManager === 'undefined') {
                 this.state.drawingPoints = [];
                 this.removeDrawingPreview();
                 this.clearDrawingVisualization();
+                
+                // Reset cursor
+                if (this.map.getCanvas()) {
+                    this.map.getCanvas().style.cursor = '';
+                }
                 
                 // Safely change draw mode back to simple_select
                 if (this.draw && typeof this.draw.changeMode === 'function') {
@@ -274,8 +284,11 @@ if (typeof DrawStructureManager === 'undefined') {
             this.boundHandleDrawingMouseMove = this.handleDrawingMouseMove.bind(this);
             this.boundHandleDrawingUpdate = this.handleDrawingUpdate.bind(this);
 
-            this.map.on('click', this.boundHandleDrawingClick);
-            this.map.on('mousemove', this.boundHandleDrawingMouseMove);
+            // Only add click listener if we're in polygon drawing mode
+            if (this.draw && this.draw.getMode() === 'draw_polygon') {
+                this.map.on('click', this.boundHandleDrawingClick);
+                this.map.on('mousemove', this.boundHandleDrawingMouseMove);
+            }
             this.map.on('draw.update', this.boundHandleDrawingUpdate);
 
             this.info('Drawing preview listeners set up');

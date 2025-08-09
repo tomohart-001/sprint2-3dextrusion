@@ -621,7 +621,7 @@ class PropertySetbacksManager extends BaseManager {
             // Hide all related UI elements
             this.hideExtrusionControls();
 
-            // Reset UI panel state  
+            // Reset UI panel state
             if (window.siteInspectorCore?.uiPanelManager) {
                 window.siteInspectorCore.uiPanelManager.hideExtrusionControls();
                 window.siteInspectorCore.uiPanelManager.hideAllDependentPanels();
@@ -1002,32 +1002,40 @@ class PropertySetbacksManager extends BaseManager {
 
     clearSetbackVisualization() {
         try {
-            // Remove setback layers - including all possible setback layer variations
+            // Clear setback layers
             const layersToRemove = [
+                'setback-lines',
                 'setback-fill',
-                'setback-stroke',
-                'front-setback-line',
-                'back-setback-line',
-                'side-setback-line'
+                'setback-labels'
             ];
+
             layersToRemove.forEach(layerId => {
-                if (this.map.getLayer(layerId)) {
-                    this.map.removeLayer(layerId);
+                try {
+                    if (this.map.getLayer(layerId)) {
+                        this.map.removeLayer(layerId);
+                    }
+                } catch (error) {
+                    this.warn(`Error removing layer ${layerId}:`, error);
                 }
             });
 
-            // Remove setback sources - including all possible source variations
+            // Clear setback sources
             const sourcesToRemove = [
-                'setback-visualization',
-                'setback-lines'
+                'setback-lines',
+                'setback-fill',
+                'setback-labels'
             ];
+
             sourcesToRemove.forEach(sourceId => {
-                if (this.map.getSource(sourceId)) {
-                    this.map.removeSource(sourceId);
+                try {
+                    if (this.map.getSource(sourceId)) {
+                        this.map.removeSource(sourceId);
+                    }
+                } catch (error) {
+                    this.warn(`Error removing source ${sourceId}:`, error);
                 }
             });
 
-            this.removeLegendSetbacks();
             this.info('Setback visualization cleared');
         } catch (error) {
             this.error('Error clearing setback visualization:', error);
