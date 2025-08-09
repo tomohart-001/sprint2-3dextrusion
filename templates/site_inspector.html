@@ -196,6 +196,81 @@
             display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
         }
 
+        /* Search Control */
+        .search-control-expandable {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 8px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 40px;
+            height: 40px;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            display: flex;
+            flex-direction: column;
+            pointer-events: auto;
+        }
+        .search-control-expandable.expanded {
+            width: 280px;
+            height: auto;
+        }
+        .search-input-content {
+            padding: 12px;
+            opacity: 0;
+            transition: opacity 0.3s ease 0.1s;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.95);
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        .search-control-expandable.expanded .search-input-content {
+            opacity: 1;
+            pointer-events: all;
+            display: block;
+        }
+        .search-input-content input {
+            width: 100%;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 14px;
+            outline: none;
+            background: #fff;
+        }
+        .search-input-content input:focus {
+            border-color: #547bf7;
+            box-shadow: 0 0 0 2px rgba(84, 123, 247, 0.15);
+        }
+        .clear-search-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #666;
+            font-size: 12px;
+            padding: 4px;
+        }
+        .search-status {
+            margin-top: 8px;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .search-status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .search-status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
         .map-control-button,
         .measure-tool-button,
         .structure-management-button,
