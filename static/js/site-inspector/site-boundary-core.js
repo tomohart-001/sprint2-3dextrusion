@@ -2091,7 +2091,7 @@ class SiteBoundaryCore extends MapManagerBase {
             // Check if location is in New Zealand (rough bounds check)
             const isInNZ = this.isLocationInNewZealand(center.lat, center.lng);
             if (!isInNZ) {
-                throw new Error('Legal property boundaries are only available within New Zealand.');
+                throw new Error('Legal property boundaries are only available within New Zealand');
             }
 
             // Show loading state
@@ -2121,8 +2121,17 @@ class SiteBoundaryCore extends MapManagerBase {
                 throw new Error('No containing property found for this location');
             }
 
+            // Check if legal boundary has already been applied (idempotent check)
+            const legalBoundaryApplied = sessionStorage.getItem('legal_boundary_applied') === 'true';
+            if (legalBoundaryApplied) {
+                this.info('Legal property boundary already applied, skipping');
+                this.updateButtonState('useLegalBoundaryButton', 'inactive', 'Legal Boundary Applied ✓');
+                return;
+            }
+
             // Extract coordinates from the containing property
             const geometry = data.containing_property.geometry;
+
             let coordinates;
 
             if (geometry.type === 'Polygon') {
@@ -2241,6 +2250,9 @@ class SiteBoundaryCore extends MapManagerBase {
             setTimeout(() => {
                 this.confirmBoundary();
             }, 500);
+
+            // Set session storage to mark as applied
+            sessionStorage.setItem('legal_boundary_applied', 'true');
 
         } catch (error) {
             this.error('Error creating polygon from legal boundary:', error);
