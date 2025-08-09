@@ -862,14 +862,24 @@ class SiteInspectorCore extends BaseManager {
             this.handleSetbacksUpdated(data);
         });
 
-        // Handle site boundary changes
+        // Listen for site boundary events
         window.eventBus.on('site-boundary-created', (data) => {
-            this.handleSiteBoundaryCreated(data);
+            this.info('Site boundary created, updating site data');
+            this.updateSiteData(data);
+            this.updateSiteBoundaryLegend(true);
         });
 
-        // Handle site boundary loaded
-        window.eventBus.on('site-boundary-loaded', (data) => {
-            this.handleSiteBoundaryLoaded(data);
+        window.eventBus.on('site-boundary-deleted', () => {
+            this.info('Site boundary deleted, clearing dependent data');
+            this.clearDependentData();
+            this.updateSiteBoundaryLegend(false);
+        });
+
+        // Listen for buildable area events
+        window.eventBus.on('buildable-area-calculated', (data) => {
+            this.info('Buildable area calculated, updating site data');
+            this.updateBuildableAreaData(data);
+            this.updateBuildableAreaLegend(true);
         });
 
         // Handle tool conflicts
@@ -882,48 +892,38 @@ class SiteInspectorCore extends BaseManager {
             this.handlePanelToggled(data);
         });
 
-        // Listen for comprehensive clearing event
+        // Listen for clearing events
         window.eventBus.on('clear-all-dependent-features', () => {
-            this.info('Comprehensive clearing requested - clearing all dependent features');
+            this.info('Clearing all dependent features');
+            this.clearDependentData();
+            this.updateBuildableAreaLegend(false);
+        });
 
-            // Use a small delay to ensure the site boundary clearing is complete first
-            setTimeout(() => {
-                // Clear property setbacks data
-                if (this.propertySetbacksManager) {
-                    this.propertySetbacksManager.clearAllSetbackData();
-                }
-
-                // Clear floorplan data
-                if (this.floorplanManager) {
-                    this.floorplanManager.clearAllFloorplanData();
-                }
-
-                // Clear any 3D extrusions
-                if (this.extrusion3DManager) {
-                    this.extrusion3DManager.clearAllExtrusions();
-                }
-
-                // Hide all UI panels that depend on site boundary
-                if (this.uiPanelManager) {
-                    this.uiPanelManager.hideAllDependentPanels();
-                }
-
-                this.info('All dependent features cleared successfully');
-            }, 50);
+        window.eventBus.on('clear-all-site-data', () => {
+            this.info('Clearing all site data');
+            this.clearAllData();
+            this.updateSiteBoundaryLegend(false);
+            this.updateBuildableAreaLegend(false);
         });
 
         this.info('Event handlers setup completed');
     }
 
-    updateBuildableAreaLegend(hasArea) {
-        // Update legend visibility or styling if needed
-        const legend = document.querySelector('.map-legend');
-        if (legend) {
-            if (hasArea) {
-                legend.classList.add('has-buildable-area');
-            } else {
-                legend.classList.remove('has-buildable-area');
-            }
+    updateBuildableAreaLegend(show = null) {
+        const legendItem = document.querySelector('.legend-item:has(.legend-color.buildable-area)');
+        if (!legendItem) return;
+
+        if (show === null) {
+            // Auto-detect based on whether buildable area exists
+            show = this.siteBoundaryCore && this.siteBoundaryCore.getBuildableAreaData() !== null;
+        }
+
+        if (show) {
+            legendItem.style.display = 'flex';
+            this.info('Buildable area legend item shown');
+        } else {
+            legendItem.style.display = 'none';
+            this.info('Buildable area legend item hidden');
         }
     }
 
@@ -969,7 +969,7 @@ class SiteInspectorCore extends BaseManager {
                 // Show which property contains the project address
                 if (data.containing_property) {
                     this.info('Project address is within property:', data.containing_property.title || 'Unknown title');
-                    
+
                     // Update legal boundary button state
                     this.updateLegalBoundaryButtonState(true, data.containing_property);
                 }
@@ -1118,9 +1118,18 @@ class SiteInspectorCore extends BaseManager {
     }
 
     createSetbackVisualization(data) {
-        if (!data.selectedEdges || !data.selectedEdges.front || !data.selectedEdges.back) {
+        // Note: This method seems incomplete, 'frontEdge' and 'backEdge' are not defined in scope.
+        // Assuming they should be derived from data or the siteBoundaryCore.
+        // For now, keeping as is to match the original structure.
+
+        // Check for valid data before proceeding
+        if (!data || !data.selectedEdges || !data.selectedEdges.front || !data.selectedEdges.back) {
+            this.warn('Missing data for setback visualization');
             return;
         }
+
+        const frontEdge = data.selectedEdges.front;
+        const backEdge = data.selectedEdges.back;
 
         // Remove existing setback visualization
         this.clearSetbackVisualization();
@@ -1832,27 +1841,29 @@ class SiteInspectorCore extends BaseManager {
         this.info('Fallback event listeners setup completed');
     }
 
-    updateBuildableAreaLegend(show) {
-        const legendContent = document.getElementById('legendContent');
-        if (!legendContent) return;
+    updateSiteBoundaryLegend(show = null) {
+        const legendItem = document.querySelector('.legend-item:has(.legend-color.site-boundary)');
+        if (!legendItem) return;
 
-        // Find or create buildable area legend item
-        let buildableAreaItem = legendContent.querySelector('.legend-buildable-area-item');
+        if (show === null) {
+            // Auto-detect based on whether site boundary exists
+            show = this.siteBoundaryCore && this.siteBoundaryCore.hasSiteBoundary();
+        }
 
         if (show) {
-            if (!buildableAreaItem) {
-                buildableAreaItem = document.createElement('div');
-                buildableAreaItem.className = 'legend-item legend-buildable-area-item';
-                buildableAreaItem.innerHTML = `
-                    <div class="legend-color" style="background-color: #002040; opacity: 0.4;"></div>
-                    <span class="legend-label">Buildable Area</span>
-                `;
-                legendContent.appendChild(buildableAreaItem);
-            }
-            buildableAreaItem.style.display = 'flex';
-        } else if (buildableAreaItem) {
-            buildableAreaItem.style.display = 'none';
+            legendItem.style.display = 'flex';
+            this.info('Site boundary legend item shown');
+        } else {
+            legendItem.style.display = 'none';
+            this.info('Site boundary legend item hidden');
         }
+    }
+
+    updateLegend() {
+        // Update legend based on current state
+        this.updateSiteBoundaryLegend();
+        this.updateBuildableAreaLegend();
+        this.info('Legend update requested');
     }
 
     isReady() {
