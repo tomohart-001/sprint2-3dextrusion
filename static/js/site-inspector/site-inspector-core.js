@@ -648,7 +648,7 @@ class SiteInspectorCore extends BaseManager {
             button.disabled = false;
             button.style.opacity = '1';
             button.style.background = 'linear-gradient(135deg, #28a745 0%, #20923a 100%)';
-            button.textContent = `Use Legal Boundary (${propertyInfo.title || 'Property'})`;
+            button.textContent = 'Use Legal Boundary';
             button.title = `Apply legal property boundary: ${propertyInfo.title || 'Unknown property'}`;
         } else {
             button.disabled = true;
