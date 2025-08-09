@@ -413,6 +413,43 @@
         .site-info-content-expandable { flex: 1; padding: 16px; opacity: 0; transition: opacity 0.3s ease 0.1s; overflow-y: auto; display: none; }
         .site-info-expandable.expanded .site-info-content-expandable { opacity: 1; display: block; }
 
+        /* Site Information Control */
+        .site-info-control-expandable {
+            z-index: 1100; background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 8px; backdrop-filter: blur(20px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); overflow: hidden;
+            width: 40px; transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            display: flex; flex-direction: column; pointer-events: auto;
+        }
+        .site-info-control-expandable.expanded { width: 280px; }
+        .site-info-toggle-btn {
+            width: 40px; height: 40px; margin: 0; padding: 0; border-radius: 8px; flex-shrink: 0; font-size: 16px; font-weight: 500;
+            background: transparent; border: none; color: #333; cursor: pointer; transition: all 0.3s ease;
+            display: flex; align-items: center; justify-content: center; pointer-events: auto; z-index: 1101;
+        }
+        .site-info-control-expandable.expanded .site-info-toggle-btn { border-radius: 8px 8px 0 0; background: rgba(84, 123, 247, 0.1); color: #547bf7; }
+        .site-info-toggle-btn:hover { background: rgba(84, 123, 247, 0.1); color: #547bf7; }
+        .site-info-content {
+            padding: 16px; opacity: 0; transition: opacity 0.3s ease 0.1s; pointer-events: none;
+            background: rgba(255, 255, 255, 0.95); border-top: 1px solid rgba(0, 0, 0, 0.1);
+            max-height: 300px; overflow-y: auto;
+        }
+        .site-info-control-expandable.expanded .site-info-content { opacity: 1; pointer-events: all; }
+        .site-info-header { margin-bottom: 12px; }
+        .site-info-header h4 { margin: 0; font-size: 14px; font-weight: 600; color: #333; }
+        .site-info-details .info-row { 
+            display: flex; justify-content: space-between; padding: 8px 0; 
+            border-bottom: 1px solid rgba(0,0,0,0.06); align-items: flex-start; 
+        }
+        .site-info-details .info-row:last-child { border-bottom: none; }
+        .site-info-details .info-label { 
+            font-weight: 500; color: #666; font-size: 12px; flex-shrink: 0; margin-right: 8px; 
+        }
+        .site-info-details .info-value { 
+            font-weight: 600; color: #1a1a1a; font-size: 12px; text-align: right; 
+            word-break: break-word; max-width: 160px;
+        }
+
         /* Map Legend */
         .map-legend {
             position: absolute; bottom: 20px; left: 8px; z-index: 1000; background: rgba(255,255,255,0.95); border: 1px solid rgba(0,0,0,0.08);
@@ -752,6 +789,34 @@
 
         <!-- Measure Tool Control -->
         <div class="measure-tool-button" id="measureToolButton" title="Measure distances">📐</div>
+
+        <!-- Site Information Control -->
+        <div class="site-info-control-expandable" id="siteInfoControl">
+            <button class="site-info-toggle-btn" id="siteInfoToggle" title="Site Information" type="button">📍</button>
+            <div class="site-info-content">
+                <div class="site-info-header">
+                    <h4>Site Information</h4>
+                </div>
+                <div class="site-info-details">
+                    <div class="info-row">
+                        <span class="info-label">Project</span>
+                        <span class="info-value" id="projectName">{{ project_data.name if project_data else 'Unnamed Project' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Address</span>
+                        <span class="info-value" id="projectAddress">{{ project_data.address if project_data else 'No address set' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Area</span>
+                        <span class="info-value" id="siteAreaDisplay">{{ site_data.area_m2|round(1) if site_data.area_m2 else 0 }} m²</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Type</span>
+                        <span class="info-value">{{ site_data.type|title if site_data.type else 'Residential' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Site Inspector Panel -->
@@ -769,26 +834,7 @@
                 </button>
             </div>
 
-            <!-- Site Info Section -->
-            <div class="info-section">
-                <div class="info-title">📍 Site Information</div>
-                <div class="info-row">
-                    <span class="info-label">Project</span>
-                    <span class="info-value" id="projectName">{{ project_data.name if project_data else 'Unnamed Project' }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Address</span>
-                    <span class="info-value" id="projectAddress">{{ project_data.address if project_data else 'No address set' }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Area</span>
-                    <span class="info-value" id="siteAreaDisplay">{{ site_data.area_m2|round(1) if site_data.area_m2 else 0 }} m²</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Type</span>
-                    <span class="info-value">{{ site_data.type|title if site_data.type else 'Residential' }}</span>
-                </div>
-            </div>
+            
 
             <!-- Site Boundary Drawing Tool -->
             <div class="boundary-controls" id="siteBoundaryControls">

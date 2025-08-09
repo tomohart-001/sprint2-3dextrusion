@@ -100,6 +100,14 @@ class MapFeaturesManager extends BaseManager {
                 }
             });
         }
+
+        // Site information control
+        const siteInfoBtn = document.getElementById('siteInfoToggle');
+        if (siteInfoBtn) {
+            siteInfoBtn.addEventListener('click', () => {
+                this.toggleSiteInfoControl();
+            });
+        }
     }
 
     setup3DBuildingsControl() {
@@ -1299,6 +1307,31 @@ class MapFeaturesManager extends BaseManager {
         }
 
         return false;
+    }
+
+    // Toggle site information control
+    toggleSiteInfoControl() {
+        const siteInfoControl = document.getElementById('siteInfoControl');
+        const siteInfoBtn = document.getElementById('siteInfoToggle');
+
+        if (!siteInfoControl || !siteInfoBtn) {
+            this.error('Site info control elements not found');
+            return;
+        }
+
+        const isExpanded = siteInfoControl.classList.contains('expanded');
+
+        if (isExpanded) {
+            // Collapse
+            siteInfoControl.classList.remove('expanded');
+            siteInfoBtn.innerHTML = '📍';
+            this.info('Site info control collapsed');
+        } else {
+            // Expand
+            siteInfoControl.classList.add('expanded');
+            siteInfoBtn.innerHTML = '✕';
+            this.info('Site info control expanded');
+        }
     }
 }
 
