@@ -137,12 +137,12 @@ body {
 }
 
 .modal-actions .btn-primary {
-    background-color: #007bff;
+    background: linear-gradient(135deg, #547bf7 0%, #4a6bda 100%);
     color: white;
 }
 
 .modal-actions .btn-primary:hover {
-    background-color: #0056b3;
+    background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%);
 }
 
 body {
@@ -652,12 +652,12 @@ body {
 }
 
 .category-buttons {
+    margin-top: 32px;
     display: flex;
     flex-wrap: wrap;
     gap: 16px;
     justify-content: center;
     transition: all 0.6s ease;
-    margin-top: 32px;
     position: relative;
     z-index: 2;
 }
@@ -2742,4 +2742,156 @@ body {
 
 .setback-button.secondary:hover:not(:disabled) {
     background-color: #5a6268;
+}
+
+.draw-button {
+    background: linear-gradient(135deg, #547bf7 0%, #4a6bda 100%);
+    color: white;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-shadow: 0 4px 16px rgba(84, 123, 247, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.draw-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.draw-button:hover::before {
+    left: 100%;
+}
+
+.draw-button:hover {
+    background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(84, 123, 247, 0.35);
+}
+
+.draw-button:disabled {
+    background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+    color: #a0aec0;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.draw-button:disabled::before {
+    display: none;
+}
+
+.draw-button.active {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+}
+
+.action-button {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-shadow: 0 4px 16px rgba(108, 117, 125, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.action-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.action-button:hover::before {
+    left: 100%;
+}
+
+.action-button:hover {
+    background: linear-gradient(135deg, #7c878e 0%, #5a6268 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(108, 117, 125, 0.35);
+}
+
+#drawFloorplanButton {
+    background: linear-gradient(135deg, #547bf7 0%, #4a6bda 100%);
+    color: white;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    width: 100%;
+    margin-bottom: 12px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-shadow: 0 4px 16px rgba(84, 123, 247, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+#drawFloorplanButton::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+#drawFloorplanButton:hover::before {
+    left: 100%;
+}
+
+#drawFloorplanButton:hover {
+    background: linear-gradient(135deg, #6287ff 0%, #5575e8 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(84, 123, 247, 0.35);
+}
+
+#drawFloorplanButton:disabled {
+    background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+    color: #a0aec0;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+#drawFloorplanButton:disabled::before {
+    display: none;
+}
+
+#drawFloorplanButton.active {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
 }
