@@ -225,7 +225,6 @@ class CommentsManager extends BaseManager {
                 <div class="comment-modal-header">
                     <div class="comment-header-content">
                         <h3>Add Comment</h3>
-                        <p>Add a note or observation to this location</p>
                     </div>
                     <button class="comment-modal-close">×</button>
                 </div>
