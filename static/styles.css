@@ -2952,6 +2952,30 @@ body {
         }
 
         .comments-close-btn {
+            background: rgba(108, 117, 125, 0.1);
+            border: 1px solid rgba(108, 117, 125, 0.3);
+            color: #6c757d;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin-left: auto;
+        }
+
+        .comments-close-btn:hover {
+            background: rgba(108, 117, 125, 0.15);
+            border-color: rgba(108, 117, 125, 0.5);
+        }
+        }
+
+        .comments-close-btn {
             width: 40px;
             height: 40px;
             background: rgba(255, 255, 255, 0.95);

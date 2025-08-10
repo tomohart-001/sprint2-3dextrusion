@@ -58,6 +58,15 @@ class CommentsManager extends BaseManager {
             });
         }
 
+        // Close button for expanded comments card
+        const commentsCloseBtn = document.getElementById('commentsCloseButton');
+        if (commentsCloseBtn) {
+            commentsCloseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleCommentsControl(); // Collapse the control
+            });
+        }
+
         // Listen for other tool activations to stop commenting
         if (window.eventBus) {
             window.eventBus.on('tool-activated', (toolName) => {
