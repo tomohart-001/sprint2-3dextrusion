@@ -16,7 +16,7 @@ from utils.logger import setup_logger
 from core.error_handlers import register_error_handlers
 from core.service_manager import ServiceManager
 from routes.main_routes import main_route_handler
-from routes.auth_routes import auth_routes
+from routes.auth_routes import auth_route_handler
 from routes.location_routes import location_route_handler
 from routes.site_routes import site_routes
 from routes.conversation_routes import conversation_route_handler
