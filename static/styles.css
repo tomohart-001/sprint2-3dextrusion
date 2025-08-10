@@ -2590,7 +2590,7 @@ body {
             flex: 1;
             opacity: 0;
             overflow-y: auto;
-            padding: 16px 24px 24px 24px;
+            padding: 20px;
             transition: opacity 0.3s ease 0.1s;
             display: none;
         }
@@ -2598,6 +2598,7 @@ body {
         .inspector-panel.expanded .panel-content {
             display: block;
             opacity: 1;
+            padding: 20px;
         }
 
         /* Ensure panel collapses properly when not expanded */
