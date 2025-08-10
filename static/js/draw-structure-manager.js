@@ -115,7 +115,6 @@ if (typeof DrawStructureManager === 'undefined') {
             // If the style reloads, Draw rebinds its layers — ensure our session keeps working
             this._onStyle = () => {
                 if (this.isDrawing && this.draw?.getMode?.() !== 'draw_polygon') {
-                    // When style reloads, some versions of Mapbox-Draw flip mode; force back to draw mode
                     this.debug('Style reloaded while drawing; restoring draw mode');
                     try { this.draw.changeMode('draw_polygon'); } catch (_) {}
                 }
@@ -154,12 +153,10 @@ if (typeof DrawStructureManager === 'undefined') {
                 this.state.drawingPoints = [];
                 this.state.currentDrawMode = 'draw_polygon';
 
-                // Ensure style is ready-ish; Draw will handle queuing clicks
-                if (!this.map.isStyleLoaded()) {
+                // Enter polygon drawing mode
+                if (!this.map.isStyleLoaded?.()) {
                     this.warn('Map style not fully loaded yet; drawing will begin as soon as it is ready.');
                 }
-
-                // Enter polygon drawing mode
                 this.draw.changeMode('draw_polygon');
 
                 // UI niceties
@@ -386,7 +383,4 @@ if (typeof DrawStructureManager === 'undefined') {
             this.info('Draw Structure Manager cleaned up');
         }
     };
-
-    // Make available globally
-    window.DrawStructureManager = DrawStructureManager;
 }
