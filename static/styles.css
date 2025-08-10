@@ -2718,7 +2718,7 @@ body {
         }
 
         .comments-control.expanded {
-            width: 200px;
+            width: 320px;
             height: auto;
             padding-bottom: 12px;
         }
@@ -2737,14 +2737,16 @@ body {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 8px;
+            width: 100%;
+            margin-bottom: 12px; /* Space between toggle and add button */
         }
 
-        .comments-label {
+        .comments-controls-row .comments-label {
+            flex: 1;
             font-size: 12px;
             font-weight: 600;
             color: #333333;
-            margin-right: 8px;
+            white-space: nowrap;
         }
 
         #commentsToolButton.toggle-btn {
@@ -2760,15 +2762,15 @@ body {
             justify-content: space-between;
         }
 
-        #commentsToolButton.toggle-btn:hover {
+        #commentsToolButton:hover {
             background: rgba(0, 0, 0, 0.05);
         }
 
-        #commentsToolButton.toggle-btn.is-on .switch {
+        #commentsToolButton.is-on .switch {
             background: #007cbf;
         }
 
-        #commentsToolButton.toggle-btn.is-on .knob {
+        #commentsToolButton.is-on .knob {
             left: 18px;
         }
 
