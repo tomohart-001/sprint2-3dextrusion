@@ -141,8 +141,16 @@ if (typeof DrawStructureManager === 'undefined') {
 
             try {
                 this.info('Starting structure drawing mode...');
-                // Notify other modules
+                
+                // Notify other modules and stop any site boundary drawing
                 window.eventBus?.emit?.('tool-activated', 'floorplan');
+                
+                // Stop any site boundary drawing that might be active
+                const siteBoundaryCore = window.siteInspectorCore?.siteBoundaryCore;
+                if (siteBoundaryCore?.isDrawingActive?.()) {
+                    siteBoundaryCore.stopDrawingMode();
+                    this.info('Stopped site boundary drawing mode');
+                }
 
                 // Clear any existing structure viz
                 this.floorplanManager?.removeStructureVisualization?.();

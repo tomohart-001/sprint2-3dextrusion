@@ -263,46 +263,46 @@ class SiteBoundaryCore extends MapManagerBase {
     }
 
     // ---------- Safe wrappers ----------
-    safeToggleDrawingMode() { 
-        try { 
-            this.toggleDrawingMode(); 
-        } catch (e) { 
-            this.error('toggleDrawingMode error', e); 
-            this.showUserError('Failed to toggle drawing mode. Please refresh.'); 
-        } 
+    safeToggleDrawingMode() {
+        try {
+            this.toggleDrawingMode();
+        } catch (e) {
+            this.error('toggleDrawingMode error', e);
+            this.showUserError('Failed to toggle drawing mode. Please refresh.');
+        }
     }
-    
-    safeStopDrawingMode() { 
-        try { 
-            this.stopDrawingMode(); 
-        } catch (e) { 
-            this.error('stopDrawingMode error', e); 
-        } 
+
+    safeStopDrawingMode() {
+        try {
+            this.stopDrawingMode();
+        } catch (e) {
+            this.error('stopDrawingMode error', e);
+        }
     }
-    
-    safeClearBoundary() { 
-        try { 
-            this.clearBoundary(); 
-        } catch (e) { 
-            this.error('clearBoundary error', e); 
-        } 
+
+    safeClearBoundary() {
+        try {
+            this.clearBoundary();
+        } catch (e) {
+            this.error('clearBoundary error', e);
+        }
     }
-    
-    safeConfirmBoundary() { 
-        try { 
-            this.confirmBoundary(); 
-        } catch (e) { 
-            this.error('confirmBoundary error', e); 
-        } 
+
+    safeConfirmBoundary() {
+        try {
+            this.confirmBoundary();
+        } catch (e) {
+            this.error('confirmBoundary error', e);
+        }
     }
-    
-    safeUseLegalBoundary() { 
-        try { 
-            this.useLegalPropertyBoundary(); 
-        } catch (e) { 
-            this.error('useLegalPropertyBoundary error', e); 
-            this.showUserError('Failed to use legal property boundary: ' + e.message); 
-        } 
+
+    safeUseLegalBoundary() {
+        try {
+            this.useLegalPropertyBoundary();
+        } catch (e) {
+            this.error('useLegalPropertyBoundary error', e);
+            this.showUserError('Failed to use legal property boundary: ' + e.message);
+        }
     }
 
     // ---------- Readiness / buttons ----------
@@ -361,25 +361,25 @@ class SiteBoundaryCore extends MapManagerBase {
             this.showUserError('Map is not available. Please refresh the page.');
             return false;
         }
-        
+
         if (!this.map.isStyleLoaded()) {
             this.warn('Map style is still loading');
             this.showUserError('Map is still loading. Please wait a moment and try again.');
             return false;
         }
-        
+
         if (!this.draw) {
             this.error('Draw instance is not available');
             this.showUserError('Drawing tools are not initialized. Please refresh the page.');
             return false;
         }
-        
+
         if (typeof this.draw.changeMode !== 'function') {
             this.error('Draw.changeMode is not a function');
             this.showUserError('Drawing tools are not properly configured. Please refresh the page.');
             return false;
         }
-        
+
         // Check if the draw control is actually added to the map
         try {
             const currentMode = this.draw.getMode();
@@ -407,7 +407,7 @@ class SiteBoundaryCore extends MapManagerBase {
             this.showUserError('Drawing control is not properly connected to the map. Please refresh the page.');
             return false;
         }
-        
+
         return true;
     }
 
@@ -421,12 +421,12 @@ class SiteBoundaryCore extends MapManagerBase {
         if (!this.validateDrawingReadiness()) return;
         try {
             this.info('Starting drawing mode...');
-            
+
             // More robust validation
             if (!this.draw) {
                 throw new Error('MapboxDraw instance not available');
             }
-            
+
             if (typeof this.draw.changeMode !== 'function') {
                 throw new Error('MapboxDraw not properly initialized - changeMode method missing');
             }
@@ -460,7 +460,7 @@ class SiteBoundaryCore extends MapManagerBase {
                             try {
                                 this.draw.changeMode('draw_polygon');
                                 this.info('Draw mode changed to draw_polygon');
-                                
+
                                 // Verify mode change after a delay
                                 setTimeout(() => {
                                     try {
@@ -484,7 +484,7 @@ class SiteBoundaryCore extends MapManagerBase {
                     } catch (modeError) {
                         throw new Error('Failed to initialize drawing mode: ' + modeError.message);
                     }
-                    
+
                     this.info('Drawing mode started successfully');
                 } catch (delayedError) {
                     this.error('Failed to start drawing mode (delayed):', delayedError);
@@ -492,7 +492,7 @@ class SiteBoundaryCore extends MapManagerBase {
                     this.showUserError('Failed to start drawing mode: ' + delayedError.message);
                 }
             }, 200);
-            
+
         } catch (error) {
             this.error('Failed to start drawing mode:', error);
             this.resetDrawingState();
@@ -505,14 +505,14 @@ class SiteBoundaryCore extends MapManagerBase {
         try {
             // Clean up any mapbox-gl-draw sources that might be conflicting
             const conflictingSources = [
-                'mapbox-gl-draw-cold', 
+                'mapbox-gl-draw-cold',
                 'mapbox-gl-draw-hot',
                 'mapbox-gl-draw-polygons-cold',
                 'mapbox-gl-draw-polygons-hot',
                 'mapbox-gl-draw-vertices-cold',
                 'mapbox-gl-draw-vertices-hot'
             ];
-            
+
             // Also clean up any lingering draw layers
             const conflictingLayers = [
                 'gl-draw-polygon-fill-inactive',
@@ -609,17 +609,17 @@ class SiteBoundaryCore extends MapManagerBase {
             this.drawingPoints.push(point);
             this.updateDrawingPreview();
             this.addDrawingPointMarker(point, this.drawingPoints.length - 1);
-        } catch (error) { 
-            this.error('Error handling drawing click:', error); 
+        } catch (error) {
+            this.error('Error handling drawing click:', error);
         }
     }
 
     handleDrawingMouseMove(e) {
         if (!this.isDrawing || this.drawingPoints.length === 0) return;
-        try { 
-            this.updateLiveDrawingPreview([e.lngLat.lng, e.lngLat.lat]); 
-        } catch (error) { 
-            /* suppress */ 
+        try {
+            this.updateLiveDrawingPreview([e.lngLat.lng, e.lngLat.lat]);
+        } catch (error) {
+            /* suppress */
         }
     }
 
@@ -631,8 +631,8 @@ class SiteBoundaryCore extends MapManagerBase {
                 this.drawingPoints = coords.slice(0, -1); // remove closing point
                 this.updateDrawingPreview();
             }
-        } catch (error) { 
-            this.warn('Error handling drawing update:', error); 
+        } catch (error) {
+            this.warn('Error handling drawing update:', error);
         }
     }
 
@@ -762,37 +762,37 @@ class SiteBoundaryCore extends MapManagerBase {
     }
 
     // ---------- Draw events ----------
-    safeHandlePolygonCreated(e) { 
-        try { 
-            this.handlePolygonCreated(e); 
-        } catch (error) { 
-            this.error('polygon create error:', error); 
-            this.resetDrawingState(); 
-        } 
+    safeHandlePolygonCreated(e) {
+        try {
+            this.handlePolygonCreated(e);
+        } catch (error) {
+            this.error('polygon create error:', error);
+            this.resetDrawingState();
+        }
     }
-    
-    safeHandlePolygonUpdated(e) { 
-        try { 
-            this.handlePolygonUpdated(e); 
-        } catch (error) { 
-            this.error('polygon update error:', error); 
-        } 
+
+    safeHandlePolygonUpdated(e) {
+        try {
+            this.handlePolygonUpdated(e);
+        } catch (error) {
+            this.error('polygon update error:', error);
+        }
     }
-    
-    safeHandlePolygonDeleted(e) { 
-        try { 
-            this.handlePolygonDeleted(e); 
-        } catch (error) { 
-            this.error('polygon delete error:', error); 
-        } 
+
+    safeHandlePolygonDeleted(e) {
+        try {
+            this.handlePolygonDeleted(e);
+        } catch (error) {
+            this.error('polygon delete error:', error);
+        }
     }
-    
-    safeHandleModeChange(e) { 
-        try { 
-            this.handleModeChange(e); 
-        } catch (error) { 
-            this.error('mode change error:', error); 
-        } 
+
+    safeHandleModeChange(e) {
+        try {
+            this.handleModeChange(e);
+        } catch (error) {
+            this.error('mode change error:', error);
+        }
     }
 
     handleModeChange(e) {
@@ -1016,7 +1016,7 @@ class SiteBoundaryCore extends MapManagerBase {
                     'site-boundary-fill',
                     'site-boundary-stroke'
                 ];
-                
+
                 const sourcesToRemove = [
                     this.sourceIds.final,
                     'site-boundary'
@@ -1065,8 +1065,8 @@ class SiteBoundaryCore extends MapManagerBase {
             this.emit('clear-all-dependent-features');
 
             this.info('Site boundary cleared');
-        } catch (error) { 
-            this.error('Error clearing site boundary:', error); 
+        } catch (error) {
+            this.error('Error clearing site boundary:', error);
         }
     }
 

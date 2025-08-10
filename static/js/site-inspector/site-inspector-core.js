@@ -927,11 +927,38 @@ class SiteInspectorCore extends BaseManager {
 
   handleToolActivated(toolName) {
     this.info('Tool activated:', toolName);
-    if (toolName === 'floorplan' && this.mapFeaturesManager?.isMeasuringActive?.()) {
-      // measuring tool will stop itself via its own listener
+    
+    // Stop conflicting tools when a new tool is activated
+    if (toolName === 'floorplan') {
+      // Stop site boundary drawing
+      if (this.siteBoundaryCore?.isDrawingActive?.()) {
+        this.siteBoundaryCore.stopDrawingMode();
+      }
+      // Stop measuring tool
+      if (this.mapFeaturesManager?.isMeasuringActive?.()) {
+        this.mapFeaturesManager.stopMeasuring();
+      }
     }
-    if (toolName === 'measure' && this.floorplanManager?.stopDrawing) {
-      this.floorplanManager.stopDrawing();
+    
+    if (toolName === 'site-boundary') {
+      // Stop structure drawing
+      if (this.floorplanManager?.isDrawing) {
+        this.floorplanManager.stopDrawing();
+      }
+      // Stop measuring tool
+      if (this.mapFeaturesManager?.isMeasuringActive?.()) {
+        this.mapFeaturesManager.stopMeasuring();
+      }
+    }
+    
+    if (toolName === 'measure') {
+      // Stop all drawing modes
+      if (this.floorplanManager?.stopDrawing) {
+        this.floorplanManager.stopDrawing();
+      }
+      if (this.siteBoundaryCore?.isDrawingActive?.()) {
+        this.siteBoundaryCore.stopDrawingMode();
+      }
     }
   }
 
