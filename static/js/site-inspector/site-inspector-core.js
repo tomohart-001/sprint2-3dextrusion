@@ -296,11 +296,7 @@ class SiteInspectorCore extends BaseManager {
 
     async initializeDrawControl() {
         this.info('Creating MapboxDraw instance...');
-        if (typeof MapboxDraw === 'undefined') { 
-            this.warn('MapboxDraw library not available');
-            this.draw = null; 
-            return; 
-        }
+        if (typeof MapboxDraw === 'undefined') { this.draw = null; return; }
 
         if (!this.map.isStyleLoaded()) {
             this.info('Waiting for style load before initializing draw…');
@@ -356,21 +352,10 @@ class SiteInspectorCore extends BaseManager {
             await new Promise(r => setTimeout(r, 100));
             this.map.addControl(this.draw);
             await new Promise(r => setTimeout(r, 150));
-            
-            // Validate that the draw control is properly initialized
-            try {
-                const currentMode = this.draw.getMode();
-                this.info('Draw control validated, current mode:', currentMode);
-            } catch (validationError) {
-                this.error('Draw control validation failed:', validationError);
-                throw new Error('Draw control not properly initialized');
-            }
-            
-            this.info('✅ Draw control added and validated');
+            this.info('✅ Draw control added');
         } catch (e) {
             this.error('Failed to set up MapboxDraw:', e);
             this.draw = null;
-            throw e;
         }
     }
 
@@ -478,7 +463,7 @@ class SiteInspectorCore extends BaseManager {
     async initializeFloorplanManager() {
         try {
             if (typeof FloorplanManager === 'undefined') {
-                this.warn('FloorplanManager class not available - creating safe fallback');
+                this.warn('FloorplanManager class not available');
                 const self = this;
                 this.floorplanManager = {
                     initialize: () => Promise.resolve(),
@@ -488,23 +473,16 @@ class SiteInspectorCore extends BaseManager {
                     removeFloorplanFromMap: () => {},
                     hasStructures: () => false,
                     getStructures: () => [],
-                    state: { isDrawing: false, hasFloorplan: false },
+                    state: {},
                     getCurrentFloorplanCoordinates: () => null,
                     extrudeStructure: () => self.warn('Extrusion unavailable (no FloorplanManager)'),
                     toggleDrawingMode: () => {
-                        self.warn('FloorplanManager not available - structure drawing disabled');
+                        self.warn('FloorplanManager not available - drawing disabled');
                         alert('Structure drawing is currently unavailable. Please refresh the page.');
                     },
                     startDrawing() { this.toggleDrawingMode(); },
                     stopDrawing: () => {},
-                    clearStructure: () => {},
-                    // Add methods that might be called by other managers
-                    updateDrawingUI: () => {},
-                    showStatus: () => {},
-                    updateStructureControls: () => {},
-                    addStructureVisualization: () => {},
-                    clearStructureState: () => {},
-                    removeStructureVisualization: () => {}
+                    clearStructure: () => {}
                 };
                 return 'fallback';
             }
@@ -514,7 +492,6 @@ class SiteInspectorCore extends BaseManager {
             return 'success';
         } catch (error) {
             this.error('Failed to initialize FloorplanManager:', error);
-            const self = this;
             this.floorplanManager = {
                 initialize: () => Promise.resolve(),
                 cleanup: () => {},
@@ -523,20 +500,13 @@ class SiteInspectorCore extends BaseManager {
                 removeFloorplanFromMap: () => {},
                 hasStructures: () => false,
                 getStructures: () => [],
-                state: { isDrawing: false, hasFloorplan: false },
+                state: {},
                 getCurrentFloorplanCoordinates: () => null,
-                extrudeStructure: () => self.error('Extrusion failed: FloorplanManager unavailable'),
-                toggleDrawingMode: () => alert('Structure drawing failed to initialize. Error: ' + (error.message || 'Unknown error')),
+                extrudeStructure: () => this.error('Extrusion failed: FloorplanManager unavailable'),
+                toggleDrawingMode: () => alert('Structure drawing failed to initialize. Error: ' + error.message),
                 startDrawing() { this.toggleDrawingMode(); },
                 stopDrawing: () => {},
-                clearStructure: () => {},
-                // Add methods that might be called by other managers
-                updateDrawingUI: () => {},
-                showStatus: () => {},
-                updateStructureControls: () => {},
-                addStructureVisualization: () => {},
-                clearStructureState: () => {},
-                removeStructureVisualization: () => {}
+                clearStructure: () => {}
             };
             return 'failed';
         }

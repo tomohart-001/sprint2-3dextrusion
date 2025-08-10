@@ -385,9 +385,22 @@ class SiteBoundaryCore extends MapManagerBase {
             const currentMode = this.draw.getMode();
             this.debug('Current draw mode:', currentMode);
             if (!currentMode) {
-                this.error('Draw control has no mode');
-                this.showUserError('Drawing control is not properly initialized. Please refresh the page.');
-                return false;
+                this.warn('Draw control has no mode - attempting to initialize');
+                // Try to set a default mode to initialize
+                try {
+                    this.draw.changeMode('simple_select');
+                    const newMode = this.draw.getMode();
+                    if (!newMode) {
+                        this.error('Draw control failed to initialize after mode reset');
+                        this.showUserError('Drawing control is not properly initialized. Please refresh the page.');
+                        return false;
+                    }
+                    this.info('Draw control initialized with mode:', newMode);
+                } catch (initError) {
+                    this.error('Failed to initialize draw control:', initError);
+                    this.showUserError('Drawing control initialization failed. Please refresh the page.');
+                    return false;
+                }
             }
         } catch (error) {
             this.error('Error checking draw mode:', error);
@@ -418,9 +431,13 @@ class SiteBoundaryCore extends MapManagerBase {
                 throw new Error('MapboxDraw not properly initialized - changeMode method missing');
             }
 
+            // Clear any existing drawing state first
             this.clearDrawingVisualization();
             this.drawingPoints = [];
             this.safeDeleteAllFeatures();
+
+            // Clean up any existing draw sources that might conflict
+            this.cleanupConflictingSources();
 
             this.isDrawing = true;
             this.updateButtonState('drawPolygonButton', 'active', 'Stop Drawing');
@@ -432,20 +449,43 @@ class SiteBoundaryCore extends MapManagerBase {
                 throw new Error('Map style not loaded - please wait and try again');
             }
 
-            this.draw.changeMode('draw_polygon');
+            // Try to change mode with better error handling
+            try {
+                this.draw.changeMode('draw_polygon');
+                this.info('Draw mode changed to draw_polygon');
+            } catch (modeError) {
+                this.warn('Initial mode change failed, attempting recovery:', modeError);
+                // Try to reset draw control and try again
+                try {
+                    this.draw.changeMode('simple_select');
+                    setTimeout(() => {
+                        try {
+                            this.draw.changeMode('draw_polygon');
+                            this.info('Draw mode recovered successfully');
+                        } catch (retryError) {
+                            throw new Error('Failed to activate drawing mode after retry: ' + retryError.message);
+                        }
+                    }, 50);
+                } catch (resetError) {
+                    throw new Error('Failed to reset and retry drawing mode: ' + resetError.message);
+                }
+            }
             
+            // Verify mode change after a short delay
             setTimeout(() => {
                 try {
-                    const mode = this.draw.getMode?.();
-                    if (mode !== 'draw_polygon') {
-                        this.warn('Draw mode not active. Current:', mode);
-                        // Try to force the mode again
+                    const currentMode = this.draw.getMode?.();
+                    if (currentMode !== 'draw_polygon') {
+                        this.warn('Draw mode verification failed. Expected: draw_polygon, Got:', currentMode);
+                        // One more attempt
                         this.draw.changeMode('draw_polygon');
+                    } else {
+                        this.info('Draw mode verified successfully:', currentMode);
                     }
-                } catch (modeError) {
-                    this.warn('Could not verify or set draw mode:', modeError);
+                } catch (verifyError) {
+                    this.warn('Could not verify draw mode:', verifyError);
                 }
-            }, 100);
+            }, 150);
             
             this.info('Drawing mode started successfully');
         } catch (error) {
@@ -453,6 +493,25 @@ class SiteBoundaryCore extends MapManagerBase {
             this.resetDrawingState();
             const errorMessage = error.message || 'Drawing tools not properly initialized. Please refresh the page.';
             this.showUserError('Failed to start drawing mode: ' + errorMessage);
+        }
+    }
+
+    cleanupConflictingSources() {
+        try {
+            // Clean up any mapbox-gl-draw sources that might be conflicting
+            const conflictingSources = ['mapbox-gl-draw-cold', 'mapbox-gl-draw-hot'];
+            conflictingSources.forEach(sourceId => {
+                if (this.map.getSource(sourceId)) {
+                    try {
+                        this.map.removeSource(sourceId);
+                        this.info('Removed conflicting source:', sourceId);
+                    } catch (removeError) {
+                        this.warn('Could not remove conflicting source:', sourceId, removeError);
+                    }
+                }
+            });
+        } catch (error) {
+            this.warn('Error during source cleanup:', error);
         }
     }
 
