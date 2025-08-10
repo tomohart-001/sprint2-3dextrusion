@@ -208,7 +208,7 @@
             height: 40px;
             transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             display: flex;
-            flex-direction: row;
+            flex-direction: row-reverse;
             align-items: center;
             pointer-events: auto;
         }
@@ -224,7 +224,7 @@
             background: transparent;
             display: none;
             flex: 1;
-            position: relative;
+            order: 1;
         }
         .search-control-expandable.expanded .search-input-content {
             opacity: 1;
@@ -244,18 +244,6 @@
         }
         .search-input-content input:focus {
             outline: none;
-        }
-        .clear-search-btn {
-            position: absolute;
-            right: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #666;
-            font-size: 12px;
-            padding: 4px;
         }
         .search-status {
             position: absolute;
@@ -293,6 +281,8 @@
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; font-size: 16px; transition: all 0.3s ease; color: #333; font-weight: 500;
             box-shadow: 0 4px 16px rgba(0,0,0,0.1); backdrop-filter: blur(20px);
+            flex-shrink: 0;
+            order: 2;
         }
         .map-control-button:hover,
         .measure-tool-button:hover,
@@ -891,7 +881,6 @@
             <button class="search-toggle-btn" id="searchButton" title="Search locations" type="button">🔍</button>
             <div class="search-input-content">
                 <input type="text" id="searchInput" placeholder="Search for an address or location..." />
-                <button class="clear-search-btn" id="clearSearchButton" title="Clear search" type="button">✕</button>
                 <div class="search-status" id="searchStatus" style="display: none;"></div>
             </div>
         </div>
