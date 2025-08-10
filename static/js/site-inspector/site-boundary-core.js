@@ -439,55 +439,60 @@ class SiteBoundaryCore extends MapManagerBase {
             // Clean up any existing draw sources that might conflict
             this.cleanupConflictingSources();
 
-            this.isDrawing = true;
-            this.updateButtonState('drawPolygonButton', 'active', 'Stop Drawing');
-
-            this.setupDrawingPreview();
-
-            // Verify map is ready before changing mode
-            if (!this.map.isStyleLoaded()) {
-                throw new Error('Map style not loaded - please wait and try again');
-            }
-
-            // Try to change mode with better error handling
-            try {
-                this.draw.changeMode('draw_polygon');
-                this.info('Draw mode changed to draw_polygon');
-            } catch (modeError) {
-                this.warn('Initial mode change failed, attempting recovery:', modeError);
-                // Try to reset draw control and try again
-                try {
-                    this.draw.changeMode('simple_select');
-                    setTimeout(() => {
-                        try {
-                            this.draw.changeMode('draw_polygon');
-                            this.info('Draw mode recovered successfully');
-                        } catch (retryError) {
-                            throw new Error('Failed to activate drawing mode after retry: ' + retryError.message);
-                        }
-                    }, 50);
-                } catch (resetError) {
-                    throw new Error('Failed to reset and retry drawing mode: ' + resetError.message);
-                }
-            }
-            
-            // Verify mode change after a short delay
+            // Wait a bit for cleanup to complete
             setTimeout(() => {
                 try {
-                    const currentMode = this.draw.getMode?.();
-                    if (currentMode !== 'draw_polygon') {
-                        this.warn('Draw mode verification failed. Expected: draw_polygon, Got:', currentMode);
-                        // One more attempt
-                        this.draw.changeMode('draw_polygon');
-                    } else {
-                        this.info('Draw mode verified successfully:', currentMode);
+                    this.isDrawing = true;
+                    this.updateButtonState('drawPolygonButton', 'active', 'Stop Drawing');
+
+                    this.setupDrawingPreview();
+
+                    // Verify map is ready before changing mode
+                    if (!this.map.isStyleLoaded()) {
+                        throw new Error('Map style not loaded - please wait and try again');
                     }
-                } catch (verifyError) {
-                    this.warn('Could not verify draw mode:', verifyError);
+
+                    // Try to change mode with better error handling
+                    try {
+                        this.draw.changeMode('simple_select');
+                        // Small delay before switching to draw mode
+                        setTimeout(() => {
+                            try {
+                                this.draw.changeMode('draw_polygon');
+                                this.info('Draw mode changed to draw_polygon');
+                                
+                                // Verify mode change after a delay
+                                setTimeout(() => {
+                                    try {
+                                        const currentMode = this.draw.getMode?.();
+                                        if (currentMode !== 'draw_polygon') {
+                                            this.warn('Draw mode verification failed. Expected: draw_polygon, Got:', currentMode);
+                                            // Final attempt
+                                            this.draw.changeMode('draw_polygon');
+                                        } else {
+                                            this.info('Draw mode verified successfully:', currentMode);
+                                        }
+                                    } catch (verifyError) {
+                                        this.warn('Could not verify draw mode:', verifyError);
+                                    }
+                                }, 150);
+                            } catch (drawError) {
+                                this.error('Failed to set draw_polygon mode:', drawError);
+                                throw new Error('Failed to activate drawing mode: ' + drawError.message);
+                            }
+                        }, 100);
+                    } catch (modeError) {
+                        throw new Error('Failed to initialize drawing mode: ' + modeError.message);
+                    }
+                    
+                    this.info('Drawing mode started successfully');
+                } catch (delayedError) {
+                    this.error('Failed to start drawing mode (delayed):', delayedError);
+                    this.resetDrawingState();
+                    this.showUserError('Failed to start drawing mode: ' + delayedError.message);
                 }
-            }, 150);
+            }, 200);
             
-            this.info('Drawing mode started successfully');
         } catch (error) {
             this.error('Failed to start drawing mode:', error);
             this.resetDrawingState();
@@ -499,9 +504,39 @@ class SiteBoundaryCore extends MapManagerBase {
     cleanupConflictingSources() {
         try {
             // Clean up any mapbox-gl-draw sources that might be conflicting
-            const conflictingSources = ['mapbox-gl-draw-cold', 'mapbox-gl-draw-hot'];
+            const conflictingSources = [
+                'mapbox-gl-draw-cold', 
+                'mapbox-gl-draw-hot',
+                'mapbox-gl-draw-polygons-cold',
+                'mapbox-gl-draw-polygons-hot',
+                'mapbox-gl-draw-vertices-cold',
+                'mapbox-gl-draw-vertices-hot'
+            ];
+            
+            // Also clean up any lingering draw layers
+            const conflictingLayers = [
+                'gl-draw-polygon-fill-inactive',
+                'gl-draw-polygon-stroke-inactive',
+                'gl-draw-polygon-fill-active',
+                'gl-draw-polygon-stroke-active',
+                'gl-draw-line-active',
+                'gl-draw-point-active',
+                'gl-draw-point-inactive'
+            ];
+
+            conflictingLayers.forEach(layerId => {
+                if (this.map.getLayer && this.map.getLayer(layerId)) {
+                    try {
+                        this.map.removeLayer(layerId);
+                        this.info('Removed conflicting layer:', layerId);
+                    } catch (removeError) {
+                        this.warn('Could not remove conflicting layer:', layerId, removeError);
+                    }
+                }
+            });
+
             conflictingSources.forEach(sourceId => {
-                if (this.map.getSource(sourceId)) {
+                if (this.map.getSource && this.map.getSource(sourceId)) {
                     try {
                         this.map.removeSource(sourceId);
                         this.info('Removed conflicting source:', sourceId);
@@ -961,8 +996,56 @@ class SiteBoundaryCore extends MapManagerBase {
             this.buildableAreaData = null;
             this.isLocked = false;
 
+            // Clear MapboxDraw features first
+            try {
+                if (this.draw && this.draw.deleteAll) {
+                    this.draw.deleteAll();
+                }
+            } catch (e) {
+                this.warn('Could not clear draw features:', e);
+            }
+
             // Clear visuals
             this.clearAllVisualizationLayers();
+
+            // Force remove final boundary layers and sources
+            try {
+                const layersToRemove = [
+                    this.layerIds.finalFill,
+                    this.layerIds.finalStroke,
+                    'site-boundary-fill',
+                    'site-boundary-stroke'
+                ];
+                
+                const sourcesToRemove = [
+                    this.sourceIds.final,
+                    'site-boundary'
+                ];
+
+                layersToRemove.forEach(layerId => {
+                    if (layerId && this.map.getLayer && this.map.getLayer(layerId)) {
+                        try {
+                            this.map.removeLayer(layerId);
+                            this.info(`Removed layer: ${layerId}`);
+                        } catch (e) {
+                            this.warn(`Could not remove layer ${layerId}:`, e);
+                        }
+                    }
+                });
+
+                sourcesToRemove.forEach(sourceId => {
+                    if (sourceId && this.map.getSource && this.map.getSource(sourceId)) {
+                        try {
+                            this.map.removeSource(sourceId);
+                            this.info(`Removed source: ${sourceId}`);
+                        } catch (e) {
+                            this.warn(`Could not remove source ${sourceId}:`, e);
+                        }
+                    }
+                });
+            } catch (error) {
+                this.warn('Error removing final boundary layers:', error);
+            }
 
             // Reset UI and draw button
             this.updateButtonStates(false, false);
@@ -982,7 +1065,9 @@ class SiteBoundaryCore extends MapManagerBase {
             this.emit('clear-all-dependent-features');
 
             this.info('Site boundary cleared');
-        } catch (error) { this.error('Error clearing site boundary:', error); }
+        } catch (error) { 
+            this.error('Error clearing site boundary:', error); 
+        }
     }
 
     clearAllVisualizationLayers() {

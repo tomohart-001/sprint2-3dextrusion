@@ -874,15 +874,45 @@ class UIPanelManager extends BaseManager {
                 this.warn('Could not reset legal boundary stroke:', error);
             }
 
-            window.eventBus?.emit?.('clear-all-site-data');
-
+            // Clear managers in proper order with error handling
             const sic = window.siteInspectorCore;
             if (sic) {
-                sic.extrusion3DManager?.clearAllExtrusions?.();
+                // Clear 3D extrusions first
+                try {
+                    await sic.extrusion3DManager?.clearAllExtrusions?.();
+                } catch (e) {
+                    this.warn('Error clearing 3D extrusions:', e);
+                }
 
-                if (sic.floorplanManager?.clearAll) sic.floorplanManager.clearAll();
-                sic.propertySetbacksManager?.clearAllSetbackData?.();
-                sic.siteBoundaryCore?.clearBoundary?.();
+                // Clear floorplan structures
+                try {
+                    if (sic.floorplanManager?.clearAll) {
+                        sic.floorplanManager.clearAll();
+                    }
+                } catch (e) {
+                    this.warn('Error clearing floorplan:', e);
+                }
+
+                // Clear property setbacks
+                try {
+                    await sic.propertySetbacksManager?.clearAllSetbackData?.();
+                } catch (e) {
+                    this.warn('Error clearing setbacks:', e);
+                }
+
+                // Clear site boundary last
+                try {
+                    await sic.siteBoundaryCore?.clearBoundary?.();
+                } catch (e) {
+                    this.warn('Error clearing boundary:', e);
+                }
+            }
+
+            // Emit clearing event after manager cleanup
+            try {
+                window.eventBus?.emit?.('clear-all-site-data');
+            } catch (e) {
+                this.warn('Error emitting clear event:', e);
             }
 
             this.resetAllPanelsToInitialState();
@@ -891,7 +921,18 @@ class UIPanelManager extends BaseManager {
             const map = sic?.map;
             const center = sic?.siteData?.center;
             if (map && center) {
-                map.flyTo({ center: [center.lng, center.lat], zoom: 17, pitch: 0, bearing: 0, duration: 1000 });
+                try {
+                    map.flyTo({ center: [center.lng, center.lat], zoom: 17, pitch: 0, bearing: 0, duration: 1000 });
+                } catch (e) {
+                    this.warn('Error resetting map view:', e);
+                }
+            }
+
+            // Force map repaint to ensure all layers are cleared
+            try {
+                map?.triggerRepaint?.();
+            } catch (e) {
+                this.warn('Error triggering map repaint:', e);
             }
 
             setTimeout(() => {
