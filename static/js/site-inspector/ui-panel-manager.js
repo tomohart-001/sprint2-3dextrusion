@@ -105,9 +105,7 @@ class UIPanelManager extends BaseManager {
         const siteInfoToggleBtn = this.$('siteInfoToggleBtn');
         siteInfoToggleBtn?.addEventListener('click', () => this.toggleSiteInfoExpanded(), { signal });
 
-        // Cut & fill & save (if present)
-        this.$('cutFillAnalysisBtn')?.addEventListener('click', () => this.generateCutFillAnalysis(), { signal });
-        this.$('saveProgressBtn')?.addEventListener('click', () => this.saveCurrentProgress(), { signal });
+        // Cut & fill & save buttons removed
 
         // Clear boundary only (optional button)
         this.$('clearBoundaryButton2')?.addEventListener('click', () => {
@@ -763,59 +761,8 @@ class UIPanelManager extends BaseManager {
     }
 
     /* -----------------------------
-       Cut & Fill + Save
+       Cut & Fill + Save methods removed
     ------------------------------ */
-    async generateCutFillAnalysis() {
-        try {
-            this.info('Generating cut & fill analysis...');
-            const sic = window.siteInspectorCore;
-            if (!sic) throw new Error('Site Inspector not available');
-
-            const sb = sic.getManager?.('siteBoundary');
-            if (!sb?.hasSiteBoundary?.()) return this.showError('Please define a site boundary first');
-
-            const psm = sic.getManager?.('propertySetbacks');
-            if (!psm?.getCurrentBuildableArea?.()) return this.showError('Please apply property setbacks first to define the buildable area');
-
-            const siteData = sic.getSiteData?.() || {};
-            const terrainBounds = sic.captureTerrainBounds?.();
-            if (terrainBounds) siteData.terrainBounds = terrainBounds;
-
-            const projectId = sic.getProjectIdFromUrl?.();
-            const terrainUrl = `/terrain-viewer${projectId ? `?project_id=${projectId}` : ''}`;
-
-            try {
-                const res = await fetch('/api/store-session-data', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ site_data: siteData, terrain_bounds: terrainBounds })
-                });
-                if (res.ok) {
-                    this.showSuccess('Opening cut & fill analysis...');
-                    window.open(terrainUrl, '_blank');
-                } else {
-                    throw new Error('Failed to store site data');
-                }
-            } catch (err) {
-                this.warn('Could not store site data, opening terrain viewer anyway', err);
-                window.open(terrainUrl, '_blank');
-            }
-        } catch (error) {
-            this.error('Failed to generate cut & fill analysis:', error);
-            this.showError('Failed to generate cut & fill analysis: ' + error.message);
-        }
-    }
-
-    async saveCurrentProgress() {
-        try {
-            this.info('Saving current progress...');
-            // TODO: plug into backend as needed
-            this.showSuccess('Progress saved successfully!');
-        } catch (error) {
-            this.error('Failed to save progress:', error);
-            this.showError('Failed to save progress');
-        }
-    }
 
     updateBoundaryAppliedState() {
         this.info('Boundary applied state updated in UI');
