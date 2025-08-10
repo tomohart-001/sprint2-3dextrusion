@@ -163,14 +163,14 @@ class CommentsManager extends BaseManager {
 
         const content = modal.querySelector('.comment-modal-content');
         content.style.cssText = `
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border: 1px solid rgba(0, 0, 0, 0.1);
             border-radius: 16px;
             padding: 0;
             width: 90%;
             max-width: 440px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-            color: #ffffff;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            color: #1a1a1a;
             overflow: hidden;
             animation: slideIn 0.3s ease-out;
         `;
@@ -197,7 +197,7 @@ class CommentsManager extends BaseManager {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
         `;
 
         const headerContent = modal.querySelector('.comment-header-content');
@@ -253,7 +253,7 @@ class CommentsManager extends BaseManager {
         const body = modal.querySelector('.comment-modal-body');
         body.style.cssText = `
             padding: 24px;
-            background: rgba(255, 255, 255, 0.02);
+            background: rgba(248, 249, 250, 0.5);
         `;
 
         const textarea = modal.querySelector('#commentText');
@@ -261,10 +261,10 @@ class CommentsManager extends BaseManager {
             width: 100%;
             min-height: 100px;
             padding: 14px 16px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.2);
             border-radius: 10px;
-            color: #ffffff;
+            color: #1a1a1a;
             font-size: 14px;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
             line-height: 1.5;
@@ -277,13 +277,13 @@ class CommentsManager extends BaseManager {
 
         textarea.addEventListener('focus', () => {
             textarea.style.borderColor = '#4a6cf7';
-            textarea.style.background = 'rgba(255, 255, 255, 0.08)';
+            textarea.style.background = '#ffffff';
             textarea.style.boxShadow = '0 0 0 3px rgba(74, 108, 247, 0.15)';
         });
 
         textarea.addEventListener('blur', () => {
-            textarea.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-            textarea.style.background = 'rgba(255, 255, 255, 0.05)';
+            textarea.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+            textarea.style.background = '#ffffff';
             textarea.style.boxShadow = 'none';
         });
 
@@ -292,7 +292,7 @@ class CommentsManager extends BaseManager {
             text-align: right;
             margin-top: 8px;
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(0, 0, 0, 0.6);
         `;
 
         const charCount = modal.querySelector('#commentCharCount');
@@ -302,11 +302,11 @@ class CommentsManager extends BaseManager {
             charCount.textContent = length;
             
             if (length > 450) {
-                charCount.style.color = '#ff6b6b';
+                charCount.style.color = '#dc3545';
             } else if (length > 400) {
-                charCount.style.color = '#ffd93d';
+                charCount.style.color = '#ffc107';
             } else {
-                charCount.style.color = 'rgba(255, 255, 255, 0.6)';
+                charCount.style.color = 'rgba(0, 0, 0, 0.6)';
             }
         });
 
@@ -317,16 +317,16 @@ class CommentsManager extends BaseManager {
             display: flex;
             gap: 12px;
             justify-content: flex-end;
-            background: rgba(0, 0, 0, 0.1);
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(248, 249, 250, 0.8);
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
         `;
 
         const cancelBtn = modal.querySelector('.comment-btn-cancel');
         cancelBtn.style.cssText = `
             padding: 10px 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #ffffff;
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            color: #1a1a1a;
             border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
@@ -336,13 +336,13 @@ class CommentsManager extends BaseManager {
         `;
 
         cancelBtn.addEventListener('mouseenter', () => {
-            cancelBtn.style.background = 'rgba(255, 255, 255, 0.15)';
-            cancelBtn.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+            cancelBtn.style.background = '#f8f9fa';
+            cancelBtn.style.borderColor = 'rgba(0, 0, 0, 0.3)';
         });
 
         cancelBtn.addEventListener('mouseleave', () => {
-            cancelBtn.style.background = 'rgba(255, 255, 255, 0.1)';
-            cancelBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            cancelBtn.style.background = '#ffffff';
+            cancelBtn.style.borderColor = 'rgba(0, 0, 0, 0.2)';
         });
 
         const saveBtn = modal.querySelector('.comment-btn-save');
@@ -460,13 +460,13 @@ class CommentsManager extends BaseManager {
         .setLngLat(comment.coordinates)
         .setHTML(`
             <div class="comment-content" style="
-                background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+                border: 1px solid rgba(0, 0, 0, 0.15);
                 border-radius: 12px;
                 padding: 16px;
-                color: #ffffff;
+                color: #1a1a1a;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
                 backdrop-filter: blur(10px);
                 min-width: 250px;
                 max-width: 300px;
@@ -477,7 +477,7 @@ class CommentsManager extends BaseManager {
                     align-items: center;
                     margin-bottom: 10px;
                     padding-bottom: 8px;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
                 ">
                     <span class="comment-user" style="
                         font-weight: 600;
@@ -486,13 +486,13 @@ class CommentsManager extends BaseManager {
                     ">${comment.user}</span>
                     <span class="comment-time" style="
                         font-size: 11px;
-                        color: rgba(255, 255, 255, 0.6);
+                        color: rgba(0, 0, 0, 0.6);
                     ">${this.formatTimestamp(comment.timestamp)}</span>
                 </div>
                 <div class="comment-text" style="
                     font-size: 14px;
                     line-height: 1.5;
-                    color: #ffffff;
+                    color: #1a1a1a;
                     margin-bottom: 12px;
                     word-wrap: break-word;
                 ">${comment.text}</div>
@@ -501,17 +501,17 @@ class CommentsManager extends BaseManager {
                     justify-content: flex-end;
                 ">
                     <button class="comment-delete-btn" onclick="window.siteInspectorCore?.commentsManager?.deleteComment('${comment.id}')" style="
-                        background: rgba(255, 107, 107, 0.1);
-                        border: 1px solid rgba(255, 107, 107, 0.3);
-                        color: #ff6b6b;
+                        background: rgba(220, 53, 69, 0.1);
+                        border: 1px solid rgba(220, 53, 69, 0.3);
+                        color: #dc3545;
                         padding: 6px 12px;
                         border-radius: 6px;
                         font-size: 12px;
                         cursor: pointer;
                         transition: all 0.2s ease;
                         font-weight: 500;
-                    " onmouseenter="this.style.background='rgba(255, 107, 107, 0.2)'; this.style.borderColor='rgba(255, 107, 107, 0.5)'" 
-                       onmouseleave="this.style.background='rgba(255, 107, 107, 0.1)'; this.style.borderColor='rgba(255, 107, 107, 0.3)'">🗑️ Delete</button>
+                    " onmouseenter="this.style.background='rgba(220, 53, 69, 0.15)'; this.style.borderColor='rgba(220, 53, 69, 0.5)'" 
+                       onmouseleave="this.style.background='rgba(220, 53, 69, 0.1)'; this.style.borderColor='rgba(220, 53, 69, 0.3)'">🗑️ Delete</button>
                 </div>
             </div>
         `)
