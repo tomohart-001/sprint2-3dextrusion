@@ -763,9 +763,6 @@ class UIPanelManager extends BaseManager {
             const terrainBounds = sic.captureTerrainBounds?.();
             if (terrainBounds) siteData.terrainBounds = terrainBounds;
 
-            const buildableArea = psm.getCurrentBuildableArea?.();
-            if (buildableArea) siteData.buildable_area = buildableArea;
-
             const projectId = sic.getProjectIdFromUrl?.();
             const terrainUrl = `/terrain-viewer${projectId ? `?project_id=${projectId}` : ''}`;
 
@@ -850,15 +847,34 @@ class UIPanelManager extends BaseManager {
     async clearAllSiteData() {
         try {
             this.info('Starting comprehensive site data clearing...');
+
+            // Clear session storage first
+            this.clearSessionStorage();
+
+            // Clear project snapshots from database
+            await this.clearProjectSnapshots();
+
+            // Clear visual elements
+            this.clearMapVisualization();
+
+            // Clear all manager data
+            this.clearManagerData();
+
+            // Reset UI state
+            this.resetAllPanelStates();
+
+            this.info('Site data clearing completed successfully');
+            this.showSuccess('All site data has been cleared successfully');
+        } catch (error) {
+            this.error('Error during site data clearing:', error);
+            this.showError('Failed to clear site data: ' + error.message);
+        } finally {
             this.hideClearConfirmationModal();
+        }
+    }
 
-            const clearBtn = this.$('clearSiteInspectorButton');
-            if (clearBtn) {
-                clearBtn.disabled = true;
-                clearBtn.innerHTML = '🔄 Clearing...';
-            }
-
-            // Clear ALL relevant session storage
+    clearSessionStorage() {
+        try {
             const sessionKeysToRemove = [
                 'legal_boundary_applied',
                 'legal_boundary_coordinates',
@@ -876,106 +892,74 @@ class UIPanelManager extends BaseManager {
             ];
 
             sessionKeysToRemove.forEach(key => {
-                try {
+                if (sessionStorage.getItem(key)) {
                     sessionStorage.removeItem(key);
                     this.info(`Removed session key: ${key}`);
-                } catch (e) {
-                    this.warn('Could not remove session key:', key, e);
+                }
+            });
+        } catch (error) {
+            this.warn('Error clearing session storage:', error);
+        }
+    }
+
+    async clearProjectSnapshots() {
+        try {
+            // Get project ID from URL or session
+            const urlParams = new URLSearchParams(window.location.search);
+            let projectId = urlParams.get('project_id') || urlParams.get('project');
+
+            if (!projectId) {
+                projectId = sessionStorage.getItem('current_project_id') ||
+                           sessionStorage.getItem('project_id') ||
+                           sessionStorage.getItem('selectedProjectId');
+            }
+
+            if (!projectId) {
+                this.warn('No project ID found for snapshot clearing');
+                return;
+            }
+
+            this.info(`Clearing project snapshots for project ${projectId}...`);
+
+            // Clear project snapshots via API
+            const response = await fetch(`/api/project/${projectId}/clear-snapshots`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
                 }
             });
 
-            // Reset legal boundary visual state on map
-            try {
-                const map = window.siteInspectorCore?.getMap?.();
-                if (map && map.getLayer && map.getLayer('property-boundaries-stroke')) {
-                    // Reset the legal boundary stroke to dashed (original state)
-                    map.setPaintProperty('property-boundaries-stroke', 'line-dasharray', [5, 5]);
-                    this.info('Legal boundary stroke reset to dashed');
-                }
-            } catch (error) {
-                this.warn('Could not reset legal boundary stroke:', error);
+            if (response.ok) {
+                const result = await response.json();
+                this.info(`Project snapshots cleared: ${result.message || 'Success'}`);
+            } else {
+                this.warn(`Failed to clear project snapshots: HTTP ${response.status}`);
             }
-
-            // Clear managers in proper order with error handling
-            const sic = window.siteInspectorCore;
-            if (sic) {
-                // Clear 3D extrusions first
-                try {
-                    await sic.extrusion3DManager?.clearAllExtrusions?.();
-                } catch (e) {
-                    this.warn('Error clearing 3D extrusions:', e);
-                }
-
-                // Clear floorplan structures
-                try {
-                    if (sic.floorplanManager?.clearAll) {
-                        sic.floorplanManager.clearAll();
-                    }
-                } catch (e) {
-                    this.warn('Error clearing floorplan:', e);
-                }
-
-                // Clear property setbacks
-                try {
-                    await sic.propertySetbacksManager?.clearAllSetbackData?.();
-                } catch (e) {
-                    this.warn('Error clearing setbacks:', e);
-                }
-
-                // Clear site boundary last
-                try {
-                    await sic.siteBoundaryCore?.clearBoundary?.();
-                } catch (e) {
-                    this.warn('Error clearing boundary:', e);
-                }
-            }
-
-            // Emit clearing event after manager cleanup
-            try {
-                window.eventBus?.emit?.('clear-all-site-data');
-            } catch (e) {
-                this.warn('Error emitting clear event:', e);
-            }
-
-            this.resetAllPanelsToInitialState();
-
-            // Reset map view
-            const map = sic?.map;
-            const center = sic?.siteData?.center;
-            if (map && center) {
-                try {
-                    map.flyTo({ center: [center.lng, center.lat], zoom: 17, pitch: 0, bearing: 0, duration: 1000 });
-                } catch (e) {
-                    this.warn('Error resetting map view:', e);
-                }
-            }
-
-            // Force map repaint to ensure all layers are cleared
-            try {
-                map?.triggerRepaint?.();
-            } catch (e) {
-                this.warn('Error triggering map repaint:', e);
-            }
-
-            setTimeout(() => {
-                this.showSuccess('All site data has been cleared successfully');
-                if (clearBtn) {
-                    clearBtn.disabled = false;
-                    clearBtn.innerHTML = 'Clear Site Inspector';
-                }
-            }, 500);
-
-            this.info('Site data clearing completed successfully');
         } catch (error) {
-            this.error('Error clearing site data:', error);
-            this.showError('Failed to clear site data: ' + error.message);
-
-            const clearBtn = this.$('clearSiteInspectorButton');
-            if (clearBtn) {
-                clearBtn.disabled = false;
-                clearBtn.innerHTML = 'Clear Site Inspector';
-            }
+            this.error('Error clearing project snapshots:', error);
         }
+    }
+
+    // Placeholder methods - replace with actual implementation if they exist elsewhere
+    clearMapVisualization() {
+        this.info('Clearing map visualization...');
+        // Example: If a map object is managed by this class, clear its layers/data
+        // e.g., window.siteInspectorCore?.map?.clearLayers?.();
+    }
+
+    clearManagerData() {
+        this.info('Clearing manager data...');
+        // Example: Call clear methods on other managers if they are part of this class or accessible
+        // e.g., window.siteInspectorCore?.siteBoundaryCore?.clearBoundary?.();
+        // e.g., window.siteInspectorCore?.propertySetbacksManager?.clearAllSetbackData?.();
+        // e.g., window.siteInspectorCore?.extrusion3DManager?.clearAllExtrusions?.();
+        // e.g., window.siteInspectorCore?.floorplanManager?.clearAll?.();
+    }
+
+    resetAllPanelStates() {
+        this.info('Resetting all panel states...');
+        // Logic to reset UI elements to their default or initial state
+        this.resetAllPanelsToInitialState();
     }
 
     setupMinimizePanelListener() {

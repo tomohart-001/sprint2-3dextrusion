@@ -27,7 +27,8 @@ class ProjectRoutes:
         app.route('/api/project/<int:project_id>/snapshot', methods=['POST'])(self.handle_project_snapshot)
         app.route('/api/project/<int:project_id>', methods=['DELETE'])(self.handle_delete_project)
         app.route('/api/project-address', methods=['GET'])(self.handle_get_project_address)
-        
+        app.route('/api/project/<int:project_id>/clear-snapshots', methods=['DELETE'])(self.handle_clear_project_snapshots)
+
 
     def handle_project_redirect(self):
         """Handle base project route - redirect to dashboard"""
@@ -63,7 +64,7 @@ class ProjectRoutes:
 
             # Get project snapshot (get the latest one)
             project_snapshot = self.db_manager.get_project_snapshot(project_id)
-            
+
             # Debug: Log what snapshot we found
             if project_snapshot:
                 app_logger.info(f"Project {project_id} snapshot found: type={project_snapshot.get('snapshot_type')}, data_length={len(str(project_snapshot.get('snapshot_data', '')))}")
@@ -90,9 +91,9 @@ class ProjectRoutes:
                     WHERE project_id = ? 
                     ORDER BY created_at DESC
                 ''', (project_id,))
-                
+
                 snapshots = cursor.fetchall()
-                
+
                 # Default to step 1 if no progress
                 if not snapshots:
                     return {
@@ -103,10 +104,10 @@ class ProjectRoutes:
                         'button_text': 'Start Site Inspector',
                         'route_url': f'/site-inspector?project_id={project_id}'
                     }
-                
+
                 # Analyze snapshots to determine progress
                 snapshot_types = [snap[0] for snap in snapshots]
-                
+
                 # Step 5: Structure Analyser (final step)
                 if 'structural_analysis' in snapshot_types:
                     return {
@@ -117,7 +118,7 @@ class ProjectRoutes:
                         'button_text': 'Open Structure Analyser',
                         'route_url': f'/structural-analyser?project_id={project_id}'
                     }
-                
+
                 # Step 4: Structural Designer
                 elif 'structure_design' in snapshot_types:
                     return {
@@ -128,7 +129,7 @@ class ProjectRoutes:
                         'button_text': 'Continue to Structure Analyser',
                         'route_url': f'/structural-analyser?project_id={project_id}'
                     }
-                
+
                 # Step 3: Site Developer
                 elif 'site_development' in snapshot_types:
                     return {
@@ -137,9 +138,9 @@ class ProjectRoutes:
                         'next_step': 4,
                         'next_step_name': 'Structural Designer',
                         'button_text': 'Continue to Structural Designer',
-                        'route_url': f'/structure-designer?project_id={project_id}'
+                        'route_url': f'/structure-designer?project_id=${project_id}'
                     }
-                
+
                 # Step 2: Cut & Fill Analysis
                 elif 'terrain_analysis' in snapshot_types or 'buildable_area' in snapshot_types:
                     return {
@@ -150,7 +151,7 @@ class ProjectRoutes:
                         'button_text': 'Continue to Site Developer',
                         'route_url': f'/site-developer?project_id=${project_id}'
                     }
-                
+
                 # Step 1: Site Inspector (completed)
                 elif 'site_boundary' in snapshot_types:
                     return {
@@ -161,7 +162,7 @@ class ProjectRoutes:
                         'button_text': 'Continue to Cut & Fill Analysis',
                         'route_url': f'/terrain-viewer?project_id={project_id}'
                     }
-                
+
                 # Default case
                 else:
                     return {
@@ -172,7 +173,7 @@ class ProjectRoutes:
                         'button_text': 'Continue Site Inspector',
                         'route_url': f'/site-inspector?project_id={project_id}'
                     }
-                    
+
         except Exception as e:
             app_logger.error(f"Error determining flow step: {e}")
             # Return default step on error
@@ -513,7 +514,7 @@ class ProjectRoutes:
             app_logger.error(f"Error getting project data: {e}")
             return jsonify({'success': False, 'error': 'Failed to get project data'}), 500
 
-    
+
 
     def handle_get_project_address(self):
         """Get project address for site inspector"""
@@ -608,14 +609,14 @@ class ProjectRoutes:
                 # Verify deletion was complete
                 verification_results = self.db_manager.verify_project_deletion(project_id)
                 total_remaining = sum(verification_results.values())
-                
+
                 if total_remaining > 0:
                     app_logger.error(f"Project {project_id} deletion incomplete. Remaining records: {verification_results}")
                     return jsonify({
                         'error': 'Project deletion incomplete',
                         'details': verification_results
                     }), 500
-                
+
                 app_logger.info(f"Project {project_id} '{project_name}' deleted completely by user {user_id}")
                 return jsonify({
                     'success': True,
@@ -629,4 +630,51 @@ class ProjectRoutes:
             app_logger.error(f"Error deleting project {project_id}: {e}")
             return jsonify({'error': 'Failed to delete project'}), 500
 
-    
+    def handle_clear_project_snapshots(self, project_id: int):
+        """Clear all snapshots for a project"""
+        try:
+            app_logger.info(f"Clearing snapshots for project {project_id}")
+
+            # Verify user has access to this project
+            user_info = session.get('user')
+            if not user_info:
+                return jsonify({'success': False, 'error': 'Not logged in'}), 401
+
+            # Check if project exists and belongs to the user
+            with self.db_manager.db.get_cursor() as cursor:
+                cursor.execute('''
+                    SELECT id FROM projects 
+                    WHERE id = ? AND user_id = ?
+                ''', (project_id, user_info['id']))
+
+                project = cursor.fetchone()
+
+            if not project:
+                return jsonify({'success': False, 'error': 'Project not found or access denied'}), 404
+
+            # Delete all snapshots for this project
+            with self.db_manager.db.get_cursor() as cursor:
+                cursor.execute("DELETE FROM project_snapshots WHERE project_id = ?", (project_id,))
+                deleted_count = cursor.rowcount
+                self.db_manager.db.commit()
+
+            app_logger.info(f"Deleted {deleted_count} snapshots for project {project_id}")
+
+            # Add snapshot clear event to project history
+            self.db_manager.add_project_history_event(
+                project_id, 
+                user_info['id'], 
+                'snapshots_cleared', 
+                f"All project snapshots cleared ({deleted_count} deleted)"
+            )
+
+            return jsonify({
+                "success": True, 
+                "message": f"Cleared {deleted_count} project snapshots",
+                "deleted_count": deleted_count
+            })
+
+        except Exception as e:
+            app_logger.error(f"Error clearing project snapshots: {e}")
+            self.db_manager.db.rollback()
+            return jsonify({"success": False, "error": str(e)}), 500
