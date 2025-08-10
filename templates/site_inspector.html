@@ -1145,204 +1145,203 @@
                         <div style="margin-bottom: 8px; font-size: 12px; color: #666;">Choose one boundary method:</div>
                         <button id="drawPolygonButton" class="draw-button" style="width: 100%; margin-bottom: 8px;" type="button">Draw Custom Boundary</button>
                         <div style="text-align: center; margin: 8px 0; font-size: 12px; color: #999;">OR</div>
-                        <button id="useLegalBoundaryButton" class="draw-button legal-boundary-btn" style="width: 100%; margin-bottom: 8px; background: linear-gradient(135deg, #28a745 0%, #20923a 100%);" type="button">Use Legal Property Boundary</button></div>
+                        <button id="useLegalBoundaryButton" class="draw-button legal-boundary-btn" style="width: 100%; margin-bottom: 8px; background: linear-gradient(135deg, #28a745 0%, #20923a 100%);" type="button">Use Legal Property Boundary</button>
+                    </div>
 
                     <div id="boundarySelectionStatus" style="display: none; margin: 12px 0; padding: 8px; background: #e8f5e8; border-radius: 4px; font-size: 12px;">
                         <span id="boundarySelectionText"></span>
                     </div>
-                        <div class="button-row" style="display: none; gap: 8px;" id="drawingButtonRow">
-                            <button id="stopDrawingButton" class="action-button" style="background: #dc3545; flex: 1;" type="button">Stop Drawing</button>
-                            <button id="clearBoundaryButton" class="action-button" style="background: #dc3545; flex: 1;" type="button">Clear Boundary</button>
-                        </div>
+                    <div class="button-row" style="display: none; gap: 8px;" id="drawingButtonRow">
+                        <button id="stopDrawingButton" class="action-button" style="background: #dc3545; flex: 1;" type="button">Stop Drawing</button>
+                        <button id="clearBoundaryButton" class="action-button" style="background: #dc3545; flex: 1;" type="button">Clear Boundary</button>
                     </div>
 
                     <!-- Boundary Info Display -->
                     <div id="boundaryInfoDisplay" class="boundary-info-display" style="display: none; margin: 12px 0; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px;">
                         <div class="info-row"><span class="info-label">Area:</span><span id="boundaryAreaDisplay" class="info-value">-</span></div>
                         <div class="info-row"><span class="info-label">Perimeter:</span><span id="boundaryPerimeterDisplay" class="info-value">-</span></div>
-                        <div class="info-row"><span class="info-label">Points:</span><span id="boundaryPointsDisplay" class="info-value">-</span></div>
+                        <div class="info-row"><span class="info-label">Center:</span><span id="boundaryCenterDisplay" class="info-value">-</span></div>
                     </div>
 
-                    <div class="boundary-action-buttons" style="display: flex; gap: 8px; margin-top: 16px; align-items: center;">
-                        <button id="confirmBoundaryButton" class="action-button" style="display: none; flex: 1; margin: 0;" type="button">Confirm Site Boundary</button>
-                        <!-- keep alt ID to avoid duplicate; wire it in JS only if needed -->
-                        <button id="clearBoundaryButtonAlt" class="action-button" style="display: none; flex: 1; margin: 0; background: #dc3545;" type="button">Clear Boundary</button>
-                    </div>
+                    <!-- Clear Boundary Button (when boundary exists) -->
+                    <button id="clearBoundaryButton2" class="action-button" style="display: none; background: #dc3545; margin-top: 12px;" type="button">Clear Boundary</button>
                 </div>
             </div>
 
-            <!-- Property Setbacks Controls -->
-            <div class="boundary-controls collapsed" id="boundaryControls" style="margin-top: 24px;">
+            <!-- Property Setbacks -->
+            <div class="boundary-controls collapsed" id="boundaryControls">
                 <div class="info-title">
                     2. Property Setbacks
                     <span class="setbacks-applied-check" id="setbacksAppliedCheck" style="display: none;">✅</span>
                 </div>
 
-                <div class="boundary-content" id="boundaryContent">
-                    <p style="font-size: 13px; color: #666; margin: 8px 0 20px 0;">Choose how to handle property setbacks for your site.</p>
+                <div class="boundary-content setback-content">
+                    <p style="font-size: 13px; color: #666; margin: 8px 0 16px 0;">Set setback distances from property boundaries to define the buildable area.</p>
 
-                    <!-- Setback Mode Selection -->
-                    <div class="setback-mode-selection" style="margin: 12px 0;" id="setbackModeSelection">
-                        <div style="margin-bottom: 8px; font-size: 12px; color: #666;">Choose setback approach:</div>
-                        <button id="createSetbacksButton" class="draw-button" style="width: 100%; margin-bottom: 8px;" type="button">Create Setbacks</button>
-                        <div style="text-align: center; margin: 8px 0; font-size: 12px; color: #999;">OR</div>
-                        <button id="noSetbacksButton" class="draw-button" style="width: 100%; margin-bottom: 8px; background: linear-gradient(135deg, #6c757d 0%, #545b62 100%);" type="button">No Setbacks</button>
+                    <!-- Edge Selection Instructions -->
+                    <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 13px; color: #666;">
+                        <strong>Step 1:</strong> Click on polygon edges to select front and back boundaries for setback calculation.
                     </div>
 
-                    <!-- Edge Selection Mode -->
-                    <div class="edge-selection-mode" style="margin: 12px 0; display: none;" id="edgeSelectionMode">
-                        <p style="font-size: 13px; color: #666; margin: 8px 0 20px 0;">Click two edges of your property to define front and back, then enter setback requirements.</p>
-                        <button id="edgeSelectionButton" class="edge-selection-btn" type="button">Select Front & Back Edges</button>
-                    </div>
+                    <!-- Edge Selection Button -->
+                    <button id="selectEdgesButton" class="edge-selection-btn" style="width: 100%; margin-bottom: 16px;" type="button">Select Property Edges</button>
 
                     <!-- Selected Edges Display -->
-                    <div id="selectedEdgesDisplay" class="selected-edges-display" style="display: none; margin: 12px 0;">
-                        <div class="edge-item"><span class="edge-label">Front Setback:</span><span id="frontEdgeDisplay" class="edge-value">Not selected</span></div>
-                        <div class="edge-item"><span class="edge-label">Back Setback:</span><span id="backEdgeDisplay" class="edge-value">Not selected</span></div>
-                    </div>
-
-                    <!-- Setback Input Fields -->
-                    <div id="setbackInputsContainer" class="setback-inputs" style="margin: 16px 0; display: none;">
-                        <div class="input-group">
-                            <label for="frontSetback">Front Setback (m)</label>
-                            <input type="number" id="frontSetback" step="0.1" value="4.5" class="setback-input">
-                        </div>
-                        <div class="input-group">
-                            <label for="backSetback">Back Setback (m)</label>
-                            <input type="number" id="backSetback" step="0.1" value="3.5" class="setback-input">
-                        </div>
-                        <div class="input-group">
-                            <label for="sideSetback">Side Setback (m)</label>
-                            <input type="number" id="sideSetback" step="0.1" value="1.5" class="setback-input">
-                        </div>
-                        <div class="input-group">
-                            <label for="heightLimit">Height Limit (m)</label>
-                            <input type="number" id="heightLimit" min="0" step="0.1" value="9" class="setback-input">
+                    <div id="selectedEdgesDisplay" style="display: none; margin-bottom: 16px;">
+                        <div class="selected-edges-display">
+                            <div class="edge-item" id="frontEdgeItem" style="display: none;">
+                                <span class="edge-label">Front Edge:</span>
+                                <span class="edge-value" id="frontEdgeLength">- m</span>
+                            </div>
+                            <div class="edge-item" id="backEdgeItem" style="display: none;">
+                                <span class="edge-label">Back Edge:</span>
+                                <span class="edge-value" id="backEdgeLength">- m</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div id="buildableAreaControls" style="display: none; margin-top: 10px;">
-                        <button id="recalculateButton" class="setback-button" type="button">Calculate & Confirm Buildable Area</button>
+                    <!-- Setback Inputs -->
+                    <div id="setbackInputsContainer" style="display: none;">
+                        <div class="setback-inputs">
+                            <div class="input-group">
+                                <label for="frontSetback">Front Setback (m)</label>
+                                <input type="number" id="frontSetback" class="setback-input" value="4.5" min="0" step="0.1">
+                                <div id="frontSetbackWarning" class="setback-warning" style="display: none;"></div>
+                            </div>
+                            <div class="input-group">
+                                <label for="backSetback">Back Setback (m)</label>
+                                <input type="number" id="backSetback" class="setback-input" value="3.5" min="0" step="0.1">
+                                <div id="backSetbackWarning" class="setback-warning" style="display: none;"></div>
+                            </div>
+                            <div class="input-group">
+                                <label for="sideSetback">Side Setback (m)</label>
+                                <input type="number" id="sideSetback" class="setback-input" value="1.5" min="0" step="0.1">
+                                <div id="sideSetbackWarning" class="setback-warning" style="display: none;"></div>
+                            </div>
+                            <div class="input-group">
+                                <label for="heightLimit">Height Limit (m)</label>
+                                <input type="number" id="heightLimit" class="setback-input" value="9" min="1" step="0.1">
+                                <div id="heightLimitWarning" class="setback-warning" style="display: none;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Preview Button -->
+                        <button id="previewBuildableAreaButton" class="setback-button" style="width: 100%; margin: 16px 0 8px 0;" type="button">Preview Buildable Area</button>
+
+                        <!-- Calculate Button -->
+                        <button id="calculateBuildableAreaButton" class="action-button" style="width: 100%;" type="button">Calculate Buildable Area</button>
                     </div>
                 </div>
             </div>
 
             <!-- Structure Placement -->
-            <div class="floorplan-upload collapsed" id="floorplanControls" style="margin-top: 24px;">
+            <div class="floorplan-upload collapsed" id="floorplanControls">
                 <div class="info-title">
                     3. Structure Placement
-                    <span class="floorplan-applied-check" id="floorplanAppliedCheck" style="display: none;">📐</span>
+                    <span class="floorplan-applied-check" id="floorplanAppliedCheck" style="display: none;">✅</span>
                 </div>
 
-                <div class="floorplan-content" id="floorplanContent">
-                    <p style="font-size: 13px; color: #666; margin: 8px 0;">Define the building footprint by drawing its intended location within the site boundary.</p>
+                <div class="floorplan-content">
+                    <p style="font-size: 13px; color: #666; margin: 8px 0 16px 0;">Draw building footprints within the buildable area.</p>
 
-                    <button class="draw-button" id="drawFloorplanButton" style="margin-top: 8px; width: 100%;" type="button">Draw Structure Footprint</button>
+                    <!-- Draw Structure Button -->
+                    <button id="drawFloorplanButton" class="draw-button" disabled style="width: 100%; margin-bottom: 16px; opacity: 0.5; cursor: not-allowed;" type="button">Draw Structure Footprint</button>
 
-                    <div id="structureDrawingButtonRow" class="button-row" style="display: none;">
-                        <button id="stopStructureDrawingButton" class="btn btn-secondary" type="button">Stop Drawing</button>
-                        <button id="clearStructuresButton" class="btn btn-outline-danger" type="button">Clear All</button>
+                    <!-- Floorplan Upload Section -->
+                    <div id="floorplanUploadSection" style="display: none;">
+                        <div style="border: 2px dashed #ddd; border-radius: 8px; padding: 20px; text-align: center; margin: 16px 0;">
+                            <input type="file" id="floorplanUpload" accept="image/*,.pdf" style="display: none;">
+                            <button class="upload-button" onclick="document.getElementById('floorplanUpload').click();" type="button">
+                                📁 Upload Floorplan
+                            </button>
+                            <p style="font-size: 12px; color: #999; margin: 8px 0 0 0;">Supports: JPG, PNG, PDF</p>
+                        </div>
                     </div>
-
-                    <!-- Structure Info Display -->
-                    <div id="structureInfoDisplay" class="info-display" style="display: none;">
-                        <div class="info-item"><label>Total Structures:</label><span id="structureCountDisplay">0</span></div>
-                        <div class="info-item"><label>Current Area:</label><span id="structureAreaDisplay">0 m²</span></div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="action-buttons">
-                        <button id="confirmStructureButton" class="btn btn-success" style="display: none;" type="button">Confirm Structure</button>
-                    </div>
-
-                    <div class="floorplan-status" style="font-size: 13px; margin-top: 12px; padding: 8px 12px; border-radius: 6px; display: none;"></div>
-
-                    <div class="floorplan-action-buttons" style="display: flex; gap: 8px; margin-top: 16px; align-items: center;">
-                        <button id="clearFloorplanButton" class="action-button" style="display: none; flex: 1; margin: 0; background: #dc3545;" type="button">Clear Structure</button>
-                    </div>
-
-                    {% if site_data.get('floorplan_data') and site_data.get('floorplan_data').get('success') and site_data.get('floorplan_data').get('boundaries') %}
-                    <div style="font-size: 13px; color: #155724; margin-top: 12px;">
-                        ✓ Floor plan uploaded ({{ site_data.get('floorplan_data').get('boundaries')|length }} boundary points)
-                    </div>
-                    {% endif %}
                 </div>
             </div>
 
             <!-- 3D Extrusion -->
-            <div class="boundary-controls collapsed" id="extrusionControls" style="margin-top: 24px;">
+            <div class="info-section collapsed" id="extrusionControls" style="display: none;">
                 <div class="info-title">
                     4. 3D Extrusion
                     <span class="extrusion-applied-check" id="extrusionAppliedCheck" style="display: none;">✅</span>
                 </div>
 
-                <div class="boundary-content extrusion-content">
-                    <p style="color: #666; font-size: 13px; margin-bottom: 16px;">Create 3D models from your structure footprints.</p>
+                <div class="extrusion-content">
+                    <p style="font-size: 13px; color: #666; margin: 8px 0 16px 0;">Create 3D models of your structures.</p>
 
-                    <div class="input-group">
-                        <label for="structureHeightInput">Structure Height (m):</label>
-                        <input type="number" id="structureHeightInput" value="12" min="1" max="50" step="0.5" class="setback-input">
+                    <!-- Structure Height Input -->
+                    <div class="input-group" style="margin-bottom: 16px;">
+                        <label for="structureHeightInput">Structure Height (m)</label>
+                        <input type="number" id="structureHeightInput" class="setback-input" value="12" min="1" step="0.1">
                     </div>
 
-                    <div class="button-row">
-                        <button class="setback-button primary" id="extrudeStructureButton" type="button">Extrude Structure Footprint</button>
-                    </div>
+                    <!-- Extrude Button -->
+                    <button id="extrudeStructureButton" class="action-button" disabled style="width: 100%; margin-bottom: 12px;" type="button">Draw Structure First</button>
 
-                    <div class="button-row">
-                        <button class="setback-button" id="toggle3DViewButton" type="button">Enable 3D View</button>
-                        <button class="setback-button" id="removeAll3DBtn" style="display: none; background: #dc3545;" type="button">Remove All 3D Models</button>
+                    <!-- Active Extrusions Display -->
+                    <div id="activeExtrusionsDisplay" style="display: none;">
+                        <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                            <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Active 3D Structures</div>
+                            <div id="extrusionsList"></div>
+                        </div>
+                        <button id="removeAll3DBtn" class="action-button" style="background: #dc3545; width: 100%;" type="button">Remove All 3D Structures</button>
                     </div>
-
-                    <div id="activeExtrusionsDisplay" style="display: none; margin-top: 12px;">
-                        <h4>Active 3D Models:</h4>
-                        <div id="extrusionsList" style="font-size: 12px;"></div>
-                    </div>
-
-                    <div id="extrusionStatus" class="floorplan-status" style="display: none; margin-top: 12px;"></div>
                 </div>
             </div>
 
-            <!-- Clear Site Inspector Button - Moved to bottom -->
-            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(0, 0, 0, 0.1);">
-                <button id="clearSiteInspectorButton" class="clear-site-inspector-btn">
-                    Clear Site Inspector
+            <!-- Progress Actions -->
+            <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                <!-- Cut & Fill Analysis Button -->
+                <button id="cutFillAnalysisBtn" class="action-button" style="width: 100%; margin-bottom: 12px;" type="button">
+                    🌍 Cut & Fill Analysis
+                </button>
+
+                <!-- Save Progress Button -->
+                <button id="saveProgressBtn" class="setback-button" style="width: 100%; margin-bottom: 12px;" type="button">
+                    💾 Save Progress
+                </button>
+
+                <!-- Clear Site Inspector Button -->
+                <button id="clearSiteInspectorButton" class="clear-site-inspector-btn" style="width: 100%;" type="button">
+                    🗑️ Clear Site Inspector
                 </button>
             </div>
         </div>
     </div>
 
     <!-- Help Tooltip Modal -->
-    <div class="help-tooltip" id="helpTooltip">
+    <div class="help-tooltip" id="helpTooltip" style="display: none;">
         <div class="help-tooltip-content">
-            <h4>🏗️ Site Inspector Guide</h4>
+            <h4>Site Inspector Help</h4>
             <ol>
-                <li><strong>Draw Site Boundary:</strong> Click the "Draw Site Boundary" button and trace your property outline on the map</li>
-                <li><strong>Select Edges:</strong> Use "Select Front & Back Edges" to define which sides face the street and rear</li>
-                <li><strong>Set Setbacks:</strong> Enter required distances from property boundaries (front, back, sides)</li>
-                <li><strong>Calculate Area:</strong> Click "Calculate Buildable Area" to see where you can build</li>
-                <li><strong>Upload Plans:</strong> Add your floor plan image to overlay on the buildable area</li>
-                <li><strong>3D Visualization:</strong> Use "Enable 3D View" to see your design in three dimensions</li>
+                <li><strong>Site Boundary:</strong> Draw or use legal property boundaries to define your site area</li>
+                <li><strong>Property Setbacks:</strong> Set required distances from boundaries to create buildable area</li>
+                <li><strong>Edge Selection:</strong> Click on polygon edges to select front and back boundaries</li>
+                <li><strong>Structure Placement:</strong> Draw building footprints within the buildable area</li>
+                <li><strong>3D Extrusion:</strong> Convert 2D footprints into 3D structures with specified heights</li>
+                <li><strong>Map Controls:</strong> Use zoom, pan, and style controls to navigate the map</li>
+                <li><strong>Measure Tool:</strong> Click and drag to measure distances on the map</li>
             </ol>
-            <button class="close-help-btn" onclick="document.getElementById('helpTooltip').style.display='none'">Got it!</button>
+            <button class="close-help-btn" onclick="document.getElementById('helpTooltip').style.display='none';" type="button">Close</button>
         </div>
     </div>
 
     <!-- Clear Site Inspector Confirmation Modal -->
-    <div class="clear-confirmation-modal" id="clearConfirmationModal">
+    <div class="clear-confirmation-modal" id="clearConfirmationModal" style="display: none;">
         <div class="clear-confirmation-content">
             <h3>⚠️ Clear All Site Data</h3>
-            <p>This action will permanently remove all data from the Site Inspector, including:</p>
-            <ul style="margin: 16px 0; padding-left: 20px; color: #333;">
-                <li>Site boundary polygon</li>
-                <li>Property setback configurations</li>
-                <li>Buildable area calculations</li>
-                <li>Structure placements and floor plans</li>
-                <li>3D extrusions and models</li>
+            <p>This action will permanently delete all site inspector data including:</p>
+            <ul style="text-align: left; margin: 16px 0; padding-left: 20px;">
+                <li>Site boundary and coordinates</li>
+                <li>Property setbacks and buildable area</li>
+                <li>Structure footprints and 3D models</li>
+                <li>All project snapshots</li>
             </ul>
-            <p><strong>This action cannot be undone.</strong> Are you sure you want to continue?</p>
+            <p><strong>This action cannot be undone.</strong></p>
             <div class="clear-confirmation-buttons">
-                <button class="clear-cancel-btn" id="clearCancelBtn">Cancel</button>
-                <button class="clear-confirm-btn" id="clearConfirmBtn">Yes, Clear All Data</button>
+                <button id="clearCancelBtn" class="clear-cancel-btn" type="button">Cancel</button>
+                <button id="clearConfirmBtn" class="clear-confirm-btn" type="button">Clear All Data</button>
             </div>
         </div>
     </div>
@@ -1478,68 +1477,6 @@
                     alert('Site data cleared! (Functionality to be implemented)');
                 });
             }
-
-            // === Comments Tool Expand/Collapse Logic ===
-            const commentsControl = document.getElementById('commentsControl');
-            const commentsControlToggle = document.getElementById('commentsControlToggle');
-            const commentsExpandedContent = document.getElementById('commentsExpandedContent');
-            const commentsCloseButton = document.getElementById('commentsCloseButton');
-
-            function toggleCommentsControl() {
-                if (!commentsControl || !commentsControlToggle) return;
-                
-                const isExpanded = commentsControl.classList.contains('expanded');
-                commentsControl.classList.toggle('expanded', !isExpanded);
-                commentsControlToggle.classList.toggle('is-on', !isExpanded);
-                commentsControlToggle.setAttribute('aria-pressed', String(!isExpanded));
-                console.log(`[Comments] Comments control ${!isExpanded ? 'expanded' : 'collapsed'}`);
-            }
-
-            function closeCommentsControl() {
-                if (!commentsControl || !commentsControlToggle) return;
-                
-                commentsControl.classList.remove('expanded');
-                commentsControlToggle.classList.remove('is-on');
-                commentsControlToggle.setAttribute('aria-pressed', 'false');
-                console.log('[Comments] Comments control collapsed');
-            }
-
-            if (commentsControl && commentsControlToggle && commentsExpandedContent) {
-                // Main toggle button (💬)
-                commentsControlToggle.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    toggleCommentsControl();
-                });
-
-                // Close button (×) inside the expanded content
-                if (commentsCloseButton) {
-                    commentsCloseButton.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        closeCommentsControl();
-                    });
-                }
-
-                // Close the comments card if clicking outside of it
-                document.addEventListener('click', (e) => {
-                    if (commentsControl && commentsControl.classList.contains('expanded') &&
-                        !commentsControl.contains(e.target)) {
-                        closeCommentsControl();
-                        console.log('[Comments] Comments control collapsed by outside click.');
-                    }
-                });
-
-                // Close comments card with ESC key
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape' && commentsControl && commentsControl.classList.contains('expanded')) {
-                        closeCommentsControl();
-                        console.log('[Comments] Comments control collapsed by ESC key.');
-                    }
-                });
-            } else {
-                console.warn('[Comments] Missing elements for comments control functionality.');
-            }
-            // === End Comments Tool Logic ===
-
 
             // === FIX: Wire the three non-working controls ===
 
