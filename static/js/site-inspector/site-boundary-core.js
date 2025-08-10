@@ -996,6 +996,15 @@ class SiteBoundaryCore extends MapManagerBase {
             this.buildableAreaData = null;
             this.isLocked = false;
 
+            // Clear session storage for legal boundary
+            try {
+                sessionStorage.removeItem('legal_boundary_applied');
+                sessionStorage.removeItem('legal_boundary_coordinates');
+                this.info('Legal boundary session data cleared');
+            } catch (e) {
+                this.warn('Could not clear session storage:', e);
+            }
+
             // Clear MapboxDraw features first
             try {
                 if (this.draw && this.draw.deleteAll) {
@@ -1008,18 +1017,32 @@ class SiteBoundaryCore extends MapManagerBase {
             // Clear visuals
             this.clearAllVisualizationLayers();
 
-            // Force remove final boundary layers and sources
+            // Force remove ALL boundary-related layers and sources
             try {
                 const layersToRemove = [
+                    // Site boundary layers (owned by this class)
                     this.layerIds.finalFill,
                     this.layerIds.finalStroke,
+                    // Alternative naming that might exist
                     'site-boundary-fill',
-                    'site-boundary-stroke'
+                    'site-boundary-stroke',
+                    // Property boundary layers
+                    'property-boundaries-fill',
+                    'property-boundaries-stroke',
+                    // Buildable area layers (if any)
+                    'buildable-area-fill',
+                    'buildable-area-stroke'
                 ];
 
                 const sourcesToRemove = [
+                    // Site boundary sources
                     this.sourceIds.final,
-                    'site-boundary'
+                    'site-boundary',
+                    // Property boundary sources
+                    'property-boundaries',
+                    // Buildable area source
+                    this.sourceIds.buildableArea,
+                    'buildable-area'
                 ];
 
                 layersToRemove.forEach(layerId => {
@@ -1044,8 +1067,11 @@ class SiteBoundaryCore extends MapManagerBase {
                     }
                 });
             } catch (error) {
-                this.warn('Error removing final boundary layers:', error);
+                this.warn('Error removing boundary layers:', error);
             }
+
+            // Reset legal boundary button state
+            this.resetLegalBoundaryButton();
 
             // Reset UI and draw button
             this.updateButtonStates(false, false);
@@ -1060,11 +1086,14 @@ class SiteBoundaryCore extends MapManagerBase {
                 drawBtn.style.display = 'inline-block';
             }
 
+            // Clear buildable area display completely
+            this.clearBuildableAreaDisplay();
+
             // Emit clear events
             this.emit('site-boundary-deleted');
             this.emit('clear-all-dependent-features');
 
-            this.info('Site boundary cleared');
+            this.info('Site boundary cleared completely');
         } catch (error) {
             this.error('Error clearing site boundary:', error);
         }
@@ -1498,6 +1527,12 @@ class SiteBoundaryCore extends MapManagerBase {
         const btn = this.getElementById('useLegalBoundaryButton', false);
         if (btn?.disabled) throw new Error('Legal property boundaries are not available for this location.');
 
+        // Clear any existing boundary first
+        if (this.hasSiteBoundary()) {
+            this.info('Clearing existing boundary before applying legal boundary');
+            this.clearBoundary();
+        }
+
         const siteData = window.siteData || {};
         const projectData = window.projectData || {};
         let center = siteData.center;
@@ -1601,6 +1636,21 @@ class SiteBoundaryCore extends MapManagerBase {
 
     triggerLegalBoundaryWorkflow() {
         try { window.eventBus?.emit?.('legal-boundary-applied'); } catch (e) { this.error('Error triggering legal workflow:', e); }
+    }
+
+    resetLegalBoundaryButton() {
+        try {
+            const btn = this.getElementById('useLegalBoundaryButton', false);
+            if (btn) {
+                btn.textContent = 'Use Legal Property Boundary';
+                btn.classList.remove('active');
+                btn.style.background = '';
+                this.setupLegalBoundaryButtonState(); // Reapply proper state
+                this.info('Legal boundary button reset');
+            }
+        } catch (error) {
+            this.error('Error resetting legal boundary button:', error);
+        }
     }
 
     // ---------- Public API ----------

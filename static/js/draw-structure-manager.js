@@ -1,4 +1,3 @@
-
 /**
  * Draw Structure Manager - Reliable structure drawing on Mapbox Draw
  * Simplified: rely solely on Mapbox-Draw for interactions (no parallel preview stack)
@@ -29,6 +28,7 @@ if (typeof DrawStructureManager === 'undefined') {
 
             this.draw = null;
             this.isDrawing = false;
+            this.isActivelyDrawing = false; // Track if this manager is actively controlling drawing
 
             // keep lightweight state to preserve API
             this.state = {
@@ -141,10 +141,10 @@ if (typeof DrawStructureManager === 'undefined') {
 
             try {
                 this.info('Starting structure drawing mode...');
-                
+
                 // Notify other modules and stop any site boundary drawing
                 window.eventBus?.emit?.('tool-activated', 'floorplan');
-                
+
                 // Stop any site boundary drawing that might be active
                 const siteBoundaryCore = window.siteInspectorCore?.siteBoundaryCore;
                 if (siteBoundaryCore?.isDrawingActive?.()) {
@@ -157,6 +157,7 @@ if (typeof DrawStructureManager === 'undefined') {
 
                 // Reset state
                 this.isDrawing = true;
+                this.isActivelyDrawing = true; // Set as actively drawing
                 this.state.isDrawing = true;
                 this.state.drawingPoints = [];
                 this.state.currentDrawMode = 'draw_polygon';
@@ -182,8 +183,8 @@ if (typeof DrawStructureManager === 'undefined') {
 
         stopDrawing() {
             try {
-                if (!this.draw) return;
                 this.isDrawing = false;
+                this.isActivelyDrawing = false; // Clear active state
                 this.state.isDrawing = false;
                 this.state.drawingPoints = [];
                 this.state.currentDrawMode = null;
@@ -338,6 +339,7 @@ if (typeof DrawStructureManager === 'undefined') {
 
         _resetDrawingState() {
             this.isDrawing = false;
+            this.isActivelyDrawing = false; // Clear active state
             this.state.isDrawing = false;
             this.state.drawingPoints = [];
             this.state.currentDrawMode = null;
