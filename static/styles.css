@@ -2729,7 +2729,7 @@ body {
 
         /* ON state */
         .toggle-btn.is-on .switch {
-            background: #2ea043;
+            background: #547bf7;
         }
 
         .toggle-btn.is-on .knob {
