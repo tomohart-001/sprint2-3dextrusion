@@ -346,7 +346,7 @@
             top: 70px;
             left: 8px;
             width: 40px; height: 40px;
-            overflow: hidden; background: rgba(255, 255, 255, 0.95);
+            overflow: hidden background: rgba(255, 255, 255, 0.95);
             border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); backdrop-filter: blur(20px);
             z-index: 1000; transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); cursor: pointer; display: flex; flex-direction: column;
         }
@@ -986,13 +986,6 @@
                 </button>
             </div>
 
-            <!-- Clear Site Inspector Button -->
-            <div style="margin-bottom: 20px;">
-                <button id="clearSiteInspectorButton" class="clear-site-inspector-btn">
-                    Clear Site Inspector
-                </button>
-            </div>
-
             <!-- Site Boundary Drawing Tool -->
             <div class="boundary-controls" id="siteBoundaryControls">
                 <div class="info-title">
@@ -1148,6 +1141,13 @@
 
                     <div id="extrusionStatus" class="floorplan-status" style="display: none; margin-top: 12px;"></div>
                 </div>
+            </div>
+
+            <!-- Clear Site Inspector Button - Moved to bottom -->
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(0, 0, 0, 0.1);">
+                <button id="clearSiteInspectorButton" class="clear-site-inspector-btn">
+                    Clear Site Inspector
+                </button>
             </div>
         </div>
     </div>
@@ -1337,11 +1337,14 @@
                         window.mapFeaturesManager.toggleMeasureTool();
                         const isOn = !!(window.mapFeaturesManager.isMeasuringActive?.() || window.mapFeaturesManager.isMeasuring);
                         setActive(isOn);
+                    } else if (window.eventBus?.emit) {
+                        window.eventBus.emit('measure:toggle');
+                        // Assume the event handler will update the button state
                     } else {
-                        console.warn('[Measure] mapFeaturesManager not available; creating simple state toggle.');
+                        console.warn('[Measure] mapFeaturesManager or eventBus not available; creating simple state toggle.');
                         const next = btn.classList.contains('active') ? false : true;
                         setActive(next);
-                        
+
                         // Simple fallback measuring
                         if (next && window.siteInspectorCore?.map) {
                             window.siteInspectorCore.map.getCanvas().style.cursor = 'crosshair';
