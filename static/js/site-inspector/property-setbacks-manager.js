@@ -243,9 +243,22 @@ class PropertySetbacksManager extends BaseManager {
      UI enable/disable
   ------------------------------ */
   enableSetbackTools() {
+    // Only enable if a boundary selection type is confirmed
+    const siteBoundaryCore = window.siteInspectorCore?.siteBoundaryManager;
+    const hasValidSelection = siteBoundaryCore?.boundarySelectionType &&
+                            (siteBoundaryCore.hasSiteBoundary?.() || siteBoundaryCore.legalBoundaryApplied);
+
     const btn = document.getElementById('edgeSelectionButton');
-    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
-    this.info('Setback tools enabled');
+    if (btn) {
+        btn.disabled = !hasValidSelection;
+        btn.style.opacity = hasValidSelection ? '1' : '0.6';
+        if (!hasValidSelection) {
+            btn.title = 'Please complete step 1: Select either a custom boundary or legal property boundary';
+        } else {
+            btn.title = '';
+        }
+    }
+    this.info(`Setback tools ${hasValidSelection ? 'enabled' : 'disabled'} - boundary selection: ${siteBoundaryCore?.boundarySelectionType || 'none'}`);
   }
 
   disableSetbackTools() {
@@ -1156,8 +1169,8 @@ class PropertySetbacksManager extends BaseManager {
 
         const midpoint = [(startCoord[0] + endCoord[0]) / 2, (startCoord[1] + endCoord[1]) / 2];
         const distance = this.calculateDistance(
-          { lng: startCoord[0], lat: startCoord[1] },
-          { lng: endCoord[0],   lat: endCoord[1] }
+          {lng: startCoord[0], lat: startCoord[1] },
+          {lng: endCoord[0],   lat: endCoord[1] }
         );
 
         dimensionFeatures.push({

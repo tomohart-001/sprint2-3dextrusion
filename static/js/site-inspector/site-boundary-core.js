@@ -20,6 +20,7 @@ class SiteBoundaryCore extends MapManagerBase {
         this.legalPropertyBoundary = null; // Store legal property boundary separately
         this.legalPropertyEdges = [];     // Store edges for legal property boundary
         this.legalBoundaryApplied = false; // Flag to indicate if legal boundary is active
+        this.boundarySelectionType = null; // 'user_drawn' or 'legal_property'
         this.isLocked = false;
         this.isDrawing = false;
         this.drawingPoints = [];
@@ -301,6 +302,10 @@ class SiteBoundaryCore extends MapManagerBase {
 
     safeUseLegalBoundary() {
         try {
+            // Clear any existing user-drawn boundary first
+            if (this.boundarySelectionType === 'user_drawn') {
+                this.clearBoundary();
+            }
             this.useLegalPropertyBoundary();
         } catch (e) {
             this.error('useLegalPropertyBoundary error', e);
@@ -423,6 +428,10 @@ class SiteBoundaryCore extends MapManagerBase {
     startDrawingMode() {
         if (!this.validateDrawingReadiness()) return;
         try {
+            // Clear any existing legal boundary first
+            if (this.boundarySelectionType === 'legal_property') {
+                this.clearBoundary();
+            }
             this.info('Starting drawing mode...');
 
             // More robust validation
@@ -827,6 +836,7 @@ class SiteBoundaryCore extends MapManagerBase {
 
         setTimeout(() => { try { this.draw?.changeMode?.('simple_select'); } catch (_) {} }, 100);
 
+        this.boundarySelectionType = 'user_drawn';
         this.emitBoundaryCreatedEvent(coordinates, metrics);
         this.info(`Site boundary created: area=${metrics.area.toFixed(2)} m², vertices=${coordinates.length - 1}`);
     }
@@ -999,6 +1009,7 @@ class SiteBoundaryCore extends MapManagerBase {
             this.legalPropertyBoundary = null; // Clear legal boundary data
             this.legalPropertyEdges = [];     // Clear legal property edges
             this.legalBoundaryApplied = false; // Reset flag
+            this.boundarySelectionType = null; // Clear selection type
             this.buildableAreaData = null;
             this.isLocked = false;
 
