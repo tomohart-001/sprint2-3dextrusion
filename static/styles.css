@@ -2546,7 +2546,7 @@ body {
 
 .panel-toggle-btn {
             position: fixed;
-            top: calc(var(--chrome-h) + 20px);
+            top: calc(var(--chrome-h) + var(--panel-gap));
             left: 64px;
             width: 40px;
             height: 40px;
