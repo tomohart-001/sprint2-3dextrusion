@@ -1716,7 +1716,7 @@ class SiteBoundaryCore extends MapManagerBase {
         try {
             const btn = this.getElementById('useLegalBoundaryButton', false);
             if (btn) {
-                btn.textContent = 'Use Legal Property Boundary';
+                btn.textContent = 'Copy Legal Boundary as Site Template';
                 btn.classList.remove('active');
                 btn.style.background = '';
                 this.setupLegalBoundaryButtonState(); // Reapply proper state
