@@ -94,7 +94,7 @@ class UIPanelManager extends BaseManager {
     setupEventListeners() {
         const signal = this._uiAbort.signal;
 
-        // Inspector panel toggle
+        // Inspector panel toggle (main button in panel)
         const panelToggleBtn = this.$('panelToggleBtn');
         panelToggleBtn?.addEventListener('click', () => this.toggleInspectorPanel(), { signal });
 
@@ -223,6 +223,12 @@ class UIPanelManager extends BaseManager {
         const extrusionControls = this.$('extrusionControls');
         this._toggle(extrusionControls, 'collapsed', true);
         this.cardStates.extrusion = 'collapsed';
+
+        // Initialize panel toggle button (hidden when panel is expanded)
+        const panelToggleBtn = this.$('panelToggleBtn');
+        if (panelToggleBtn) {
+            panelToggleBtn.style.display = 'none';
+        }
 
         // Loading shimmer for cards (once)
         this.showCardLoadingStates();
@@ -390,12 +396,18 @@ class UIPanelManager extends BaseManager {
         const mapLegend = this.$('mapLegend');
         const mapControlsContainer = this.$('mapControlsContainer');
         const topLeftControls = document.querySelector('.top-left-controls');
+        const panelToggleBtn = this.$('panelToggleBtn');
 
         const expanded = panel.classList.contains('expanded');
         this._toggle(panel, 'expanded', !expanded);
         this._toggle(topLeftControls, 'shifted', !expanded);
         this._toggle(mapLegend, 'shifted', !expanded);
         this._toggle(mapControlsContainer, 'shifted', !expanded);
+
+        // Show/hide the panel toggle button
+        if (panelToggleBtn) {
+            panelToggleBtn.style.display = !expanded ? 'none' : 'flex';
+        }
 
         this.panelState.inspector = !expanded;
 
