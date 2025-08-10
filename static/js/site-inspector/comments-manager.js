@@ -18,16 +18,43 @@ class CommentsManager extends BaseManager {
         this.setupEventListeners();
         this.setupCommentsControl();
         this.loadProjectComments();
+        
+        // Ensure control starts collapsed
+        const control = document.getElementById('commentsControl');
+        const expandedContent = document.getElementById('commentsExpandedContent');
+        if (control && expandedContent) {
+            control.classList.remove('expanded');
+            expandedContent.style.display = 'none';
+        }
+        
         this.info('Comments Manager initialized successfully');
     }
 
     setupEventListeners() {
-        // Comments tool button
+        // Comments control toggle button (expand/collapse card)
+        const commentsControlToggle = document.getElementById('commentsControlToggle');
+        if (commentsControlToggle) {
+            commentsControlToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleCommentsControl();
+            });
+        }
+
+        // Show/hide comments toggle button
         const commentsBtn = document.getElementById('commentsToolButton');
         if (commentsBtn) {
             commentsBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.toggleCommentsTool();
+                this.toggleShowComments();
+            });
+        }
+
+        // Add comment button
+        const addCommentBtn = document.getElementById('addCommentButton');
+        if (addCommentBtn) {
+            addCommentBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.startCommenting();
             });
         }
 
@@ -48,33 +75,100 @@ class CommentsManager extends BaseManager {
     }
 
     setupCommentsControl() {
+        this.showCommentsEnabled = false;
+        this.commentsControlExpanded = false;
         this.info('Comments control ready');
     }
 
-    toggleCommentsTool() {
-        const button = document.getElementById('commentsToolButton');
+    toggleCommentsControl() {
+        const control = document.getElementById('commentsControl');
+        const expandedContent = document.getElementById('commentsExpandedContent');
+        
+        if (!control || !expandedContent) return;
 
-        if (this.isCommenting) {
-            this.stopCommenting();
-            button.classList.remove('active');
-            button.innerHTML = '💬';
+        this.commentsControlExpanded = !this.commentsControlExpanded;
+        
+        if (this.commentsControlExpanded) {
+            control.classList.add('expanded');
+            expandedContent.style.display = 'block';
+            this.info('Comments control expanded');
         } else {
-            this.startCommenting();
-            button.classList.add('active');
-            button.innerHTML = '✖';
-
-            // Notify other tools
-            window.eventBus.emit('tool-activated', 'comments');
+            control.classList.remove('expanded');
+            expandedContent.style.display = 'none';
+            // If we're collapsing and comments are being shown, hide them
+            if (this.showCommentsEnabled) {
+                this.hideComments();
+                this.showCommentsEnabled = false;
+                this.updateShowCommentsButton();
+            }
+            // If we're commenting, stop
+            if (this.isCommenting) {
+                this.stopCommenting();
+            }
+            this.info('Comments control collapsed');
         }
     }
 
+    toggleShowComments() {
+        this.showCommentsEnabled = !this.showCommentsEnabled;
+        
+        if (this.showCommentsEnabled) {
+            this.showExistingComments();
+            this.info('Comments visibility enabled');
+        } else {
+            this.hideComments();
+            this.info('Comments visibility disabled');
+        }
+        
+        this.updateShowCommentsButton();
+    }
+
+    updateShowCommentsButton() {
+        const button = document.getElementById('commentsToolButton');
+        if (button) {
+            if (this.showCommentsEnabled) {
+                button.classList.add('is-on');
+            } else {
+                button.classList.remove('is-on');
+            }
+        }
+    }
+
+    toggleCommentsTool() {
+        // This method is kept for backward compatibility but now just calls startCommenting
+        this.startCommenting();
+    }
+
     startCommenting() {
+        // Ensure the control is expanded first
+        if (!this.commentsControlExpanded) {
+            this.toggleCommentsControl();
+        }
+        
         this.isCommenting = true;
         this.map.getCanvas().style.cursor = 'crosshair';
         this.map.on('click', this.handleCommentClick);
-        this.showExistingComments();
+        
+        // Show existing comments if they're not already visible
+        if (!this.showCommentsEnabled) {
+            this.showCommentsEnabled = true;
+            this.updateShowCommentsButton();
+            this.showExistingComments();
+        }
+        
         this.addCommentToolExitListeners();
+        
+        // Update the add comment button to show it's active
+        const addCommentBtn = document.getElementById('addCommentButton');
+        if (addCommentBtn) {
+            addCommentBtn.textContent = 'Click map to add comment';
+            addCommentBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+        }
+        
         this.info('Comments tool started - click on map to add comments');
+
+        // Notify other tools
+        window.eventBus.emit('tool-activated', 'comments');
     }
 
     stopCommenting() {
@@ -90,13 +184,18 @@ class CommentsManager extends BaseManager {
             this.map.getCanvas().style.cursor = '';
         }
 
-        this.hideComments();
         this.removeCommentToolExitListeners();
 
-        const button = document.getElementById('commentsToolButton');
-        if (button) {
-            button.classList.remove('active');
-            button.innerHTML = '💬';
+        // Reset the add comment button
+        const addCommentBtn = document.getElementById('addCommentButton');
+        if (addCommentBtn) {
+            addCommentBtn.textContent = 'Add new comment';
+            addCommentBtn.style.background = 'linear-gradient(135deg, #547bf7 0%, #4a6bda 100%)';
+        }
+
+        // Keep comments visible if show comments is enabled
+        if (!this.showCommentsEnabled) {
+            this.hideComments();
         }
 
         this.info('Comments tool stopped');
@@ -623,7 +722,7 @@ class CommentsManager extends BaseManager {
                         text: comment.text,
                         timestamp: comment.timestamp,
                         user: comment.user
-                    });
+                    }, false); // Don't auto-show on load
                 });
 
                 this.info('Comments loaded and displayed successfully');
@@ -636,11 +735,18 @@ class CommentsManager extends BaseManager {
     }
 
     showExistingComments() {
-        this.comments.forEach(comment => {
-            if (!comment.marker) {
-                this.addCommentToMap(comment);
-            }
-        });
+        if (this.showCommentsEnabled || this.isCommenting) {
+            this.comments.forEach(comment => {
+                if (!comment.marker) {
+                    this.addCommentToMap(comment);
+                } else {
+                    // Make sure existing markers are visible
+                    if (comment.marker.getElement()) {
+                        comment.marker.getElement().style.display = 'flex';
+                    }
+                }
+            });
+        }
     }
 
     hideComments() {
@@ -652,7 +758,10 @@ class CommentsManager extends BaseManager {
 
         this.comments.forEach(comment => {
             if (comment.marker) {
-                comment.marker.remove();
+                // Hide the marker instead of removing it completely
+                if (comment.marker.getElement()) {
+                    comment.marker.getElement().style.display = 'none';
+                }
             }
             if (comment.popup) {
                 comment.popup.remove();
@@ -815,7 +924,7 @@ class CommentsManager extends BaseManager {
     }
 
     // Helper to display a comment on the map
-    displayComment(commentData) {
+    displayComment(commentData, autoShow = true) {
         const comment = {
             ...commentData,
             id: commentData.id || Date.now().toString(), // Ensure a unique ID
@@ -824,6 +933,13 @@ class CommentsManager extends BaseManager {
         };
         this.comments.push(comment);
         this.addCommentToMap(comment);
+        
+        // Hide the marker initially if comments are not being shown and not auto-showing
+        if (!autoShow && !this.showCommentsEnabled && !this.isCommenting && comment.marker) {
+            if (comment.marker.getElement()) {
+                comment.marker.getElement().style.display = 'none';
+            }
+        }
     }
 }
 

@@ -2699,6 +2699,85 @@ body {
             box-shadow: 0 8px 24px rgba(0, 124, 191, 0.2);
         }
 
+        /* Comments Control Styles */
+        .comments-control {
+            position: relative;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 8px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            height: 40px;
+            width: 40px;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            display: flex;
+            flex-direction: column;
+            pointer-events: auto;
+            margin-bottom: 8px;
+        }
+
+        .comments-control.expanded {
+            width: 200px;
+            height: auto;
+            padding-bottom: 12px;
+        }
+
+        .comments-expanded-content {
+            padding: 8px 12px 0 12px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .comments-control.expanded .comments-expanded-content {
+            opacity: 1;
+        }
+
+        .comments-controls-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .comments-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #333333;
+            margin-right: 8px;
+        }
+
+        #commentsToolButton.toggle-btn {
+            background: transparent;
+            border: none;
+            padding: 6px 8px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        #commentsToolButton.toggle-btn:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        #commentsToolButton.toggle-btn.is-on .switch {
+            background: #007cbf;
+        }
+
+        #commentsToolButton.toggle-btn.is-on .knob {
+            left: 18px;
+        }
+
+        #addCommentButton {
+            font-size: 12px;
+            padding: 8px 12px;
+            min-height: 32px;
+        }
+
 /* Shared style to match your other buttons */
         .control-btn {
             appearance: none;
