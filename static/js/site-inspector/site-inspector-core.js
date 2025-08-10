@@ -942,11 +942,107 @@ class SiteInspectorCore extends BaseManager {
         }
       });
 
+      // Add dimensions for the containing property boundary if it exists
+      if (containingProperty) {
+        this.addLegalPropertyDimensions(containingProperty);
+      }
+
       this.info('Property boundaries displayed on map');
       if (containingProperty) this.info('Project within property:', containingProperty.title || 'Unknown title');
     } catch (error) {
       this.error('Error displaying property boundaries:', error);
     }
+  }
+
+  addLegalPropertyDimensions(containingProperty) {
+    try {
+      const geometry = containingProperty.geometry;
+      let coordinates;
+
+      if (geometry.type === 'Polygon') {
+        coordinates = geometry.coordinates[0];
+      } else if (geometry.type === 'MultiPolygon') {
+        coordinates = geometry.coordinates[0][0];
+      } else {
+        this.warn('Unsupported geometry type for legal boundary dimensions:', geometry.type);
+        return;
+      }
+
+      // Calculate dimensions for each edge
+      const dimensionFeatures = [];
+      for (let i = 0; i < coordinates.length - 1; i++) {
+        const start = coordinates[i];
+        const end = coordinates[i + 1];
+        const distance = this.calculateDistance(start[0], start[1], end[0], end[1]);
+        const midpoint = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
+        
+        dimensionFeatures.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: midpoint },
+          properties: { 
+            distance: `${distance.toFixed(1)}m`, 
+            type: 'legal-property-dimension',
+            boundaryType: 'legal'
+          }
+        });
+      }
+
+      // Add source for legal property dimensions
+      if (!this.map.getSource('legal-property-dimensions')) {
+        this.map.addSource('legal-property-dimensions', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: dimensionFeatures }
+        });
+      } else {
+        this.map.getSource('legal-property-dimensions').setData({
+          type: 'FeatureCollection', 
+          features: dimensionFeatures
+        });
+      }
+
+      // Add layer for legal property dimensions
+      if (!this.map.getLayer('legal-property-dimension-labels')) {
+        this.map.addLayer({
+          id: 'legal-property-dimension-labels',
+          type: 'symbol',
+          source: 'legal-property-dimensions',
+          layout: {
+            'text-field': ['get', 'distance'],
+            'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+            'text-size': 12,
+            'text-offset': [0, -1],
+            'text-anchor': 'center',
+            'text-allow-overlap': true,
+            'text-ignore-placement': true,
+            'visibility': 'none' // Hidden by default, shown when dimensions toggle is active
+          },
+          paint: {
+            'text-color': '#32cd32', // Green for legal boundary
+            'text-halo-color': '#ffffff',
+            'text-halo-width': 2
+          }
+        });
+
+        this.info('Legal property boundary dimensions added');
+      }
+    } catch (error) {
+      this.error('Error adding legal property dimensions:', error);
+    }
+  }
+
+  calculateDistance(lng1, lat1, lng2, lat2) {
+    const R = 6371000; // Earth's radius in meters
+    const lat1Rad = lat1 * Math.PI / 180;
+    const lat2Rad = lat2 * Math.PI / 180;
+    const deltaLat = (lat2 - lat1) * Math.PI / 180;
+    const deltaLng = (lng2 - lng1) * Math.PI / 180;
+
+    const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+             Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+             Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
   }
 
   /* -----------------------------

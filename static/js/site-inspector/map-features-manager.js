@@ -154,16 +154,16 @@ class MapFeaturesManager extends BaseManager {
                         if (had3DBuildings) {
                             this.info('Restoring 3D buildings after style change...');
                             this.add3DBuildings();
-                            
+
                             // Ensure UI state is updated correctly
                             const buildingsBtn = document.getElementById('buildingsToggle');
                             const buildingsControl = document.getElementById('buildingsControl');
-                            
+
                             if (buildingsBtn) {
                                 buildingsBtn.classList.add('active');
                                 buildingsBtn.textContent = '3D Buildings';
                             }
-                            
+
                             if (buildingsControl) {
                                 buildingsControl.classList.add('expanded');
                             }
@@ -207,7 +207,7 @@ class MapFeaturesManager extends BaseManager {
                 this.info('Restoring site boundary...');
                 siteBoundaryCore.setupDrawingSources();
                 siteBoundaryCore.setupDrawingLayers();
-                
+
                 // Re-display the final boundary
                 const coordinates = siteBoundaryCore.sitePolygon.geometry.coordinates[0];
                 if (coordinates && coordinates.length > 0) {
@@ -222,12 +222,12 @@ class MapFeaturesManager extends BaseManager {
                 this.info('Restoring buildable area...');
                 propertySetbacksManager.setupSources();
                 propertySetbacksManager.setupLayers();
-                
+
                 // Re-display buildable area
                 const buildableData = propertySetbacksManager.currentBuildableArea;
                 if (buildableData.buildable_coords && buildableData.buildable_coords.length > 0) {
                     siteBoundaryCore.updateBuildableAreaDisplay(buildableData, false);
-                    
+
                     // Restore buildable area dimensions if they exist
                     if (propertySetbacksManager.currentBuildableArea.buildable_coords) {
                         propertySetbacksManager.generateBuildableAreaDimensions(
@@ -241,7 +241,7 @@ class MapFeaturesManager extends BaseManager {
             const floorplanManager = siteInspectorCore.floorplanManager;
             if (floorplanManager && floorplanManager.currentStructure) {
                 this.info('Restoring structure footprint...');
-                
+
                 // Re-initialize floorplan manager sources and layers
                 if (typeof floorplanManager.initializeMapSources === 'function') {
                     floorplanManager.initializeMapSources();
@@ -249,7 +249,7 @@ class MapFeaturesManager extends BaseManager {
                 if (typeof floorplanManager.initializeMapLayers === 'function') {
                     floorplanManager.initializeMapLayers();
                 }
-                
+
                 // Re-display the structure
                 const structureGeometry = floorplanManager.currentStructure.geometry;
                 if (structureGeometry && structureGeometry.coordinates && structureGeometry.coordinates[0]) {
@@ -263,7 +263,7 @@ class MapFeaturesManager extends BaseManager {
             const extrusion3DManager = siteInspectorCore.extrusion3DManager;
             if (extrusion3DManager && extrusion3DManager.hasActiveExtrusions()) {
                 this.info('Restoring 3D extrusions...');
-                
+
                 // Re-add the extrusions source and layer
                 if (!this.map.getSource('building-extrusions')) {
                     this.map.addSource('building-extrusions', {
@@ -1195,43 +1195,79 @@ class MapFeaturesManager extends BaseManager {
     }
 
     setupDimensionsControl() {
-        // Wait for DOM to be ready
-        setTimeout(() => {
-            const btn = document.getElementById('dimensionsBtn');
-
-            if (!btn) {
-                this.warn('Dimensions control button not found, retrying...');
-                setTimeout(() => this.setupDimensionsControl(), 2000);
-                return;
-            }
-
-            // Function to set button state
-            const setState = (on) => {
-                btn.classList.toggle('is-on', on);
-                btn.setAttribute('aria-pressed', String(on));
-            };
-
-            // Initialize in ON state since dimensions are visible by default
-            setState(true);
-
-            // Click handler
-            btn.addEventListener('click', () => {
-                const next = btn.getAttribute('aria-pressed') !== 'true';
-                setState(next);
-                this.toggleDimensions();
-            });
-
-            // Initialize from current map state if available
-            try {
-                if (this.areDimensionsVisible) {
-                    setState(!!this.areDimensionsVisible());
+        const dimensionsToggle = document.querySelector('.dimensions-toggle-switch input');
+        if (dimensionsToggle) {
+            dimensionsToggle.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    this.showDimensions();
+                } else {
+                    this.hideDimensions();
                 }
-            } catch (e) {
-                // Ignore errors during initialization
-            }
+            });
+        }
+        this.info('Dimensions control ready');
+    }
 
-            this.info('Dimensions control setup completed with new toggle button');
-        }, 500);
+    showDimensions() {
+        // Show dimensions for user-drawn site boundary
+        if (this.map.getLayer('user-boundary-dimension-labels')) {
+            this.map.setLayoutProperty('user-boundary-dimension-labels', 'visibility', 'visible');
+        }
+
+        // Show dimensions for legal property boundary
+        if (this.map.getLayer('legal-property-dimension-labels')) {
+            this.map.setLayoutProperty('legal-property-dimension-labels', 'visibility', 'visible');
+        }
+
+        // Legacy support for older layer names
+        if (this.map.getLayer('boundary-dimension-labels')) {
+            this.map.setLayoutProperty('boundary-dimension-labels', 'visibility', 'visible');
+        }
+
+        // Also handle other dimension layers that might be used for various features
+        const otherDimensionLayers = [
+            'site-dimensions', 'buildable-dimensions', 'setback-dimensions',
+            'structure-dimensions', 'footprint-dimensions', 'building-dimensions',
+            'floorplan-dimensions', 'measure-dimensions', 'polygon-dimensions'
+        ];
+        otherDimensionLayers.forEach(layerId => {
+            if (this.map.getLayer(layerId)) {
+                this.map.setLayoutProperty(layerId, 'visibility', 'visible');
+            }
+        });
+
+        this.info('Boundary dimensions shown');
+    }
+
+    hideDimensions() {
+        // Hide dimensions for user-drawn site boundary
+        if (this.map.getLayer('user-boundary-dimension-labels')) {
+            this.map.setLayoutProperty('user-boundary-dimension-labels', 'visibility', 'none');
+        }
+
+        // Hide dimensions for legal property boundary
+        if (this.map.getLayer('legal-property-dimension-labels')) {
+            this.map.setLayoutProperty('legal-property-dimension-labels', 'visibility', 'none');
+        }
+
+        // Legacy support for older layer names
+        if (this.map.getLayer('boundary-dimension-labels')) {
+            this.map.setLayoutProperty('boundary-dimension-labels', 'visibility', 'none');
+        }
+
+        // Also hide other dimension layers
+        const otherDimensionLayers = [
+            'site-dimensions', 'buildable-dimensions', 'setback-dimensions',
+            'structure-dimensions', 'footprint-dimensions', 'building-dimensions',
+            'floorplan-dimensions', 'measure-dimensions', 'polygon-dimensions'
+        ];
+        otherDimensionLayers.forEach(layerId => {
+            if (this.map.getLayer(layerId)) {
+                this.map.setLayoutProperty(layerId, 'visibility', 'none');
+            }
+        });
+
+        this.info('Boundary dimensions hidden');
     }
 
     // Toggle dimensions feature
@@ -1438,22 +1474,22 @@ class MapFeaturesManager extends BaseManager {
         features.forEach((feature, featureIndex) => {
             if (feature.geometry.type === 'Polygon') {
                 const coordinates = feature.geometry.coordinates[0]; // Get exterior ring
-                
+
                 // Generate dimensions for each edge of the polygon
                 for (let i = 0; i < coordinates.length - 1; i++) {
                     const start = coordinates[i];
                     const end = coordinates[i + 1];
-                    
+
                     const distance = this.calculateDistance(
                         { lng: start[0], lat: start[1] },
                         { lng: end[0], lat: end[1] }
                     );
-                    
+
                     const midpoint = [
                         (start[0] + end[0]) / 2,
                         (start[1] + end[1]) / 2
                     ];
-                    
+
                     dimensionFeatures.push({
                         type: 'Feature',
                         geometry: {
@@ -1471,21 +1507,21 @@ class MapFeaturesManager extends BaseManager {
             } else if (feature.geometry.type === 'MultiPolygon') {
                 feature.geometry.coordinates.forEach((polygon, polygonIndex) => {
                     const coordinates = polygon[0]; // Get exterior ring of each polygon
-                    
+
                     for (let i = 0; i < coordinates.length - 1; i++) {
                         const start = coordinates[i];
                         const end = coordinates[i + 1];
-                        
+
                         const distance = this.calculateDistance(
                             { lng: start[0], lat: start[1] },
                             { lng: end[0], lat: end[1] }
                         );
-                        
+
                         const midpoint = [
                             (start[0] + end[0]) / 2,
                             (start[1] + end[1]) / 2
                         ];
-                        
+
                         dimensionFeatures.push({
                             type: 'Feature',
                             geometry: {

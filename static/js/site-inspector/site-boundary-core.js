@@ -17,6 +17,9 @@ class SiteBoundaryCore extends MapManagerBase {
         // State
         this.sitePolygon = null;
         this.polygonEdges = [];
+        this.legalPropertyBoundary = null; // Store legal property boundary separately
+        this.legalPropertyEdges = [];     // Store edges for legal property boundary
+        this.legalBoundaryApplied = false; // Flag to indicate if legal boundary is active
         this.isLocked = false;
         this.isDrawing = false;
         this.drawingPoints = [];
@@ -993,6 +996,9 @@ class SiteBoundaryCore extends MapManagerBase {
             // Clear polygon data
             this.sitePolygon = null;
             this.polygonEdges = [];
+            this.legalPropertyBoundary = null; // Clear legal boundary data
+            this.legalPropertyEdges = [];     // Clear legal property edges
+            this.legalBoundaryApplied = false; // Reset flag
             this.buildableAreaData = null;
             this.isLocked = false;
 
@@ -1541,50 +1547,89 @@ class SiteBoundaryCore extends MapManagerBase {
 
     async useLegalPropertyBoundary() {
         this.info('Using legal property boundary...');
-        const btn = this.getElementById('useLegalBoundaryButton', false);
-        if (btn?.disabled) throw new Error('Legal property boundaries are not available for this location.');
 
-        // Clear any existing boundary first
-        if (this.hasSiteBoundary()) {
-            this.info('Clearing existing boundary before applying legal boundary');
-            this.clearBoundary();
+        try {
+            // Get the containing property from the map
+            const propertySource = this.map.getSource('property-boundaries');
+            if (!propertySource) {
+                throw new Error('No property boundaries loaded');
+            }
+
+            const propertyData = propertySource._data;
+            if (!propertyData || !propertyData.features || propertyData.features.length === 0) {
+                throw new Error('No property boundary data available');
+            }
+
+            // Find the containing property (the one that should be used as site boundary)
+            const containingProperty = propertyData.features.find(feature => 
+                feature.properties && feature.properties.type === 'containing-property'
+            );
+
+            if (!containingProperty) {
+                throw new Error('No containing property found - cannot use as site boundary');
+            }
+
+            // Extract coordinates from the legal boundary
+            const geometry = containingProperty.geometry;
+            let coordinates;
+
+            if (geometry.type === 'Polygon') {
+                coordinates = geometry.coordinates[0];
+            } else if (geometry.type === 'MultiPolygon') {
+                // Use the first polygon of a multipolygon
+                coordinates = geometry.coordinates[0][0];
+            } else {
+                throw new Error(`Unsupported geometry type: ${geometry.type}`);
+            }
+
+            if (!coordinates || coordinates.length < 4) {
+                throw new Error('Invalid property boundary coordinates');
+            }
+
+            // Ensure the polygon is closed
+            const lastPoint = coordinates[coordinates.length - 1];
+            const firstPoint = coordinates[0];
+            if (!this.pointsAreEqual(firstPoint, lastPoint)) {
+                coordinates.push([...firstPoint]);
+            }
+
+            // Store legal boundary separately from user boundary
+            this.legalPropertyBoundary = this.createPolygonFeature(coordinates);
+            const metrics = this.calculatePolygonMetrics(coordinates);
+            this.legalPropertyEdges = metrics.edges;
+
+            // Use legal boundary as the active site boundary
+            this.sitePolygon = this.legalPropertyBoundary;
+            this.polygonEdges = this.legalPropertyEdges;
+
+            // Update display
+            this.updateBoundaryDisplay(metrics.area, metrics.perimeter, coordinates.length - 1);
+            this.updateButtonStates(false, true); // Mark as confirmed boundary
+            this.showFinalDimensions(coordinates);
+            this.showFinalBoundary(coordinates);
+            this.isLocked = true;
+            this.legalBoundaryApplied = true;
+
+            // Mark legal boundary as applied
+            sessionStorage.setItem('legal_boundary_applied', 'true');
+            sessionStorage.setItem('legal_boundary_coordinates', JSON.stringify(coordinates));
+
+            // Emit events
+            this.emitBoundaryCreatedEvent(coordinates, metrics);
+            window.eventBus?.emit?.('legal-boundary-applied', {
+                coordinates,
+                area: metrics.area,
+                perimeter: metrics.perimeter,
+                source: 'legal_property_boundary'
+            });
+            window.eventBus?.emit?.('boundary-applied');
+
+            this.info(`Legal property boundary applied: area=${metrics.area.toFixed(2)} m², vertices=${coordinates.length - 1}`);
+
+        } catch (error) {
+            this.error('Failed to use legal property boundary:', error);
+            throw error;
         }
-
-        const siteData = window.siteData || {};
-        const projectData = window.projectData || {};
-        let center = siteData.center;
-        if (!center && projectData.lat && projectData.lng) center = { lat: projectData.lat, lng: projectData.lng };
-        if (!center?.lat || !center?.lng) throw new Error('Location not available. Please ensure project location is set.');
-        if (!this.isLocationInNewZealand(center.lat, center.lng)) throw new Error('Legal property boundaries are only available within New Zealand');
-
-        this.updateButtonState('useLegalBoundaryButton', 'active', 'Loading Property Boundary...');
-
-        const response = await fetch('/api/property-boundaries', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat: center.lat, lng: center.lng })
-        });
-        if (!response.ok) throw new Error(`Failed to fetch property boundaries: ${response.status}`);
-
-        const data = await response.json();
-        if (!data.success) throw new Error(data.message || 'Failed to retrieve property boundaries');
-        if (!data.containing_property?.geometry) throw new Error('No containing property found for this location');
-
-        // Idempotent check
-        if (sessionStorage.getItem('legal_boundary_applied') === 'true') {
-            this.updateButtonState('useLegalBoundaryButton', 'inactive', 'Legal Boundary Applied ✓');
-            return;
-        }
-
-        const geometry = data.containing_property.geometry;
-        let coordinates;
-        if (geometry.type === 'Polygon') coordinates = geometry.coordinates[0];
-        else if (geometry.type === 'MultiPolygon') {
-            const polys = geometry.coordinates;
-            const largest = polys.reduce((a, c) => (c[0].length > a[0].length ? c : a));
-            coordinates = largest[0];
-        } else throw new Error('Invalid property geometry type: ' + geometry.type);
-
-        const processed = this.processLegalBoundaryCoordinates(coordinates);
-        this.createPolygonFromLegalBoundary(processed, data.containing_property);
     }
 
     isLocationInNewZealand(lat, lng) {
@@ -1621,8 +1666,8 @@ class SiteBoundaryCore extends MapManagerBase {
 
             this.updateBoundaryDisplay(metrics.area, metrics.perimeter, coordinates.length - 1);
             this.updateButtonStates(true);
-            this.showFinalDimensions(coordinates);
             this.showFinalBoundary(coordinates);
+            this.showFinalDimensions(coordinates);
             this.updateButtonState('useLegalBoundaryButton', 'inactive', 'Legal Property Boundary Applied ✓');
             this.updateButtonState('drawPolygonButton', 'inactive', 'Draw Site Boundary');
 
