@@ -1197,50 +1197,40 @@ class MapFeaturesManager extends BaseManager {
     setupDimensionsControl() {
         // Wait for DOM to be ready
         setTimeout(() => {
-            const dimensionsControl = document.getElementById('dimensionsControl');
-            const dimensionsBtn = document.querySelector('.dimensions-toggle-btn');
-            const dimensionsToggle = document.querySelector('.dimensions-toggle-switch input');
+            const btn = document.getElementById('dimensionsBtn');
 
-            if (!dimensionsControl || !dimensionsBtn || !dimensionsToggle) {
-                this.warn('Dimensions control elements not found, retrying...');
-                // Try again after a longer delay
+            if (!btn) {
+                this.warn('Dimensions control button not found, retrying...');
                 setTimeout(() => this.setupDimensionsControl(), 2000);
                 return;
             }
 
-            // Initialize toggle in ON state since dimensions are visible by default
-            dimensionsToggle.checked = true;
-            dimensionsBtn.classList.add('active');
-
-            // Remove any existing event listeners first
-            const newBtn = dimensionsBtn.cloneNode(true);
-            dimensionsBtn.parentNode.replaceChild(newBtn, dimensionsBtn);
-
-            const newToggle = dimensionsToggle.cloneNode(true);
-            dimensionsToggle.parentNode.replaceChild(newToggle, dimensionsToggle);
-
-            // Add click handler for the dimensions button
-            newBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.toggleDimensions();
-            });
-
-            // Add change handler for the toggle switch
-            newToggle.addEventListener('change', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.toggleDimensions();
-            });
-
-            // Also add a direct onclick handler as backup
-            newBtn.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.toggleDimensions();
+            // Function to set button state
+            const setState = (on) => {
+                btn.classList.toggle('is-on', on);
+                btn.setAttribute('aria-pressed', String(on));
             };
 
-            this.info('Dimensions control setup completed with event handlers');
+            // Initialize in ON state since dimensions are visible by default
+            setState(true);
+
+            // Click handler
+            btn.addEventListener('click', () => {
+                const next = btn.getAttribute('aria-pressed') !== 'true';
+                setState(next);
+                this.toggleDimensions();
+            });
+
+            // Initialize from current map state if available
+            try {
+                if (this.areDimensionsVisible) {
+                    setState(!!this.areDimensionsVisible());
+                }
+            } catch (e) {
+                // Ignore errors during initialization
+            }
+
+            this.info('Dimensions control setup completed with new toggle button');
         }, 500);
     }
 
@@ -1248,11 +1238,10 @@ class MapFeaturesManager extends BaseManager {
     toggleDimensions() {
         this.info('toggleDimensions called');
 
-        const dimensionsBtn = document.querySelector('.dimensions-toggle-btn');
-        const dimensionsToggle = document.querySelector('.dimensions-toggle-switch input');
+        const dimensionsBtn = document.getElementById('dimensionsBtn');
 
-        if (!dimensionsBtn || !dimensionsToggle) {
-            this.warn('Dimensions button or toggle not found');
+        if (!dimensionsBtn) {
+            this.warn('Dimensions button not found');
             // Try to show/hide dimensions anyway based on current state
             const isCurrentlyVisible = this.areDimensionsVisible();
             if (isCurrentlyVisible) {
@@ -1263,21 +1252,16 @@ class MapFeaturesManager extends BaseManager {
             return;
         }
 
-        // Get current state from the toggle checkbox
-        const currentState = dimensionsToggle.checked;
+        // Get current state from the button's aria-pressed attribute
+        const currentState = dimensionsBtn.getAttribute('aria-pressed') === 'true';
         const newState = !currentState;
-
-        // Update both button and toggle states
-        dimensionsToggle.checked = newState;
 
         this.info(`Toggling dimensions: ${currentState ? 'ON' : 'OFF'} -> ${newState ? 'ON' : 'OFF'}`);
 
         if (newState) {
-            dimensionsBtn.classList.add('active');
             this.showDimensions();
             this.info('Dimensions feature activated');
         } else {
-            dimensionsBtn.classList.remove('active');
             this.hideDimensions();
             this.info('Dimensions feature deactivated');
         }

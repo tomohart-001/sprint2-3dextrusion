@@ -2678,32 +2678,68 @@ body {
             box-shadow: 0 8px 24px rgba(0, 124, 191, 0.2);
         }
 
-/* Dimensions Control - Within Container */
-        .dimensions-control-independent {
-            position: relative;
-            z-index: 1100;
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 8px;
-            backdrop-filter: blur(20px);
-            height: 40px;
-            width: 140px;
-            display: flex;
+/* Shared style to match your other buttons */
+        .control-btn {
+            appearance: none;
+            border: 0;
+            cursor: pointer;
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: #fff;
+            color: #111;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.06);
+            display: inline-flex;
             align-items: center;
-            justify-content: space-between;
-            pointer-events: auto;
-            padding: 0 8px;
-            gap: 8px;
+            gap: 10px;
+            transition: box-shadow .15s ease, transform .05s ease;
         }
 
-/* Dimensions Toggle Switch */
-        .dimensions-toggle-switch {
+        .control-btn:active {
+            transform: translateY(1px);
+        }
+
+        .control-btn:hover {
+            box-shadow: 0 2px 0 rgba(0,0,0,.05), 0 4px 12px rgba(0,0,0,.08);
+        }
+
+        /* Toggle add-ons */
+        .toggle-btn .switch {
             position: relative;
-            width: 32px;
-            height: 18px;
-            flex-shrink: 0;
+            width: 36px;
+            height: 20px;
+            border-radius: 999px;
+            background: #e6e6e6;
+            flex: 0 0 36px;
+            transition: background .2s ease;
+        }
+
+        .toggle-btn .knob {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(0,0,0,.2);
+            transition: left .2s ease;
+        }
+
+        /* ON state */
+        .toggle-btn.is-on .switch {
+            background: #2ea043;
+        }
+
+        .toggle-btn.is-on .knob {
+            left: 18px;
+        }
+
+        /* Optional: make the control row look like the others */
+        .map-controls-row {
             display: flex;
-            align-items: center;
+            gap: 8px;
         }
 
 .setback-button {

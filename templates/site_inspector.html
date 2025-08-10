@@ -850,12 +850,16 @@
         </div>
 
         <!-- Dimensions Control -->
-        <div class="dimensions-control-independent" id="dimensionsControl" style="margin-bottom: 8px;">
-            <button class="dimensions-toggle-btn" type="button" onclick="toggleDimensionsWithSync()">Dimensions</button>
-            <label class="dimensions-toggle-switch">
-                <input type="checkbox" id="dimensionsToggle" checked>
-                <span class="toggle-slider"></span>
-            </label>
+        <div id="dimensionsControl" class="map-controls-row" style="margin-bottom: 8px;">
+            <button
+                id="dimensionsBtn"
+                class="control-btn toggle-btn is-on"
+                type="button"
+                aria-pressed="true"
+            >
+                <span class="label">Dimensions</span>
+                <span class="switch" aria-hidden="true"><span class="knob"></span></span>
+            </button>
         </div>
     </div>
 
@@ -1183,14 +1187,7 @@
             if (helpTooltip) { helpTooltip.style.display = 'none'; console.log('[SiteInspector] Help tooltip closed'); }
         }
 
-        // Sync "Dimensions" button to toggle
-        function toggleDimensionsWithSync() {
-            const toggle = document.getElementById('dimensionsToggle');
-            if (toggle) {
-                toggle.checked = !toggle.checked;
-                toggle.dispatchEvent(new Event('change'));
-            }
-        }
+        // The dimensions toggle is now handled by the MapFeaturesManager
 
         // Navigation function for engineering flow steps (allow digits, letters, dashes, underscores)
         function navigateToStep(step) {
