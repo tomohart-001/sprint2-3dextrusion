@@ -10,7 +10,7 @@ from flask import Blueprint, request, jsonify, session
 from datetime import datetime, timedelta
 import logging
 from functools import wraps
-from database import get_db_connection
+from database import db_manager
 
 # Configure logging
 logger = logging.getLogger('engineroom')
