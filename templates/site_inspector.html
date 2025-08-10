@@ -208,39 +208,42 @@
             height: 40px;
             transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
+            align-items: center;
             pointer-events: auto;
         }
         .search-control-expandable.expanded {
             width: 280px;
-            height: auto;
+            height: 40px;
         }
         .search-input-content {
-            padding: 12px;
+            padding: 0 12px;
             opacity: 0;
             transition: opacity 0.3s ease 0.1s;
             pointer-events: none;
-            background: rgba(255, 255, 255, 0.95);
-            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            background: transparent;
             display: none;
+            flex: 1;
+            position: relative;
         }
         .search-control-expandable.expanded .search-input-content {
             opacity: 1;
             pointer-events: all;
-            display: block;
+            display: flex;
+            align-items: center;
         }
         .search-input-content input {
             width: 100%;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 6px;
+            border: none;
+            border-radius: 0;
             padding: 8px 12px;
             font-size: 14px;
             outline: none;
-            background: #fff;
+            background: transparent;
+            color: #333;
         }
         .search-input-content input:focus {
-            border-color: #547bf7;
-            box-shadow: 0 0 0 2px rgba(84, 123, 247, 0.15);
+            outline: none;
         }
         .clear-search-btn {
             position: absolute;
@@ -255,10 +258,17 @@
             padding: 4px;
         }
         .search-status {
-            margin-top: 8px;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
             padding: 6px 8px;
             border-radius: 4px;
             font-size: 12px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
         .search-status.success {
             background: #d4edda;
