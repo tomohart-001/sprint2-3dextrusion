@@ -231,6 +231,9 @@ class ADAMChatWidget extends BaseManager {
         }
         this.elements.minimizeBtn.title = 'Minimize';
 
+        // Update Mapbox controls positioning
+        this.updateMapboxControlsPosition();
+
         // Focus input
         setTimeout(() => {
             this.elements.input.focus();
@@ -244,6 +247,9 @@ class ADAMChatWidget extends BaseManager {
         this.isMinimized = false;
         this.elements.widget.classList.remove('adam-chat-open', 'adam-chat-minimized');
         this.elements.widget.classList.add('adam-chat-closed');
+
+        // Update Mapbox controls positioning
+        this.updateMapboxControlsPosition();
 
         this.info('ADAM chat closed');
     }
@@ -270,6 +276,9 @@ class ADAMChatWidget extends BaseManager {
             expandIcon.style.display = 'block';
         }
         this.elements.minimizeBtn.title = 'Expand';
+
+        // Update Mapbox controls positioning
+        this.updateMapboxControlsPosition();
 
         // Focus input in minimized state
         setTimeout(() => {
@@ -489,6 +498,28 @@ class ADAMChatWidget extends BaseManager {
             this.elements.input.value = message;
             this.elements.input.focus();
             this.handleInputChange();
+        }
+    }
+
+    updateMapboxControlsPosition() {
+        // Update Mapbox controls positioning based on current ADAM state
+        const mapboxControls = document.querySelector('.mapboxgl-ctrl-bottom-right');
+        if (mapboxControls) {
+            let bottomPosition;
+            
+            if (this.isOpen) {
+                // Full interface: 20px bottom + 600px height + 12px spacing
+                bottomPosition = '632px';
+            } else if (this.isMinimized) {
+                // Compact view: 20px bottom + 200px height + 12px spacing  
+                bottomPosition = '232px';
+            } else {
+                // Closed: 20px bottom + 60px height + 12px spacing
+                bottomPosition = '92px';
+            }
+            
+            mapboxControls.style.bottom = bottomPosition;
+            this.info(`Updated Mapbox controls position to ${bottomPosition}`);
         }
     }
 

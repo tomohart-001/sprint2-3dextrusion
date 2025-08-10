@@ -595,6 +595,48 @@
     }
 }
 
+/* Mapbox Controls Positioning Above ADAM Widget */
+.mapboxgl-ctrl-bottom-right {
+    position: absolute !important;
+    bottom: 92px !important; /* Default: above closed toggle button (20px bottom + 60px height + 12px spacing) */
+    right: 20px !important;
+    transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 9998 !important; /* Just below ADAM widget */
+}
+
+/* When ADAM is minimized (compact view) */
+.adam-chat-minimized ~ * .mapboxgl-ctrl-bottom-right,
+body:has(.adam-chat-minimized) .mapboxgl-ctrl-bottom-right {
+    bottom: 232px !important; /* 20px + 200px height + 12px spacing */
+}
+
+/* When ADAM is open (full interface) */
+.adam-chat-open ~ * .mapboxgl-ctrl-bottom-right,
+body:has(.adam-chat-open) .mapboxgl-ctrl-bottom-right {
+    bottom: 632px !important; /* 20px + 600px height + 12px spacing */
+}
+
+/* Ensure Mapbox controls are styled properly */
+.mapboxgl-ctrl-bottom-right .mapboxgl-ctrl {
+    margin: 0 0 10px 0 !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(10px) !important;
+    border-radius: 4px !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-scale {
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(10px) !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+}
+
 /* Scrollbar Styling */
 .adam-messages-container::-webkit-scrollbar {
     width: 4px;
