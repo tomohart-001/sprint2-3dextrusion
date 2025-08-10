@@ -45,6 +45,9 @@ class SiteInspectorCore extends BaseManager {
         throw new Error('Required dependencies not available (MapboxGL)');
       }
 
+      // Clear any stale session storage from previous sessions
+      this.clearStaleSessionData();
+
       this.loadSiteData();
 
       // Resolve address before map init to get center if possible
@@ -75,6 +78,51 @@ class SiteInspectorCore extends BaseManager {
   /* -----------------------------
      Boot helpers
   ------------------------------ */
+  clearStaleSessionData() {
+    try {
+      // Check URL parameters for forced clearing
+      const urlParams = new URLSearchParams(window.location.search);
+      const forceClear = urlParams.get('clear') === 'true' || urlParams.get('reset') === 'true';
+      
+      // Check if we're entering the site inspector fresh (no active site boundary)
+      const hasActiveBoundary = this.siteData?.coordinates?.length > 0;
+      
+      if (!hasActiveBoundary || forceClear) {
+        const staleKeys = [
+          'site_boundary_data',
+          'buildable_area_data',
+          'setback_data',
+          'structure_data',
+          'edge_classifications',
+          'edge_selections',
+          'site_inspector_state',
+          'boundary_confirmed',
+          'setbacks_applied',
+          'structure_created',
+          'extrusion_applied'
+        ];
+
+        staleKeys.forEach(key => {
+          if (sessionStorage.getItem(key)) {
+            sessionStorage.removeItem(key);
+            this.info(`Cleared ${forceClear ? 'forced' : 'stale'} session data: ${key}`);
+          }
+        });
+
+        if (forceClear) {
+          this.info('Session storage force-cleared due to URL parameter');
+          // Remove the parameter from URL to clean up
+          urlParams.delete('clear');
+          urlParams.delete('reset');
+          const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+          window.history.replaceState({}, '', newUrl);
+        }
+      }
+    } catch (error) {
+      this.warn('Error clearing stale session data:', error);
+    }
+  }
+
   loadSiteData() {
     if (typeof window.siteData !== 'undefined' && window.siteData) {
       this.siteData = window.siteData;

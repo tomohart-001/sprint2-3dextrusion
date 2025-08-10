@@ -501,33 +501,38 @@ class PropertySetbacksManager extends BaseManager {
   clearAllSetbackData() {
     try {
       this.info('Starting comprehensive setback data clearing...');
+
+      // Clear visual elements first
       this.clearSetbackVisualization();
-      this.clearEdgeSelections();
-      this.clearBuildableAreaVisualization();
-      this.clearEdgeHighlights();
+      this.removeExtrusion3D();
       this.hideEdgeSelectionLabels();
 
-      ['frontSetback','backSetback','sideSetback','heightLimit'].forEach(id => {
-        const w = document.getElementById(id + 'Warning'); if (w) w.style.display = 'none';
-      });
+      // Clear all internal state
+      this.clearEdgeSelections();
+      this.clearBuildableAreaVisualization();
 
-      this.polygonEdges = [];
-      this.selectedEdges = { front: null, back: null };
-      this.currentBuildableArea = null;
-      this.setbackOverlays = [];
+      // Clear related session storage
+      try {
+        const sessionKeysToRemove = [
+          'setback_data',
+          'edge_classifications',
+          'edge_selections',
+          'buildable_area_data',
+          'setbacks_applied',
+          'extrusion_applied'
+        ];
 
-      if (this.isEdgeSelectionMode) this.exitEdgeSelectionMode();
-
-      this.hideExtrusionControls();
-
-      if (window.siteInspectorCore?.uiPanelManager) {
-        window.siteInspectorCore.uiPanelManager.hideExtrusionControls?.();
-        window.siteInspectorCore.uiPanelManager.hideAllDependentPanels?.();
+        sessionKeysToRemove.forEach(key => {
+          sessionStorage.removeItem(key);
+        });
+        this.info('Setback-related session data cleared');
+      } catch (e) {
+        this.warn('Could not clear setback session storage:', e);
       }
 
       this.info('All setback data cleared comprehensively');
     } catch (error) {
-      this.error('Error clearing all setback data:', error);
+      this.error('Error during comprehensive setback clearing:', error);
     }
   }
 

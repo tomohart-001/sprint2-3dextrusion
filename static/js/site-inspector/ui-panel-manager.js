@@ -858,9 +858,31 @@ class UIPanelManager extends BaseManager {
                 clearBtn.innerHTML = '🔄 Clearing...';
             }
 
-            // Clear legal boundary session storage
-            sessionStorage.removeItem('legal_boundary_applied');
-            sessionStorage.removeItem('legal_boundary_coordinates');
+            // Clear ALL relevant session storage
+            const sessionKeysToRemove = [
+                'legal_boundary_applied',
+                'legal_boundary_coordinates',
+                'site_boundary_data',
+                'buildable_area_data',
+                'setback_data',
+                'structure_data',
+                'edge_classifications',
+                'edge_selections',
+                'site_inspector_state',
+                'boundary_confirmed',
+                'setbacks_applied',
+                'structure_created',
+                'extrusion_applied'
+            ];
+
+            sessionKeysToRemove.forEach(key => {
+                try {
+                    sessionStorage.removeItem(key);
+                    this.info(`Removed session key: ${key}`);
+                } catch (e) {
+                    this.warn('Could not remove session key:', key, e);
+                }
+            });
 
             // Reset legal boundary visual state on map
             try {
