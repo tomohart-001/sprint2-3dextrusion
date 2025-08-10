@@ -342,7 +342,7 @@
         /* Site Inspector Panel */
         .inspector-panel {
             position: fixed;
-            top: var(--chrome-h);
+            top: calc(var(--chrome-h) + 8px);
             left: 8px;
             width: 40px; height: 40px;
             overflow: hidden; background: rgba(255, 255, 255, 0.95);
@@ -350,7 +350,7 @@
             z-index: 1000; transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); cursor: pointer; display: flex; flex-direction: column;
         }
         .inspector-panel.expanded {
-            width: 380px; height: calc(100vh - var(--chrome-h));
+            width: 380px; height: calc(100vh - var(--chrome-h) - 8px);
             border-radius: 0; border-right: 1px solid rgba(0,0,0,0.08); border-left: none; border-top: none; border-bottom: none;
             left: 0; cursor: default;
         }
