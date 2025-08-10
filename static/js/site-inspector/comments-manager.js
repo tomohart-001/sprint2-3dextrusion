@@ -127,7 +127,7 @@ class CommentsManager extends BaseManager {
             <div class="comment-modal-content">
                 <div class="comment-modal-header">
                     <div class="comment-header-content">
-                        <h3>💬 Add Comment</h3>
+                        <h3>Add Comment</h3>
                         <p>Add a note or observation to this location</p>
                     </div>
                     <button class="comment-modal-close">×</button>
@@ -504,23 +504,7 @@ class CommentsManager extends BaseManager {
                         font-size: 13px;
                         color: #4a6cf7;
                     ">${comment.user}</span>
-                    <button class="comment-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()" style="
-                        background: rgba(220, 53, 69, 0.1);
-                        border: 1px solid rgba(220, 53, 69, 0.3);
-                        color: #dc3545;
-                        width: 28px;
-                        height: 28px;
-                        border-radius: 6px;
-                        font-size: 14px;
-                        cursor: pointer;
-                        transition: all 0.2s ease;
-                        font-weight: 500;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        padding: 0;
-                    " onmouseenter="this.style.background='rgba(220, 53, 69, 0.15)'; this.style.borderColor='rgba(220, 53, 69, 0.5)'"
-                       onmouseleave="this.style.background='rgba(220, 53, 69, 0.1)'; this.style.borderColor='rgba(220, 53, 69, 0.3)'">×</button>
+                    
                 </div>
                 <div class="comment-text" style="
                     font-size: 14px;
@@ -539,9 +523,9 @@ class CommentsManager extends BaseManager {
                         color: rgba(0, 0, 0, 0.6);
                     ">${this.formatTimestamp(comment.timestamp)}</span>
                     <button class="comment-delete-btn" onclick="window.siteInspectorCore?.commentsManager?.deleteComment('${comment.id}')" style="
-                        background: rgba(220, 53, 69, 0.1);
-                        border: 1px solid rgba(220, 53, 69, 0.3);
-                        color: #dc3545;
+                        background: rgba(108, 117, 125, 0.1);
+                        border: 1px solid rgba(108, 117, 125, 0.3);
+                        color: #6c757d;
                         width: 28px;
                         height: 28px;
                         border-radius: 6px;
@@ -553,8 +537,8 @@ class CommentsManager extends BaseManager {
                         align-items: center;
                         justify-content: center;
                         padding: 0;
-                    " onmouseenter="this.style.background='rgba(220, 53, 69, 0.15)'; this.style.borderColor='rgba(220, 53, 69, 0.5)'"
-                       onmouseleave="this.style.background='rgba(220, 53, 69, 0.1)'; this.style.borderColor='rgba(220, 53, 69, 0.3)'">🗑</button>
+                    " onmouseenter="this.style.background='rgba(108, 117, 125, 0.15)'; this.style.borderColor='rgba(108, 117, 125, 0.5)'"
+                       onmouseleave="this.style.background='rgba(108, 117, 125, 0.1)'; this.style.borderColor='rgba(108, 117, 125, 0.3)'">🗑</button>
                 </div>
             </div>
         `)
