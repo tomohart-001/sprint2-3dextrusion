@@ -84,15 +84,20 @@ class CommentsManager extends BaseManager {
         const control = document.getElementById('commentsControl');
         const expandedContent = document.getElementById('commentsExpandedContent');
         
-        if (!control || !expandedContent) return;
+        if (!control || !expandedContent) {
+            this.error('Comments control elements not found');
+            return;
+        }
 
         this.commentsControlExpanded = !this.commentsControlExpanded;
         
         if (this.commentsControlExpanded) {
             control.classList.add('expanded');
+            expandedContent.style.display = 'block';
             this.info('Comments control expanded');
         } else {
             control.classList.remove('expanded');
+            expandedContent.style.display = 'none';
             // When collapsing, only stop commenting if active, but keep comments visible if show comments is enabled
             if (this.isCommenting) {
                 this.stopCommenting();

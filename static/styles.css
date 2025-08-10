@@ -1450,7 +1450,7 @@ body {
     align-items: center;
     justify-content: center;
     transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(20px);
 }
 
 .header-sidebar-toggle:hover {
@@ -2720,6 +2720,7 @@ body {
             width: 320px;
             height: auto;
             padding-bottom: 12px;
+            min-height: 120px;
         }
 
         /* Hide the 40x40 toggle button when expanded */
