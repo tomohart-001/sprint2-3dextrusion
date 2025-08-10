@@ -355,12 +355,32 @@ class DatabaseManager:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 project_id INTEGER NOT NULL,
                 user_id INTEGER NOT NULL,
-                comment TEXT NOT NULL,
+                coordinates_lng REAL NOT NULL,
+                coordinates_lat REAL NOT NULL,
+                comment_text TEXT NOT NULL,
+                comment_type TEXT DEFAULT 'site_comment',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (project_id) REFERENCES projects (id),
-                FOREIGN KEY (user_id) REFERENCES users (id)
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             )
         ''')
+
+        # Add coordinate columns if they don't exist (migration)
+        cursor.execute("PRAGMA table_info(project_comments)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'coordinates_lng' not in columns:
+            cursor.execute('ALTER TABLE project_comments ADD COLUMN coordinates_lng REAL')
+        if 'coordinates_lat' not in columns:
+            cursor.execute('ALTER TABLE project_comments ADD COLUMN coordinates_lat REAL')
+        if 'comment_text' not in columns and 'comment' in columns:
+            cursor.execute('ALTER TABLE project_comments ADD COLUMN comment_text TEXT')
+            # Copy data from old column if it exists
+            cursor.execute('UPDATE project_comments SET comment_text = comment WHERE comment_text IS NULL')
+        if 'comment_type' not in columns:
+            cursor.execute('ALTER TABLE project_comments ADD COLUMN comment_type TEXT DEFAULT "site_comment"')
+        if 'updated_at' not in columns:
+            cursor.execute('ALTER TABLE project_comments ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP')
 
     def _create_project_notes_table(self, cursor):
         """Create project notes table"""

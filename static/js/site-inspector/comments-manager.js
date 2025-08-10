@@ -1,4 +1,3 @@
-
 /**
  * Comments Manager
  * Handles comment placement, viewing, and management on the map
@@ -107,7 +106,7 @@ class CommentsManager extends BaseManager {
         if (!this.isCommenting) return;
 
         // Check if the click was on a comment marker
-        if (e.originalEvent && e.originalEvent.target && 
+        if (e.originalEvent && e.originalEvent.target &&
             e.originalEvent.target.closest('.comment-marker')) {
             return; // Don't create new comment if clicking on existing marker
         }
@@ -134,8 +133,8 @@ class CommentsManager extends BaseManager {
                     <button class="comment-modal-close">×</button>
                 </div>
                 <div class="comment-modal-body">
-                    <textarea 
-                        id="commentText" 
+                    <textarea
+                        id="commentText"
                         placeholder="Enter your comment here..."
                         rows="4"
                         maxlength="500"
@@ -302,11 +301,11 @@ class CommentsManager extends BaseManager {
         `;
 
         const charCount = modal.querySelector('#commentCharCount');
-        
+
         textarea.addEventListener('input', () => {
             const length = textarea.value.length;
             charCount.textContent = length;
-            
+
             if (length > 450) {
                 charCount.style.color = '#dc3545';
             } else if (length > 400) {
@@ -389,10 +388,25 @@ class CommentsManager extends BaseManager {
             document.body.removeChild(modal);
         });
 
-        modal.querySelector('.comment-btn-save').addEventListener('click', () => {
+        modal.querySelector('.comment-btn-save').addEventListener('click', async () => {
             const text = textarea.value.trim();
             if (text) {
-                this.saveComment(coordinates, text);
+                const saved = await this.saveComment(coordinates, text);
+
+                if (saved) {
+                    // Reload all comments from database to ensure consistency
+                    await this.loadProjectComments();
+                    this.info('Comment added successfully');
+                } else {
+                    // Still display the comment locally even if save failed
+                    this.displayComment({
+                        coordinates,
+                        text,
+                        timestamp: new Date().toISOString(),
+                        user: 'You (local)'
+                    });
+                    this.warn('Comment added locally only');
+                }
                 document.body.removeChild(modal);
             }
         });
@@ -410,48 +424,48 @@ class CommentsManager extends BaseManager {
 
     async saveComment(coordinates, text) {
         try {
-            const comment = {
-                id: Date.now(), // Temporary ID
-                coordinates: coordinates,
-                text: text,
-                timestamp: new Date().toISOString(),
-                user: 'Current User' // TODO: Get from session
-            };
-
-            // Save to backend
             const projectId = this.getProjectId();
-            if (projectId) {
-                const response = await fetch('/api/comments', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        project_id: projectId,
-                        coordinates: coordinates,
-                        text: text,
-                        type: 'site_comment'
-                    })
-                });
 
-                if (response.ok) {
-                    const result = await response.json();
-                    comment.id = result.comment_id;
-                    this.info('Comment saved to database');
-                } else {
-                    this.warn('Failed to save comment to database, storing locally');
-                }
+            if (!projectId) {
+                this.error('No project ID available');
+                return false;
             }
 
-            this.comments.push(comment);
-            this.addCommentToMap(comment);
-            this.info('Comment added successfully');
+            // Ensure coordinates are in the correct format [lng, lat]
+            const commentData = {
+                project_id: parseInt(projectId),
+                coordinates: coordinates,
+                text: text,
+                type: 'site_comment'
+            };
 
+            this.info('Saving comment with data:', commentData);
+
+            const response = await fetch('/api/comments', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(commentData)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.info('Comment saved successfully to database');
+                return true;
+            } else {
+                throw new Error(result.error || 'Failed to save comment');
+            }
         } catch (error) {
             this.error('Failed to save comment:', error);
-            // Still add to local comments for user experience
-            this.comments.push(comment);
-            this.addCommentToMap(comment);
+            this.warn('Failed to save comment to database, storing locally');
+            return false;
         }
     }
 
@@ -516,7 +530,7 @@ class CommentsManager extends BaseManager {
                         cursor: pointer;
                         transition: all 0.2s ease;
                         font-weight: 500;
-                    " onmouseenter="this.style.background='rgba(220, 53, 69, 0.15)'; this.style.borderColor='rgba(220, 53, 69, 0.5)'" 
+                    " onmouseenter="this.style.background='rgba(220, 53, 69, 0.15)'; this.style.borderColor='rgba(220, 53, 69, 0.5)'"
                        onmouseleave="this.style.background='rgba(220, 53, 69, 0.1)'; this.style.borderColor='rgba(220, 53, 69, 0.3)'">🗑️ Delete</button>
                 </div>
             </div>
@@ -570,20 +584,47 @@ class CommentsManager extends BaseManager {
     async loadProjectComments() {
         try {
             const projectId = this.getProjectId();
-            if (!projectId) return;
+
+            if (!projectId) {
+                this.warn('No project ID available for loading comments');
+                return;
+            }
+
+            this.info(`Loading comments for project ${projectId}`);
 
             const response = await fetch(`/api/comments?project_id=${projectId}&type=site_comment`);
-            if (response.ok) {
-                const data = await response.json();
-                this.comments = data.comments || [];
-                this.info(`Loaded ${this.comments.length} comments for project ${projectId}`);
-                
-                if (this.isCommenting) {
-                    this.showExistingComments();
-                }
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                this.warn(`Failed to load comments: ${response.status} - ${errorText}`);
+                return;
+            }
+
+            const result = await response.json();
+
+            if (result.success && result.comments) {
+                this.info(`Loaded ${result.comments.length} comments from database`);
+
+                // Clear existing comments
+                this.clearComments();
+
+                // Display each comment
+                result.comments.forEach(comment => {
+                    this.displayComment({
+                        id: comment.id,
+                        coordinates: comment.coordinates,
+                        text: comment.text,
+                        timestamp: comment.timestamp,
+                        user: comment.user
+                    });
+                });
+
+                this.info('Comments loaded and displayed successfully');
+            } else {
+                this.info('No comments found for this project');
             }
         } catch (error) {
-            this.warn('Failed to load project comments:', error);
+            this.error('Error loading project comments:', error);
         }
     }
 
@@ -631,7 +672,7 @@ class CommentsManager extends BaseManager {
             const commentIndex = this.comments.findIndex(c => c.id == commentId);
             if (commentIndex !== -1) {
                 const comment = this.comments[commentIndex];
-                
+
                 if (comment.marker) {
                     comment.marker.remove();
                 }
@@ -650,7 +691,7 @@ class CommentsManager extends BaseManager {
 
     getProjectId() {
         // Try multiple sources for project ID
-        return this.projectId || 
+        return this.projectId ||
                window.siteInspectorCore?.projectId ||
                sessionStorage.getItem('current_project_id') ||
                new URLSearchParams(window.location.search).get('project_id');
@@ -740,6 +781,25 @@ class CommentsManager extends BaseManager {
         this.removeCommentToolExitListeners();
 
         this.info('Comments Manager disposed');
+    }
+
+    // Helper to clear existing comments from the map and internal state
+    clearComments() {
+        this.hideComments();
+        this.comments = [];
+        this.commentPopups = [];
+    }
+
+    // Helper to display a comment on the map
+    displayComment(commentData) {
+        const comment = {
+            ...commentData,
+            id: commentData.id || Date.now().toString(), // Ensure a unique ID
+            popup: null,
+            marker: null
+        };
+        this.comments.push(comment);
+        this.addCommentToMap(comment);
     }
 }
 
