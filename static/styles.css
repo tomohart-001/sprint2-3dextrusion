@@ -2748,6 +2748,38 @@ body {
             white-space: nowrap;
         }
 
+        .comments-toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .comments-close-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 8px;
+            color: #333;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .comments-close-btn:hover {
+            background: rgba(255, 255, 255, 1);
+            border-color: #007cbf;
+            color: #007cbf;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(0, 124, 191, 0.2);
+        }
+
         #commentsToolButton.toggle-btn {
             background: transparent;
             border: none;

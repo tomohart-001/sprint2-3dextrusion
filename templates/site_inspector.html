@@ -1073,11 +1073,14 @@
             <div class="comments-expanded-content" id="commentsExpandedContent">
                 <div class="comments-controls-row">
                     <span class="comments-label">Show Comments</span>
-                    <button class="map-control-btn toggle-btn" id="commentsToolButton">
-                        <div class="switch">
-                            <div class="knob"></div>
-                        </div>
-                    </button>
+                    <div class="comments-toggle-group">
+                        <button class="map-control-btn toggle-btn" id="commentsToolButton">
+                            <div class="switch">
+                                <div class="knob"></div>
+                            </div>
+                        </button>
+                        <button class="comments-close-btn" id="commentsCloseButton">×</button>
+                    </div>
                 </div>
                 <button class="draw-button" id="addCommentButton">Add new comment</button>
             </div>
@@ -1480,25 +1483,47 @@
             const commentsControl = document.getElementById('commentsControl');
             const commentsControlToggle = document.getElementById('commentsControlToggle');
             const commentsExpandedContent = document.getElementById('commentsExpandedContent');
+            const commentsCloseButton = document.getElementById('commentsCloseButton');
+
+            function toggleCommentsControl() {
+                if (!commentsControl || !commentsControlToggle) return;
+                
+                const isExpanded = commentsControl.classList.contains('expanded');
+                commentsControl.classList.toggle('expanded', !isExpanded);
+                commentsControlToggle.classList.toggle('is-on', !isExpanded);
+                commentsControlToggle.setAttribute('aria-pressed', String(!isExpanded));
+                console.log(`[Comments] Comments control ${!isExpanded ? 'expanded' : 'collapsed'}`);
+            }
+
+            function closeCommentsControl() {
+                if (!commentsControl || !commentsControlToggle) return;
+                
+                commentsControl.classList.remove('expanded');
+                commentsControlToggle.classList.remove('is-on');
+                commentsControlToggle.setAttribute('aria-pressed', 'false');
+                console.log('[Comments] Comments control collapsed');
+            }
 
             if (commentsControl && commentsControlToggle && commentsExpandedContent) {
+                // Main toggle button (💬)
                 commentsControlToggle.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent this click from closing other elements
-                    const isExpanded = commentsControl.classList.contains('expanded');
-                    commentsControl.classList.toggle('expanded', !isExpanded);
-                    commentsControlToggle.classList.toggle('is-on', !isExpanded); // Update toggle state
-                    // Update button attribute for accessibility
-                    commentsControlToggle.setAttribute('aria-pressed', String(!isExpanded));
-                    console.log(`[Comments] Comments control ${!isExpanded ? 'expanded' : 'collapsed'}`);
+                    e.stopPropagation();
+                    toggleCommentsControl();
                 });
+
+                // Close button (×) inside the expanded content
+                if (commentsCloseButton) {
+                    commentsCloseButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        closeCommentsControl();
+                    });
+                }
 
                 // Close the comments card if clicking outside of it
                 document.addEventListener('click', (e) => {
                     if (commentsControl && commentsControl.classList.contains('expanded') &&
                         !commentsControl.contains(e.target)) {
-                        commentsControl.classList.remove('expanded');
-                        commentsControlToggle.classList.remove('is-on');
-                        commentsControlToggle.setAttribute('aria-pressed', 'false');
+                        closeCommentsControl();
                         console.log('[Comments] Comments control collapsed by outside click.');
                     }
                 });
@@ -1506,9 +1531,7 @@
                 // Close comments card with ESC key
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape' && commentsControl && commentsControl.classList.contains('expanded')) {
-                        commentsControl.classList.remove('expanded');
-                        commentsControlToggle.classList.remove('is-on');
-                        commentsControlToggle.setAttribute('aria-pressed', 'false');
+                        closeCommentsControl();
                         console.log('[Comments] Comments control collapsed by ESC key.');
                     }
                 });
