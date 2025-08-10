@@ -90,11 +90,9 @@ class CommentsManager extends BaseManager {
         
         if (this.commentsControlExpanded) {
             control.classList.add('expanded');
-            expandedContent.style.display = 'block';
             this.info('Comments control expanded');
         } else {
             control.classList.remove('expanded');
-            expandedContent.style.display = 'none';
             // When collapsing, only stop commenting if active, but keep comments visible if show comments is enabled
             if (this.isCommenting) {
                 this.stopCommenting();

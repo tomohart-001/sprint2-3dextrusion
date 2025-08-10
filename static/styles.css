@@ -2730,11 +2730,13 @@ body {
         .comments-expanded-content {
             padding: 8px 12px 0 12px;
             opacity: 0;
+            display: none;
             transition: opacity 0.3s ease;
         }
 
         .comments-control.expanded .comments-expanded-content {
             opacity: 1;
+            display: block;
         }
 
         .comments-controls-row {
