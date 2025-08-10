@@ -2547,7 +2547,7 @@ body {
 .panel-toggle-btn {
             position: fixed;
             top: calc(var(--chrome-h) + 20px);
-            right: 20px;
+            left: 64px;
             width: 40px;
             height: 40px;
             background: rgba(255, 255, 255, 0.95);
@@ -2564,6 +2564,7 @@ body {
             backdrop-filter: blur(20px);
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
             z-index: 1001;
+            margin-right: 8px;
         }
 
         .panel-toggle-btn:hover {
@@ -2622,12 +2623,12 @@ body {
             display: none !important;
         }
 
-        /* Position toggle button inline with other map controls when collapsed */
+        /* Position toggle button to the left of basemap controls when collapsed */
         .inspector-panel:not(.expanded) .panel-toggle-btn {
             display: flex !important;
             position: fixed;
             top: calc(var(--chrome-h) + 20px);
-            right: 20px;
+            left: 64px;
             z-index: 1001;
         }
 
