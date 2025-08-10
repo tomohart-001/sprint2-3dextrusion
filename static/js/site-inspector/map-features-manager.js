@@ -1298,6 +1298,10 @@ class MapFeaturesManager extends BaseManager {
             'floorplan-dimension-labels',
             'floorplan-dimensions',
 
+            // Property boundary dimensions
+            'property-boundary-dimension-labels',
+            'property-boundary-dimensions',
+
             // Measurement tool dimensions
             'measure-dimension-labels',
             'measure-dimensions',
@@ -1315,6 +1319,9 @@ class MapFeaturesManager extends BaseManager {
                 shownCount++;
             }
         });
+
+        // Generate property boundary dimensions if they don't exist
+        this.generatePropertyBoundaryDimensions();
 
         this.info(`All polygon dimensions are now visible - ${shownCount} layers made visible`);
 
@@ -1364,6 +1371,10 @@ class MapFeaturesManager extends BaseManager {
             'floorplan-dimension-labels',
             'floorplan-dimensions',
 
+            // Property boundary dimensions
+            'property-boundary-dimension-labels',
+            'property-boundary-dimensions',
+
             // Measurement tool dimensions
             'measure-dimension-labels',
             'measure-dimensions',
@@ -1391,7 +1402,8 @@ class MapFeaturesManager extends BaseManager {
             'boundary-dimension-labels',
             'buildable-dimension-labels',
             'structure-dimension-labels',
-            'floorplan-dimension-labels'
+            'floorplan-dimension-labels',
+            'property-boundary-dimension-labels'
         ];
 
         // Return true if any primary dimension layer is visible
@@ -1405,6 +1417,143 @@ class MapFeaturesManager extends BaseManager {
         }
 
         return false;
+    }
+
+    // Generate dimensions for property boundaries
+    generatePropertyBoundaryDimensions() {
+        const propertyBoundariesSource = this.map.getSource('property-boundaries');
+        if (!propertyBoundariesSource || !propertyBoundariesSource._data) {
+            this.info('No property boundaries found for dimension generation');
+            return;
+        }
+
+        const features = propertyBoundariesSource._data.features;
+        if (!features || features.length === 0) {
+            this.info('No property boundary features found');
+            return;
+        }
+
+        const dimensionFeatures = [];
+
+        features.forEach((feature, featureIndex) => {
+            if (feature.geometry.type === 'Polygon') {
+                const coordinates = feature.geometry.coordinates[0]; // Get exterior ring
+                
+                // Generate dimensions for each edge of the polygon
+                for (let i = 0; i < coordinates.length - 1; i++) {
+                    const start = coordinates[i];
+                    const end = coordinates[i + 1];
+                    
+                    const distance = this.calculateDistance(
+                        { lng: start[0], lat: start[1] },
+                        { lng: end[0], lat: end[1] }
+                    );
+                    
+                    const midpoint = [
+                        (start[0] + end[0]) / 2,
+                        (start[1] + end[1]) / 2
+                    ];
+                    
+                    dimensionFeatures.push({
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Point',
+                            coordinates: midpoint
+                        },
+                        properties: {
+                            distance: `${distance.toFixed(1)}m`,
+                            type: 'property-boundary-dimension',
+                            feature_index: featureIndex,
+                            edge_index: i
+                        }
+                    });
+                }
+            } else if (feature.geometry.type === 'MultiPolygon') {
+                feature.geometry.coordinates.forEach((polygon, polygonIndex) => {
+                    const coordinates = polygon[0]; // Get exterior ring of each polygon
+                    
+                    for (let i = 0; i < coordinates.length - 1; i++) {
+                        const start = coordinates[i];
+                        const end = coordinates[i + 1];
+                        
+                        const distance = this.calculateDistance(
+                            { lng: start[0], lat: start[1] },
+                            { lng: end[0], lat: end[1] }
+                        );
+                        
+                        const midpoint = [
+                            (start[0] + end[0]) / 2,
+                            (start[1] + end[1]) / 2
+                        ];
+                        
+                        dimensionFeatures.push({
+                            type: 'Feature',
+                            geometry: {
+                                type: 'Point',
+                                coordinates: midpoint
+                            },
+                            properties: {
+                                distance: `${distance.toFixed(1)}m`,
+                                type: 'property-boundary-dimension',
+                                feature_index: featureIndex,
+                                polygon_index: polygonIndex,
+                                edge_index: i
+                            }
+                        });
+                    }
+                });
+            }
+        });
+
+        if (dimensionFeatures.length === 0) {
+            this.info('No valid property boundary coordinates for dimensions');
+            return;
+        }
+
+        // Add or update the property boundary dimensions source
+        if (this.map.getSource('property-boundary-dimensions')) {
+            this.map.getSource('property-boundary-dimensions').setData({
+                type: 'FeatureCollection',
+                features: dimensionFeatures
+            });
+        } else {
+            this.map.addSource('property-boundary-dimensions', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: dimensionFeatures
+                }
+            });
+        }
+
+        // Add the dimensions layer if it doesn't exist
+        if (!this.map.getLayer('property-boundary-dimension-labels')) {
+            this.map.addLayer({
+                id: 'property-boundary-dimension-labels',
+                type: 'symbol',
+                source: 'property-boundary-dimensions',
+                layout: {
+                    'text-field': ['get', 'distance'],
+                    'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+                    'text-size': 11,
+                    'text-offset': [0, -1],
+                    'text-anchor': 'center',
+                    'text-allow-overlap': true,
+                    'text-ignore-placement': true,
+                    'visibility': 'visible'
+                },
+                paint: {
+                    'text-color': '#32cd32',
+                    'text-halo-color': '#ffffff',
+                    'text-halo-width': 2,
+                    'text-opacity': 0.9
+                }
+            });
+        } else {
+            this.map.setLayoutProperty('property-boundary-dimension-labels', 'visibility', 'visible');
+        }
+
+        this.info(`Generated ${dimensionFeatures.length} property boundary dimension labels`);
     }
 
     // Toggle site information control
