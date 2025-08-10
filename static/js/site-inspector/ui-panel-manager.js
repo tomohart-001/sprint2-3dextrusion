@@ -109,6 +109,14 @@ class UIPanelManager extends BaseManager {
         this.$('cutFillAnalysisBtn')?.addEventListener('click', () => this.generateCutFillAnalysis(), { signal });
         this.$('saveProgressBtn')?.addEventListener('click', () => this.saveCurrentProgress(), { signal });
 
+        // Clear boundary only (optional button)
+        this.$('clearBoundaryButton2')?.addEventListener('click', () => {
+            const sic = window.siteInspectorCore;
+            sic?.siteBoundaryCore?.clearBoundary?.();
+            this.expandSiteBoundaryCard();
+            this.info('Boundary cleared via UI');
+        }, { signal });
+
         // Event bus listeners (guarded)
         const bus = window.eventBus;
         if (bus?.on) {
@@ -136,7 +144,6 @@ class UIPanelManager extends BaseManager {
                 this.expandFloorplanCard();
             });
 
-            // (Fixed) was duplicated in original
             bus.on('floorplan-applied', () => {
                 this.collapseFloorplanCard();
                 this.expandExtrusionCard();
@@ -201,7 +208,7 @@ class UIPanelManager extends BaseManager {
         const panel = this.$('inspectorPanel');
         const mapLegend = this.$('mapLegend');
         const mapControlsContainer = this.$('mapControlsContainer');
-        const topLeftControls = document.querySelector('.top-left-controls'); // optional in some layouts
+        const topLeftControls = document.querySelector('.top-left-controls'); // optional
 
         if (panel) {
             panel.classList.add('expanded');
@@ -598,8 +605,7 @@ class UIPanelManager extends BaseManager {
 
         if (heightLimit && heightLimit > 0) {
             this.info(`Updated extrusion heights from property setbacks: ${heightLimit}m`);
-            // Optionally prefill height input here if desired:
-            // if (structureHeightInput) structureHeightInput.value = heightLimit;
+            // if (structureHeightInput) structureHeightInput.value = heightLimit; // optional
         }
 
         if (structureHeightInput && !structureHeightInput.value) {
@@ -848,19 +854,38 @@ class UIPanelManager extends BaseManager {
         try {
             this.info('Starting comprehensive site data clearing...');
 
-            // Clear session storage first
+            // 1) Clear session storage
             this.clearSessionStorage();
 
-            // Clear project snapshots from database
+            // 2) Clear project snapshots from database
             await this.clearProjectSnapshots();
 
-            // Clear visual elements
+            // 3) Broadcast events so all managers respond
+            window.eventBus?.emit?.('clear-all-dependent-features');
+            window.eventBus?.emit?.('clear-all-site-data');
+
+            // 4) Direct manager calls (belt & braces)
+            const sic = window.siteInspectorCore;
+            // Boundary
+            sic?.siteBoundaryCore?.clearBoundary?.();
+            // Setbacks & buildable
+            sic?.propertySetbacksManager?.clearAllSetbackData?.();
+            // Floorplan / structures
+            if (sic?.floorplanManager) {
+                sic.floorplanManager.clearAllStructures?.();
+                sic.floorplanManager.clearStructure?.();
+                sic.floorplanManager.removeFloorplanFromMap?.();
+                sic.floorplanManager.stopDrawing?.();
+            }
+            // Extrusions
+            sic?.extrusion3DManager?.removeAllExtrusions?.();
+
+            // 5) Clear visuals & dependent layers
             this.clearMapVisualization();
+            sic?.clearDependentMapLayers?.();
 
-            // Clear all manager data
-            this.clearManagerData();
-
-            // Reset UI state
+            // 6) Reset UI
+            this.clearManagerData();       // still safe to keep as helper (now implemented)
             this.resetAllPanelStates();
 
             this.info('Site data clearing completed successfully');
@@ -888,7 +913,9 @@ class UIPanelManager extends BaseManager {
                 'boundary_confirmed',
                 'setbacks_applied',
                 'structure_created',
-                'extrusion_applied'
+                'extrusion_applied',
+                'current_project_id',
+                'current_project_address'
             ];
 
             sessionKeysToRemove.forEach(key => {
@@ -924,9 +951,7 @@ class UIPanelManager extends BaseManager {
             // Clear project snapshots via API
             const response = await fetch(`/api/project/${projectId}/clear-snapshots`, {
                 method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'Content-Type': 'application/json' }
             });
 
             if (response.ok) {
@@ -940,20 +965,60 @@ class UIPanelManager extends BaseManager {
         }
     }
 
-    // Placeholder methods - replace with actual implementation if they exist elsewhere
+    /* -----------------------------
+       Concrete clear helpers
+    ------------------------------ */
     clearMapVisualization() {
         this.info('Clearing map visualization...');
-        // Example: If a map object is managed by this class, clear its layers/data
-        // e.g., window.siteInspectorCore?.map?.clearLayers?.();
+        try {
+            const map = window.siteInspectorCore?.getMap?.();
+            if (!map) return;
+
+            // Remove common layers/sources if present
+            const layers = [
+                'buildable-area-fill','buildable-area-stroke',
+                'front-setback-line','back-setback-line',
+                'property-boundaries-fill','property-boundaries-stroke',
+                'buildable-area-dimension-labels','setback-dimension-labels',
+                'buildable-area-3d-extrusion'
+            ];
+            const sources = [
+                'buildable-area','setback-lines','property-boundaries',
+                'buildable-area-dimensions','buildable-area-3d'
+            ];
+
+            layers.forEach(id => { try { map.getLayer(id) && map.removeLayer(id); } catch(e){} });
+            sources.forEach(id => { try { map.getSource(id) && map.removeSource(id); } catch(e){} });
+
+            this.info('Map visualization cleared');
+        } catch(e) {
+            this.warn('clearMapVisualization error:', e);
+        }
     }
 
     clearManagerData() {
-        this.info('Clearing manager data...');
-        // Example: Call clear methods on other managers if they are part of this class or accessible
-        // e.g., window.siteInspectorCore?.siteBoundaryCore?.clearBoundary?.();
-        // e.g., window.siteInspectorCore?.propertySetbacksManager?.clearAllSetbackData?.();
-        // e.g., window.siteInspectorCore?.extrusion3DManager?.clearAllExtrusions?.();
-        // e.g., window.siteInspectorCore?.floorplanManager?.clearAll?.();
+        this.info('Clearing manager data (helpers)...');
+        try {
+            const sic = window.siteInspectorCore;
+
+            // Site boundary + dependent
+            sic?.siteBoundaryCore?.clearBoundary?.();
+
+            // Setbacks
+            sic?.propertySetbacksManager?.clearAllSetbackData?.();
+
+            // Floorplan
+            if (sic?.floorplanManager) {
+                sic.floorplanManager.clearAllStructures?.();
+                sic.floorplanManager.clearStructure?.();
+                sic.floorplanManager.removeFloorplanFromMap?.();
+            }
+
+            // Extrusions
+            sic?.extrusion3DManager?.removeAllExtrusions?.();
+        } catch(e) {
+            this.warn('clearManagerData error:', e);
+        }
     }
 
     resetAllPanelStates() {
