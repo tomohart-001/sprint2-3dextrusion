@@ -123,11 +123,29 @@ class CollaborativePresenceManager extends BaseManager {
         try {
             if (!this.projectId || !this.currentUser) return;
 
-            const response = await window.apiClient.post('/project-presence/heartbeat', {
-                project_id: this.projectId,
-                user_id: this.currentUser.id,
-                timestamp: Date.now()
-            });
+            let response;
+            
+            // Use API client if available, otherwise fall back to fetch
+            if (window.apiClient && window.apiClient.post) {
+                response = await window.apiClient.post('/project-presence/heartbeat', {
+                    project_id: this.projectId,
+                    user_id: this.currentUser.id,
+                    timestamp: Date.now()
+                });
+            } else {
+                const fetchResponse = await fetch('/api/project-presence/heartbeat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        project_id: this.projectId,
+                        user_id: this.currentUser.id,
+                        timestamp: Date.now()
+                    })
+                });
+                response = await fetchResponse.json();
+            }
 
             if (response.success) {
                 // Update presence data if provided
@@ -148,7 +166,15 @@ class CollaborativePresenceManager extends BaseManager {
         try {
             if (!this.projectId) return;
 
-            const response = await window.apiClient.get(`/project-presence/${this.projectId}`);
+            let response;
+            
+            // Use API client if available, otherwise fall back to fetch
+            if (window.apiClient && window.apiClient.get) {
+                response = await window.apiClient.get(`/project-presence/${this.projectId}`);
+            } else {
+                const fetchResponse = await fetch(`/api/project-presence/${this.projectId}`);
+                response = await fetchResponse.json();
+            }
             
             if (response.success && response.active_users) {
                 this.updateActiveUsers(response.active_users);
@@ -311,10 +337,27 @@ class CollaborativePresenceManager extends BaseManager {
 
             if (this.projectId && this.currentUser) {
                 // Send leave notification
-                await window.apiClient.post('/project-presence/leave', {
-                    project_id: this.projectId,
-                    user_id: this.currentUser.id
-                });
+                try {
+                    if (window.apiClient && window.apiClient.post) {
+                        await window.apiClient.post('/project-presence/leave', {
+                            project_id: this.projectId,
+                            user_id: this.currentUser.id
+                        });
+                    } else {
+                        await fetch('/api/project-presence/leave', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                project_id: this.projectId,
+                                user_id: this.currentUser.id
+                            })
+                        });
+                    }
+                } catch (error) {
+                    this.debug('Failed to send leave notification', error);
+                }
             }
 
             this.info('Left project presence');

@@ -738,9 +738,13 @@ class SiteInspectorCore extends BaseManager {
   getProjectIdFromUrl() {
     // Try multiple sources for project ID
     const urlParams = new URLSearchParams(window.location.search);
-    const projectIdFromUrl = urlParams.get('project_id');
+    let projectIdFromUrl = urlParams.get('project_id') || urlParams.get('project');
 
     if (projectIdFromUrl) {
+      // Clean any trailing query parameters
+      if (projectIdFromUrl.includes('?')) {
+        projectIdFromUrl = projectIdFromUrl.split('?')[0];
+      }
       return parseInt(projectIdFromUrl, 10);
     }
 
@@ -754,6 +758,14 @@ class SiteInspectorCore extends BaseManager {
       return parseInt(window.templateProjectData.id, 10);
     }
 
+    // Try from session storage
+    const sessionProjectId = sessionStorage.getItem('current_project_id') || 
+                            sessionStorage.getItem('project_id') ||
+                            sessionStorage.getItem('selectedProjectId');
+    if (sessionProjectId) {
+      return parseInt(sessionProjectId, 10);
+    }
+
     return null;
   }
 
@@ -765,19 +777,43 @@ class SiteInspectorCore extends BaseManager {
       }
 
       const projectId = this.getProjectIdFromUrl();
-      const currentUser = window.currentUser || (window.session && window.session.user);
+      let currentUser = window.currentUser || (window.session && window.session.user);
+
+      // Try to get user from various sources
+      if (!currentUser) {
+        try {
+          // Try session storage
+          const sessionData = sessionStorage.getItem('user_data');
+          if (sessionData) {
+            currentUser = JSON.parse(sessionData);
+          }
+        } catch (e) {
+          this.debug('Failed to parse user data from session storage');
+        }
+      }
+
+      // Try to get user from global variables
+      if (!currentUser && window.user) {
+        currentUser = window.user;
+      }
 
       if (!projectId) {
         this.warn('Project ID not found, cannot initialize presence. Available data:', {
           urlProjectId: new URLSearchParams(window.location.search).get('project_id'),
           windowProjectId: window.projectId,
-          templateProjectData: window.templateProjectData
+          templateProjectData: window.templateProjectData,
+          sessionProjectId: sessionStorage.getItem('current_project_id')
         });
         return;
       }
 
       if (!currentUser) {
-        this.warn('No current user found, skipping presence initialization');
+        this.warn('No current user found, skipping presence initialization. Checked:', {
+          windowCurrentUser: !!window.currentUser,
+          windowSession: !!window.session,
+          windowUser: !!window.user,
+          sessionStorage: !!sessionStorage.getItem('user_data')
+        });
         return;
       }
 

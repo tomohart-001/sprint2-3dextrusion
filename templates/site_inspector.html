@@ -430,7 +430,7 @@
             width: 40px; height: 40px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
             font-size: 18px; color: #333; transition: all 0.3s ease; border-radius: 8px; flex-shrink: 0;
         }
-        .panel-toggle-btn:hover { background: rgba(0, 124, 191, 0.1); color: #007cbf; }
+        .panel-toggle-btn:hover { background: rgba(0, 124, 191, 0.05); color: #007cbf; }
         .inspector-panel.expanded .panel-toggle-btn { display: none; }
 
         .panel-header { display: none; justify-content: flex-end; align-items: center; padding: 16px 24px 0 24px; flex-shrink: 0; }
@@ -1611,19 +1611,45 @@
                 });
             })();
 
-            // 2) Comments tool (This is now handled by the new logic above)
-            // This button ID 'commentsToolButton' is now inside the expanded content.
-            // The main toggle is 'commentsControlToggle'
-            // The 'commentsToolButton' within the expanded content will now be handled by the comments-manager.js.
-            // We will ensure that click on 'commentsToolButton' inside the expanded part works as expected
-            // by referencing comments-manager.js behavior.
-            // If it was intended to be a toggle for the expanded content, that logic would go here.
-            // Based on the user message, it should expand and reveal the 'Show Comments' button.
-            // The current HTML structure already reflects this.
-            // The javascript to handle the toggling of the *expanded content itself* is added above.
-            // The functionality of the button *inside* the expanded content (like the show comments toggle)
+            // 2) Comments tool
+            // The toggle for the expanded content is handled by `commentsControlToggle`
+            // The functionality of buttons *inside* the expanded content (like the show comments toggle)
             // should be managed by `comments-manager.js`.
+            // We ensure the `commentsControlToggle` works as expected by adding logic here to toggle the expanded state.
+            const commentsControl = document.getElementById('commentsControl');
+            const commentsControlToggle = document.getElementById('commentsControlToggle');
+            const commentsExpandedContent = document.getElementById('commentsExpandedContent');
 
+            if (commentsControl && commentsControlToggle && commentsExpandedContent) {
+                commentsControlToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isExpanded = commentsControl.classList.contains('expanded');
+                    commentsControl.classList.toggle('expanded', !isExpanded);
+                    commentsControlToggle.setAttribute('aria-pressed', String(!isExpanded));
+                    commentsExpandedContent.style.pointerEvents = !isExpanded ? 'auto' : 'none'; // Adjust pointer events
+                    console.log(`[Comments] Comments control ${!isExpanded ? 'expanded' : 'collapsed'}`);
+                });
+
+                // Close expanded content when clicking outside of it
+                document.addEventListener('click', (e) => {
+                    if (commentsControl.classList.contains('expanded') && !commentsControl.contains(e.target)) {
+                        commentsControl.classList.remove('expanded');
+                        commentsControlToggle.setAttribute('aria-pressed', 'false');
+                        commentsExpandedContent.style.pointerEvents = 'none';
+                        console.log('[Comments] Comments control collapsed by click outside');
+                    }
+                });
+
+                // Close expanded content with ESC key
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && commentsControl.classList.contains('expanded')) {
+                        commentsControl.classList.remove('expanded');
+                        commentsControlToggle.setAttribute('aria-pressed', 'false');
+                        commentsExpandedContent.style.pointerEvents = 'none';
+                        console.log('[Comments] Comments control collapsed by ESC key');
+                    }
+                });
+            }
 
             // 3) Site information expand/collapse
             (function(){
