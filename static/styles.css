@@ -2722,6 +2722,11 @@ body {
             padding-bottom: 12px;
         }
 
+        /* Hide the 40x40 toggle button when expanded */
+        .comments-control.expanded #commentsControlToggle {
+            display: none;
+        }
+
         .comments-expanded-content {
             padding: 8px 12px 0 12px;
             opacity: 0;
@@ -2768,7 +2773,6 @@ body {
             justify-content: center;
             transition: all 0.3s ease;
             backdrop-filter: blur(20px);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
         }
 
         .comments-close-btn:hover {
