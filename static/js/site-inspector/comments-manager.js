@@ -145,7 +145,7 @@ class CommentsManager extends BaseManager {
                 </div>
                 <div class="comment-modal-footer">
                     <button class="comment-btn-cancel">Cancel</button>
-                    <button class="comment-btn-save">💾 Save Comment</button>
+                    <button class="comment-btn-save">Save Comment</button>
                 </div>
             </div>
         `;
@@ -403,7 +403,7 @@ class CommentsManager extends BaseManager {
                         coordinates,
                         text,
                         timestamp: new Date().toISOString(),
-                        user: 'You (local)'
+                        user: await this.getCurrentUsername()
                     });
                     this.warn('Comment added locally only');
                 }
@@ -492,9 +492,6 @@ class CommentsManager extends BaseManager {
                 max-width: 300px;
             ">
                 <div class="comment-header" style="
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
                     margin-bottom: 10px;
                     padding-bottom: 8px;
                     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
@@ -504,10 +501,6 @@ class CommentsManager extends BaseManager {
                         font-size: 13px;
                         color: #4a6cf7;
                     ">${comment.user}</span>
-                    <span class="comment-time" style="
-                        font-size: 11px;
-                        color: rgba(0, 0, 0, 0.6);
-                    ">${this.formatTimestamp(comment.timestamp)}</span>
                 </div>
                 <div class="comment-text" style="
                     font-size: 14px;
@@ -518,8 +511,13 @@ class CommentsManager extends BaseManager {
                 ">${comment.text}</div>
                 <div class="comment-actions" style="
                     display: flex;
-                    justify-content: flex-end;
+                    justify-content: space-between;
+                    align-items: center;
                 ">
+                    <span class="comment-time" style="
+                        font-size: 11px;
+                        color: rgba(0, 0, 0, 0.6);
+                    ">${this.formatTimestamp(comment.timestamp)}</span>
                     <button class="comment-delete-btn" onclick="window.siteInspectorCore?.commentsManager?.deleteComment('${comment.id}')" style="
                         background: rgba(220, 53, 69, 0.1);
                         border: 1px solid rgba(220, 53, 69, 0.3);
@@ -531,7 +529,7 @@ class CommentsManager extends BaseManager {
                         transition: all 0.2s ease;
                         font-weight: 500;
                     " onmouseenter="this.style.background='rgba(220, 53, 69, 0.15)'; this.style.borderColor='rgba(220, 53, 69, 0.5)'"
-                       onmouseleave="this.style.background='rgba(220, 53, 69, 0.1)'; this.style.borderColor='rgba(220, 53, 69, 0.3)'">🗑️ Delete</button>
+                       onmouseleave="this.style.background='rgba(220, 53, 69, 0.1)'; this.style.borderColor='rgba(220, 53, 69, 0.3)'">Delete</button>
                 </div>
             </div>
         `)
@@ -788,6 +786,20 @@ class CommentsManager extends BaseManager {
         this.hideComments();
         this.comments = [];
         this.commentPopups = [];
+    }
+
+    // Helper to get current username from user profile
+    async getCurrentUsername() {
+        try {
+            const response = await fetch('/api/get-user-profile');
+            if (response.ok) {
+                const userData = await response.json();
+                return userData.username || 'You';
+            }
+        } catch (error) {
+            this.warn('Failed to get username:', error);
+        }
+        return 'You';
     }
 
     // Helper to display a comment on the map
