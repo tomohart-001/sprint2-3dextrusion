@@ -556,10 +556,6 @@ class SiteInspectorCore extends BaseManager {
         state: {},
         getCurrentFloorplanCoordinates: () => null,
         extrudeStructure: () => this.error('Extrusion failed: Manager unavailable'),
-        clearStructure: () => {},
-        isDrawing: false,
-        stopDrawing: () => {},
-        removeStructure3D: () => {},
         toggleInspectorPanel: () => {},
         toggleSiteInfoExpanded: () => {},
         updateBoundaryAppliedState: () => {},
@@ -736,24 +732,47 @@ class SiteInspectorCore extends BaseManager {
     }
   }
 
-  /**
-   * Initialize collaborative presence
-   */
+  /* -----------------------------
+     Collaborative presence
+  ------------------------------ */
+  getProjectIdFromUrl() {
+    // Try multiple sources for project ID
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectIdFromUrl = urlParams.get('project_id');
+
+    if (projectIdFromUrl) {
+      return parseInt(projectIdFromUrl, 10);
+    }
+
+    // Try from global window object
+    if (window.projectId) {
+      return parseInt(window.projectId, 10);
+    }
+
+    // Try from template data
+    if (window.templateProjectData && window.templateProjectData.id) {
+      return parseInt(window.templateProjectData.id, 10);
+    }
+
+    return null;
+  }
+
   async initializeCollaborativePresence() {
     try {
-      if (!window.CollaborativePresenceManager) {
-        this.warn('CollaborativePresenceManager not available, skipping presence initialization');
+      if (typeof CollaborativePresenceManager === 'undefined') {
+        this.warn('CollaborativePresenceManager not loaded, skipping presence initialization');
         return;
       }
 
-      // Get current user from session or global context
-      // Assuming projectData and currentUser are available globally or within SiteInspectorCore's scope
-      // If not, these need to be passed or fetched.
-      const projectId = this.getProjectIdFromUrl(); // Assuming this method exists and works
+      const projectId = this.getProjectIdFromUrl();
       const currentUser = window.currentUser || (window.session && window.session.user);
 
       if (!projectId) {
-        this.warn('Project ID not found, cannot initialize presence.');
+        this.warn('Project ID not found, cannot initialize presence. Available data:', {
+          urlProjectId: new URLSearchParams(window.location.search).get('project_id'),
+          windowProjectId: window.projectId,
+          templateProjectData: window.templateProjectData
+        });
         return;
       }
 
@@ -762,11 +781,13 @@ class SiteInspectorCore extends BaseManager {
         return;
       }
 
+      this.info('Initializing collaborative presence', { projectId, userId: currentUser.id });
+
       this.presenceManager = new CollaborativePresenceManager();
       const success = await this.presenceManager.initialize(projectId, currentUser);
 
       if (success) {
-        this.info('✅ Collaborative presence initialized');
+        this.info('✅ Collaborative presence initialized successfully');
       } else {
         this.warn('Collaborative presence initialization failed');
       }

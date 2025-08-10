@@ -960,11 +960,36 @@
             </div>
         </div>
         <div class="header-center">
-            <!-- Collaborative Presence -->
-            <div class="collaborative-presence" id="collaborativePresence">
-                <div class="presence-avatars" id="presenceAvatars">
-                    <!-- User avatars will be dynamically added here -->
+            <div class="site-info-panel" id="siteInfoPanel">
+                <div class="site-info-content">
+                    <div class="site-info-header">
+                        <h4>Site Information</h4>
+                    </div>
+                    <div class="site-info-details">
+                        <div class="info-row">
+                            <span class="info-label">Project</span>
+                            <span class="info-value" id="projectName">{{ project_data.name if project_data else 'Unnamed Project' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Address</span>
+                            <span class="info-value" id="projectAddress">{{ project_data.address if project_data else 'No address set' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Area</span>
+                            <span class="info-value" id="siteAreaDisplay">{{ site_data.area_m2|round(1) if site_data.area_m2 else 0 }} m²</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Type</span>
+                            <span class="info-value">{{ site_data.type|title if site_data.type else 'Residential' }}</span>
+                        </div>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Collaborative Presence -->
+            <div class="collaborative-presence" id="collaborativePresence" style="display: none;">
+                <div class="presence-avatars" id="presenceAvatars"></div>
+                <div class="presence-counter" id="presenceCounter" style="display: none;"></div>
             </div>
         </div>
         <div class="header-right">
