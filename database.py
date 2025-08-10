@@ -357,7 +357,7 @@ class DatabaseManager:
                 user_id INTEGER NOT NULL,
                 coordinates_lng REAL NOT NULL,
                 coordinates_lat REAL NOT NULL,
-                comment_text TEXT NOT NULL,
+                comment TEXT NOT NULL,
                 comment_type TEXT DEFAULT 'site_comment',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -373,10 +373,10 @@ class DatabaseManager:
             cursor.execute('ALTER TABLE project_comments ADD COLUMN coordinates_lng REAL')
         if 'coordinates_lat' not in columns:
             cursor.execute('ALTER TABLE project_comments ADD COLUMN coordinates_lat REAL')
-        if 'comment_text' not in columns and 'comment' in columns:
-            cursor.execute('ALTER TABLE project_comments ADD COLUMN comment_text TEXT')
+        if 'comment' not in columns and 'comment_text' in columns:
+            cursor.execute('ALTER TABLE project_comments ADD COLUMN comment TEXT')
             # Copy data from old column if it exists
-            cursor.execute('UPDATE project_comments SET comment_text = comment WHERE comment_text IS NULL')
+            cursor.execute('UPDATE project_comments SET comment = comment_text WHERE comment IS NULL')
         if 'comment_type' not in columns:
             cursor.execute('ALTER TABLE project_comments ADD COLUMN comment_type TEXT DEFAULT "site_comment"')
         if 'updated_at' not in columns:

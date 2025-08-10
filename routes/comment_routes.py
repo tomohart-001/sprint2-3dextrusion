@@ -58,7 +58,7 @@ class CommentRoutes:
 
                 # Get comments for this project
                 cursor.execute('''
-                    SELECT c.id, c.coordinates_lng, c.coordinates_lat, c.comment_text, 
+                    SELECT c.id, c.coordinates_lng, c.coordinates_lat, c.comment, 
                            c.comment_type, c.created_at, u.username
                     FROM project_comments c
                     JOIN users u ON c.user_id = u.id
@@ -142,7 +142,7 @@ class CommentRoutes:
                 # Insert the comment
                 cursor.execute('''
                     INSERT INTO project_comments 
-                    (project_id, user_id, coordinates_lng, coordinates_lat, comment_text, comment_type)
+                    (project_id, user_id, coordinates_lng, coordinates_lat, comment, comment_type)
                     VALUES (?, ?, ?, ?, ?, ?)
                 ''', (project_id, user_id, coordinates[0], coordinates[1], text, comment_type))
 
