@@ -725,6 +725,19 @@
         .mapboxgl-popup-content { background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; padding: 0 !important; }
         .mapboxgl-popup-tip { display: none !important; }
         .mapboxgl-popup.edge-label-popup-container .mapboxgl-popup-content { background: transparent !important; border: none !important; padding: 0 !important; box-shadow: none !important; }
+        
+        /* Hide Mapbox logo */
+        .mapboxgl-ctrl-logo { display: none !important; }
+        
+        /* Style the repositioned scale control on the right */
+        .mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-scale {
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 4px;
+            padding: 2px 6px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
     </style>
 
     <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css' rel='stylesheet' />

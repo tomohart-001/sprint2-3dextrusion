@@ -369,9 +369,25 @@ class SiteInspectorCore extends BaseManager {
 
     setupMapControls() {
         try {
-            this.map.addControl(new mapboxgl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left');
+            // Hide Mapbox logo by setting display: none
+            const mapContainer = document.querySelector('.mapboxgl-ctrl-logo');
+            if (mapContainer) {
+                mapContainer.style.display = 'none';
+            }
+            
+            // Add scale control to bottom-right, below navigation controls
+            this.map.addControl(new mapboxgl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-right');
             this.map.addControl(new mapboxgl.NavigationControl({ showCompass: true, showZoom: true, visualizePitch: true }), 'bottom-right');
-            this.info('✅ Map controls added');
+            
+            // Ensure logo is hidden after map loads (in case it loads after controls)
+            this.map.on('load', () => {
+                const logo = document.querySelector('.mapboxgl-ctrl-logo');
+                if (logo) {
+                    logo.style.display = 'none';
+                }
+            });
+            
+            this.info('✅ Map controls added with hidden logo and repositioned scale');
         } catch (error) {
             this.error('Failed to add map controls:', error);
         }
