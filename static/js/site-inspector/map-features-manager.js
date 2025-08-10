@@ -1254,11 +1254,11 @@ class MapFeaturesManager extends BaseManager {
 
         // Get current state from the button's aria-pressed attribute
         const currentState = dimensionsBtn.getAttribute('aria-pressed') === 'true';
-        const newState = !currentState;
 
-        this.info(`Toggling dimensions: ${currentState ? 'ON' : 'OFF'} -> ${newState ? 'ON' : 'OFF'}`);
+        this.info(`Toggling dimensions: ${currentState ? 'ON' : 'OFF'} -> ${!currentState ? 'ON' : 'OFF'}`);
 
-        if (newState) {
+        // Fixed logic: when button is ON (true), show dimensions; when OFF (false), hide dimensions
+        if (currentState) {
             this.showDimensions();
             this.info('Dimensions feature activated');
         } else {
