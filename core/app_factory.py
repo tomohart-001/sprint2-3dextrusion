@@ -15,7 +15,7 @@ from database import db_manager
 from utils.logger import setup_logger
 from core.error_handlers import register_error_handlers
 from core.service_manager import ServiceManager
-from routes.main_routes import main_routes
+from routes.main_routes import main_route_handler
 from routes.auth_routes import auth_routes
 from routes.location_routes import location_route_handler
 from routes.site_routes import site_routes
