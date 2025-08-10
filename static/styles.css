@@ -2741,8 +2741,7 @@ body {
         }
 
         .comments-controls-row .comments-label {
-            flex: 1;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 600;
             color: #333333;
             white-space: nowrap;
