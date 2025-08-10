@@ -1009,7 +1009,7 @@ class UIPanelManager extends BaseManager {
         // Reset legal boundary button state
         const legalBtn = this.$('useLegalBoundaryButton');
         if (legalBtn) {
-            legalBtn.textContent = 'Use Legal Boundary';
+            legalBtn.textContent = 'Use Legal Property Boundary';
             legalBtn.disabled = false;
             legalBtn.style.opacity = '1';
             legalBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #20923a 100%)';

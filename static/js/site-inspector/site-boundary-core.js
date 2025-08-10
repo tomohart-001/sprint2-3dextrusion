@@ -1452,7 +1452,7 @@ class SiteBoundaryCore extends MapManagerBase {
                     const coordinates = JSON.parse(legalCoords);
                     this.loadBoundaryFromCoordinates(coordinates);
                     this.updateLegalBoundaryStroke();
-                    this.updateButtonState('useLegalBoundaryButton', 'inactive', 'Legal Boundary Applied ✓');
+                    this.updateButtonState('useLegalBoundaryButton', 'inactive', 'Legal Property Boundary Applied ✓');
                     setTimeout(() => this.triggerLegalBoundaryWorkflow(), 1000);
                     this.info('Legal boundary restored from session');
                     return;
@@ -1571,7 +1571,7 @@ class SiteBoundaryCore extends MapManagerBase {
             this.updateButtonStates(true);
             this.showFinalDimensions(coordinates);
             this.showFinalBoundary(coordinates);
-            this.updateButtonState('useLegalBoundaryButton', 'inactive', 'Legal Boundary Applied ✓');
+            this.updateButtonState('useLegalBoundaryButton', 'inactive', 'Legal Property Boundary Applied ✓');
             this.updateButtonState('drawPolygonButton', 'inactive', 'Draw Site Boundary');
 
             this.updateLegalBoundaryStroke();
