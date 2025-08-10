@@ -6,7 +6,8 @@ import os
 from core.app_factory import AppFactory
 from utils.logger import setup_logger, app_logger
 from config import Config
-
+from routes.terrain_routes import TerrainRoutes
+from routes.comment_routes import CommentRoutes
 
 def create_app():
     """Create Flask application using factory pattern"""
@@ -23,10 +24,18 @@ def main():
         # Create application
         app = create_app()
 
+        # Register comment routes
+        comment_routes = CommentRoutes()
+        comment_routes.register_routes(app)
+
+        # Register terrain routes
+        terrain_routes = TerrainRoutes()
+        terrain_routes.register_routes(app)
+
         # Start server with timeout configuration
         port = int(os.getenv('PORT', 5000))
         logger.info(f"Starting server on 0.0.0.0:{port} in {Config.ENVIRONMENT} mode")
-        
+
         if Config.ENVIRONMENT == 'production':
             # Production configuration
             app.run(

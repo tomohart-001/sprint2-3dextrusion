@@ -27,6 +27,7 @@
     <script src="{{ url_for('static', filename='js/draw-structure-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/floorplan-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/site-inspector/map-features-manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/site-inspector/comments-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/site-inspector/ui-panel-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/site-inspector/extrusion-3d-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/site-inspector/site-inspector-core.js') }}"></script>
@@ -725,10 +726,10 @@
         .mapboxgl-popup-content { background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; padding: 0 !important; }
         .mapboxgl-popup-tip { display: none !important; }
         .mapboxgl-popup.edge-label-popup-container .mapboxgl-popup-content { background: transparent !important; border: none !important; padding: 0 !important; box-shadow: none !important; }
-        
+
         /* Hide Mapbox logo */
         .mapboxgl-ctrl-logo { display: none !important; }
-        
+
         /* Style the repositioned scale control on the right */
         .mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-scale {
             margin-bottom: 10px;
@@ -837,7 +838,7 @@
             </select>
         </div>
 
-        <!-- 3D Buildings Control (class name fixed) -->
+        <!-- 3D Buildings Control (fixed class name) -->
         <div class="buildings-control-expandable" id="buildingsControl">
             <button class="buildings-toggle-btn" id="buildingsToggle" type="button">3D Buildings</button>
             <div class="buildings-slider-content">
@@ -906,7 +907,14 @@
         <button class="help-button" id="helpButton" title="Help" type="button">?</button>
 
         <!-- Measure Tool Control -->
-        <div class="measure-tool-button" id="measureToolButton" title="Measure distances">📐</div>
+        <div class="map-control measure-control">
+            <button id="measureToolButton" class="measure-btn" title="Measure distances">📐</button>
+        </div>
+
+        <!-- Comments Tool -->
+        <div class="map-control comments-control">
+            <button id="commentsToolButton" class="comments-btn" title="Add/view comments">💬</button>
+        </div>
 
         <!-- Site Information Control -->
         <div class="site-info-control-expandable" id="siteInfoControl">
@@ -1226,7 +1234,7 @@
             else { console.error('No project ID available for navigation'); }
         }
 
-        // Normalize and enrich siteData, using Turf for area calc
+        // Ensure site data is available and processed
         document.addEventListener('DOMContentLoaded', () => {
             // Help button wiring
             const helpButton = document.getElementById('helpButton');
@@ -1265,38 +1273,28 @@
             if (clearConfirmBtn && clearConfirmationModal) {
                 clearConfirmBtn.addEventListener('click', () => {
                     console.log('[SiteInspector] Clearing all data...');
-                    // This is where the actual data clearing logic will be implemented
-                    // For now, just close the modal and log.
                     clearConfirmationModal.style.display = 'none';
-                    // Example: Call a function to clear map data, reset states, etc.
-                    // if (typeof uiPanelManager !== 'undefined') {
-                    //     uiPanelManager.clearAllSiteData();
-                    // }
+                    // In a real implementation, this would trigger actual data clearing logic.
                     alert('Site data cleared! (Functionality to be implemented)');
                 });
             }
 
-            // Ensure siteData exists
+            // Ensure siteData exists and process it
             if (typeof window.siteData === 'undefined' || !window.siteData) {
                 window.siteData = { coordinates: [], center: { lat: -41.2865, lng: 174.7762 }, area: 1000, type: 'residential' };
             }
 
-            // Validate / massage
             const sd = window.siteData;
 
-            // Ensure type
             if (!sd.type) sd.type = 'residential';
 
-            // Ensure center if missing; compute from coordinates
             if ((!sd.center || sd.center.lat == null || sd.center.lng == null) && Array.isArray(sd.coordinates) && sd.coordinates.length > 0) {
                 let totalLat = 0, totalLng = 0, valid = 0;
                 for (const c of sd.coordinates) {
                     let lat, lng;
                     if (Array.isArray(c) && c.length >= 2) {
-                        // detect [lng,lat] vs [lat,lng]
-                        if (Math.abs(c[0]) > 90) { lng = c[0]; lat = c[1]; }
-                        else if (Math.abs(c[1]) > 90) { lng = c[1]; lat = c[0]; }
-                        else { lat = c[0]; lng = c[1]; }
+                        if (Math.abs(c[0]) > 90) { lng = c[0]; lat = c[1]; } // Assume [lng, lat]
+                        else { lng = c[1]; lat = c[0]; } // Assume [lat, lng]
                     } else if (typeof c === 'object') {
                         lat = c.lat ?? c.y; lng = c.lng ?? c.x;
                     }
@@ -1304,41 +1302,38 @@
                 }
                 if (valid > 0) sd.center = { lat: totalLat / valid, lng: totalLng / valid };
             }
-            if (!sd.center) sd.center = { lat: -41.2865, lng: 174.7762 };
+            if (!sd.center) sd.center = { lat: -41.2865, lng: 174.7762 }; // Default center
 
-            // Area with Turf (m²)
             if ((!sd.area || sd.area <= 0) && Array.isArray(sd.coordinates) && sd.coordinates.length >= 3) {
                 const ptsLngLat = sd.coordinates.map((c) => {
                     if (Array.isArray(c) && c.length >= 2) {
-                        // normalize to [lng, lat]
                         if (Math.abs(c[0]) > 90) { return [c[0], c[1]]; }
-                        if (Math.abs(c[1]) > 90) { return [c[1], c[0]]; }
-                        // assume [lat, lng]
-                        return [c[1], c[0]];
+                        return [c[1], c[0]]; // Assume [lat, lng]
                     } else if (typeof c === 'object') {
                         return [c.lng ?? c.x, c.lat ?? c.y];
                     }
-                    return [0,0];
+                    return [0,0]; // Fallback for invalid points
                 }).filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
 
                 if (ptsLngLat.length >= 3) {
+                    // Close the polygon if it's not already closed
                     if (ptsLngLat[0][0] !== ptsLngLat[ptsLngLat.length - 1][0] ||
                         ptsLngLat[0][1] !== ptsLngLat[ptsLngLat.length - 1][1]) {
                         ptsLngLat.push(ptsLngLat[0]);
                     }
                     try {
                         const poly = turf.polygon([ptsLngLat]);
-                        sd.area = turf.area(poly);
+                        sd.area = turf.area(poly); // Area in square meters
                         sd.area_m2 = sd.area;
                     } catch (e) {
-                        console.warn('Turf area calc failed', e);
-                        sd.area = sd.area_m2 || 1000;
+                        console.warn('Turf area calculation failed:', e);
+                        sd.area = sd.area_m2 || 1000; // Fallback area
                     }
                 }
             }
-            if (!sd.area || sd.area <= 0) sd.area = sd.area_m2 || 1000;
+            if (!sd.area || sd.area <= 0) sd.area = sd.area_m2 || 1000; // Ensure fallback area
 
-            console.log('[SiteInspector] Template ready - initialization handled by modular system');
+            console.log('[SiteInspector] Template DOM content loaded and site data processed.');
         });
     </script>
 </body>

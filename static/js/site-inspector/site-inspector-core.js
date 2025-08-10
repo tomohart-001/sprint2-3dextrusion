@@ -83,10 +83,10 @@ class SiteInspectorCore extends BaseManager {
       // Check URL parameters for forced clearing
       const urlParams = new URLSearchParams(window.location.search);
       const forceClear = urlParams.get('clear') === 'true' || urlParams.get('reset') === 'true';
-      
+
       // Check if we're entering the site inspector fresh (no active site boundary)
       const hasActiveBoundary = this.siteData?.coordinates?.length > 0;
-      
+
       if (!hasActiveBoundary || forceClear) {
         const staleKeys = [
           'site_boundary_data',
@@ -480,19 +480,106 @@ class SiteInspectorCore extends BaseManager {
       };
     }
 
-    const results = {};
-    await Promise.allSettled([
-      this.initializeSiteBoundaryCore().then(r => { results.siteBoundary = r; }),
-      this.initializePropertySetbacksManager().then(r => { results.propertySetbacks = r; }),
-      this.initializeFloorplanManager().then(r => { results.floorplan = r; }),
-      this.initializeMapFeaturesManager().then(r => { results.mapFeatures = r; }),
-      this.initializeExtrusion3DManager().then(r => { results.extrusion3D = r; })
-    ]);
+    const initResults = {
+        mapFeatures: await this.initializeManager('mapFeatures', () => new MapFeaturesManager(this.map)),
+        extrusion3D: await this.initializeManager('extrusion3D', () => new Extrusion3DManager(this.map)),
+        floorplan: await this.initializeManager('floorplan', () => new FloorplanManager(this.map)),
+        propertySetbacks: await this.initializeManager('propertySetbacks', () => new PropertySetbacksManager(this.map)),
+        siteBoundary: await this.initializeManager('siteBoundary', () => new SiteBoundaryCore(this.map)),
+        comments: await this.initializeManager('comments', () => new CommentsManager(this.map))
+    };
 
-    const failedCritical = ['siteBoundary', 'propertySetbacks'].filter(k => results[k] === 'failed');
+    const failedCritical = ['siteBoundary', 'propertySetbacks'].filter(k => initResults[k] === 'failed');
     if (failedCritical.length) this.warn(`Critical managers failed: ${failedCritical.join(', ')}`);
 
-    this.info('Managers initialized:', results);
+    this.info('Managers initialized:', initResults);
+  }
+
+  async initializeManager(name, createInstance) {
+    try {
+      if (typeof window[this.toPascalCase(name)] === 'undefined') {
+        this.warn(`${this.toPascalCase(name)} class not available`);
+        return 'skipped';
+      }
+      const manager = createInstance();
+      if (typeof manager.initialize === 'function') {
+        await manager.initialize();
+      }
+      this[this.toCamelCase(name)] = manager;
+      this.info(`✅ ${this.toPascalCase(name)} initialized`);
+      return 'success';
+    } catch (error) {
+      this.error(`Failed to initialize ${this.toPascalCase(name)}:`, error);
+      // Provide a fallback instance if initialization fails
+      const fallbackManager = {
+        initialize: () => Promise.resolve(),
+        destroy: () => {},
+        // Add other common methods with no-op implementations if needed
+        hasSiteBoundary: () => false,
+        getSitePolygon: () => null,
+        isDrawingActive: () => false,
+        toggleDrawingMode: () => alert(`${this.toPascalCase(name)} is unavailable. Error: ${error.message}`),
+        startDrawingMode() { this.toggleDrawingMode(); },
+        stopDrawingMode: () => {},
+        clearBoundary: () => {},
+        getBuildableAreaData: () => null,
+        calculateBuildableArea: () => Promise.reject(new Error('Not available')),
+        previewBuildableArea: () => Promise.resolve(),
+        getSiteData: () => ({}),
+        removeFloorplanFromMap: () => {},
+        hasStructures: () => false,
+        getStructures: () => [],
+        state: {},
+        getCurrentFloorplanCoordinates: () => null,
+        extrudeStructure: () => this.error('Extrusion failed: Manager unavailable'),
+        clearStructure: () => {},
+        isDrawing: false,
+        stopDrawing: () => {},
+        removeStructure3D: () => {},
+        toggleInspectorPanel: () => {},
+        toggleSiteInfoExpanded: () => {},
+        updateBoundaryAppliedState: () => {},
+        resetAllPanelStates: () => {},
+        showError: (msg) => alert(msg),
+        showSuccess: (msg) => console.log(msg),
+        handleSiteDataUpdate: () => {},
+        handleBuildableAreaPreview: () => {},
+        handleBuildableAreaCalculation: () => {},
+        handleSetbacksUpdated: () => {},
+        clearAllSiteData: () => {},
+        handleBoundaryApplied: () => {},
+        handlePanelToggled: () => {},
+        updateOverlayPosition: () => {},
+        removeAllExtrusions: () => {},
+        clearAllStructures: () => {},
+        isMeasuring: false,
+        toggleDimensions: () => {},
+        toggle3DBuildings: () => {},
+        toggleMeasureTool: () => {},
+        startMeasuring: () => {},
+        stopMeasuring:  () => {},
+        isMeasuringActive: () => false,
+        changeMapStyle: (styleValue) => {
+          let url = styleValue.startsWith('mapbox://') ? styleValue : `mapbox://styles/mapbox/${styleValue}`;
+          this.warn(`Map style change requested on fallback manager: ${url}`);
+          this.map?.setStyle(url);
+        },
+        setupFallbackEventListeners: () => {},
+        captureTerrainBounds: () => null,
+        saveBuildableAreaToProject: () => {},
+        clearDependentMapLayers: () => {}
+      };
+      this[this.toCamelCase(name)] = fallbackManager;
+      return 'failed';
+    }
+  }
+
+  toPascalCase(str) {
+    return str.replace(/(\-[a-z])/g, (match) => match.toUpperCase().replace('-', ''));
+  }
+
+  toCamelCase(str) {
+    return str.replace(/([A-Z])/g, (match) => `-${match.toLowerCase()}`).replace(/^-/, '');
   }
 
   async initializeSiteBoundaryCore() {
@@ -975,7 +1062,7 @@ class SiteInspectorCore extends BaseManager {
 
   handleToolActivated(toolName) {
     this.info('Tool activated:', toolName);
-    
+
     // Stop conflicting tools when a new tool is activated
     if (toolName === 'floorplan') {
       // Stop site boundary drawing
@@ -987,7 +1074,7 @@ class SiteInspectorCore extends BaseManager {
         this.mapFeaturesManager.stopMeasuring();
       }
     }
-    
+
     if (toolName === 'site-boundary') {
       // Stop structure drawing
       if (this.floorplanManager?.isDrawing) {
@@ -998,7 +1085,7 @@ class SiteInspectorCore extends BaseManager {
         this.mapFeaturesManager.stopMeasuring();
       }
     }
-    
+
     if (toolName === 'measure') {
       // Stop all drawing modes
       if (this.floorplanManager?.stopDrawing) {

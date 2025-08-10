@@ -488,7 +488,7 @@ body {
     font-size: 18px;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
     display: flex;
     align-items: center;
     gap: 12px;
@@ -1566,7 +1566,8 @@ body {
 
 .warning-box {
     background: rgba(255, 193, 7, 0.1);
-    border: 1px solid rgba(255, 193, 7, 0.3);    border-radius: 12px;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 12px;
     padding: 16px;
     margin: 16px 0;
 }
@@ -1699,13 +1700,13 @@ body {
 }
 
 @keyframes modalSlideIn {
-    from { 
-        opacity: 0; 
-        transform: translateY(-30px) scale(0.95); 
+    from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
     }
-    to { 
-        opacity: 1; 
-        transform: translateY(0) scale(1); 
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
     }
 }
 
@@ -1930,7 +1931,8 @@ body {
 
     .answer-content th,
     .answer-content td {
-        padding: 8px 10px;        min-width: 80px;
+        padding: 8px 10px;
+        min-width: 80px;
     }
 
     .location-indicator {
