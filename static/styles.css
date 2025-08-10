@@ -2724,6 +2724,13 @@ body {
             min-height: 120px;
         }
 
+        .comments-control:not(.expanded) {
+            height: 40px !important;
+            width: 40px !important;
+            padding-bottom: 0 !important;
+            min-height: 40px !important;
+        }
+
         /* Hide the 40x40 toggle button when expanded */
         .comments-control.expanded #commentsControlToggle {
             display: none;
