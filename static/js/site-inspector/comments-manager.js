@@ -495,12 +495,32 @@ class CommentsManager extends BaseManager {
                     margin-bottom: 10px;
                     padding-bottom: 8px;
                     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
                 ">
                     <span class="comment-user" style="
                         font-weight: 600;
                         font-size: 13px;
                         color: #4a6cf7;
                     ">${comment.user}</span>
+                    <button class="comment-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()" style="
+                        background: rgba(220, 53, 69, 0.1);
+                        border: 1px solid rgba(220, 53, 69, 0.3);
+                        color: #dc3545;
+                        width: 28px;
+                        height: 28px;
+                        border-radius: 6px;
+                        font-size: 14px;
+                        cursor: pointer;
+                        transition: all 0.2s ease;
+                        font-weight: 500;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 0;
+                    " onmouseenter="this.style.background='rgba(220, 53, 69, 0.15)'; this.style.borderColor='rgba(220, 53, 69, 0.5)'"
+                       onmouseleave="this.style.background='rgba(220, 53, 69, 0.1)'; this.style.borderColor='rgba(220, 53, 69, 0.3)'">×</button>
                 </div>
                 <div class="comment-text" style="
                     font-size: 14px;
@@ -522,14 +542,19 @@ class CommentsManager extends BaseManager {
                         background: rgba(220, 53, 69, 0.1);
                         border: 1px solid rgba(220, 53, 69, 0.3);
                         color: #dc3545;
-                        padding: 6px 12px;
+                        width: 28px;
+                        height: 28px;
                         border-radius: 6px;
                         font-size: 12px;
                         cursor: pointer;
                         transition: all 0.2s ease;
                         font-weight: 500;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 0;
                     " onmouseenter="this.style.background='rgba(220, 53, 69, 0.15)'; this.style.borderColor='rgba(220, 53, 69, 0.5)'"
-                       onmouseleave="this.style.background='rgba(220, 53, 69, 0.1)'; this.style.borderColor='rgba(220, 53, 69, 0.3)'">Delete</button>
+                       onmouseleave="this.style.background='rgba(220, 53, 69, 0.1)'; this.style.borderColor='rgba(220, 53, 69, 0.3)'">🗑</button>
                 </div>
             </div>
         `)
