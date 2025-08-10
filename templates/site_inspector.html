@@ -209,13 +209,14 @@
             height: 40px;
             transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             display: flex;
-            flex-direction: row-reverse;
+            flex-direction: row-reverse; /* Changed to row-reverse to align button to the right */
             align-items: center;
             pointer-events: auto;
         }
         .search-control-expandable.expanded {
             width: 280px;
             height: 40px;
+            display: flex; /* Added flex display */
         }
         .search-input-content {
             padding: 0 12px;
@@ -223,15 +224,15 @@
             transition: opacity 0.3s ease 0.1s;
             pointer-events: none;
             background: transparent;
-            display: none;
-            flex: 1;
-            order: 1;
+            display: none; /* Initially hidden */
+            flex: 1; /* Allow it to take available space */
+            order: 1; /* Place it before the button */
+            align-items: center; /* Center content vertically */
         }
         .search-control-expandable.expanded .search-input-content {
             opacity: 1;
             pointer-events: all;
-            display: flex;
-            align-items: center;
+            display: flex; /* Show when expanded */
         }
         .search-input-content input {
             width: 100%;
@@ -283,7 +284,7 @@
             cursor: pointer; font-size: 16px; transition: all 0.3s ease; color: #333; font-weight: 500;
             box-shadow: 0 4px 16px rgba(0,0,0,0.1); backdrop-filter: blur(20px);
             flex-shrink: 0;
-            order: 2;
+            order: 2; /* Default order */
         }
         .map-control-button:hover,
         .measure-tool-button:hover,
@@ -297,6 +298,21 @@
         }
         .map-control-button.active,
         .measure-tool-button.active { background: #007cbf; color: #fff; border-color: #005a8a; box-shadow: 0 8px 24px rgba(0,124,191,0.4); }
+
+        /* Styles for the search button specifically */
+        .search-control-expandable .search-toggle-btn {
+            order: 2; /* Default order for the toggle button */
+            border-radius: 8px; /* Default border radius */
+            background: rgba(255, 255, 255, 0.95); /* Default background */
+        }
+
+        .search-control-expandable.expanded .search-toggle-btn { /* Updated selector */
+            border-radius: 0 8px 8px 0; /* New border radius */
+            background: rgba(84, 123, 247, 0.1); /* New background */
+            color: #547bf7; /* New color */
+            order: 2; /* Ensure it stays in the correct order */
+        }
+
 
         /* Basemap Control */
         .basemap-control {
@@ -494,12 +510,13 @@
             z-index: 1100; background: rgba(255, 255, 255, 0.95);
             border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 8px; backdrop-filter: blur(20px);
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); overflow: hidden;
-            width: 40px; height: 40px; transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            height: 40px; width: 120px; /* Increased width to match other controls better */
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             display: flex; flex-direction: column; pointer-events: auto;
         }
         .site-info-control-expandable.expanded { width: 280px; height: auto; }
         .site-info-toggle-btn {
-            width: 40px; height: 40px; margin: 0; padding: 0; border-radius: 8px; flex-shrink: 0; font-size: 16px; font-weight: 500;
+            width: 100%; height: 40px; margin: 0; padding: 0; border-radius: 8px; flex-shrink: 0; font-size: 16px; font-weight: 500;
             background: transparent; border: none; color: #333; cursor: pointer; transition: all 0.3s ease;
             display: flex; align-items: center; justify-content: center; pointer-events: auto; z-index: 1101;
         }
@@ -1414,7 +1431,7 @@
 
             // === End fixes ===
 
-            // Ensure siteData exists and process it
+            // Ensure site data is available and process it
             if (typeof window.siteData === 'undefined' || !window.siteData) {
                 window.siteData = { coordinates: [], center: { lat: -41.2865, lng: 174.7762 }, area: 1000, type: 'residential' };
             }
