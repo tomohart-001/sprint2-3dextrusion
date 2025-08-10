@@ -28,6 +28,7 @@ class SiteInspectorCore extends BaseManager {
     this.mapFeaturesManager = null;
     this.uiPanelManager = null;
     this.extrusion3DManager = null;
+    this.presenceManager = null; // Added for collaborative presence
 
     this.isInitialized = false;
 
@@ -60,6 +61,11 @@ class SiteInspectorCore extends BaseManager {
 
       await this.initializeMap();
       await this.initializeManagers();
+
+      // Initialize collaborative presence
+      await this.initializeCollaborativePresence();
+
+      // Setup inter-manager event handlers
       this.setupEventHandlers();
 
       this.isInitialized = true;
@@ -514,7 +520,7 @@ class SiteInspectorCore extends BaseManager {
           return 'fallback';
         }
       }
-      
+
       if (typeof window[this.toPascalCase(name)] === 'undefined') {
         this.warn(`${this.toPascalCase(name)} class not available`);
         return 'skipped';
@@ -727,6 +733,46 @@ class SiteInspectorCore extends BaseManager {
     } catch (error) {
       this.error('Failed to initialize Extrusion3DManager:', error);
       return 'failed';
+    }
+  }
+
+  /**
+   * Initialize collaborative presence
+   */
+  async initializeCollaborativePresence() {
+    try {
+      if (!window.CollaborativePresenceManager) {
+        this.warn('CollaborativePresenceManager not available, skipping presence initialization');
+        return;
+      }
+
+      // Get current user from session or global context
+      // Assuming projectData and currentUser are available globally or within SiteInspectorCore's scope
+      // If not, these need to be passed or fetched.
+      const projectId = this.getProjectIdFromUrl(); // Assuming this method exists and works
+      const currentUser = window.currentUser || (window.session && window.session.user);
+
+      if (!projectId) {
+        this.warn('Project ID not found, cannot initialize presence.');
+        return;
+      }
+
+      if (!currentUser) {
+        this.warn('No current user found, skipping presence initialization');
+        return;
+      }
+
+      this.presenceManager = new CollaborativePresenceManager();
+      const success = await this.presenceManager.initialize(projectId, currentUser);
+
+      if (success) {
+        this.info('✅ Collaborative presence initialized');
+      } else {
+        this.warn('Collaborative presence initialization failed');
+      }
+
+    } catch (error) {
+      this.error('Error initializing collaborative presence', error);
     }
   }
 
@@ -975,7 +1021,7 @@ class SiteInspectorCore extends BaseManager {
         const end = coordinates[i + 1];
         const distance = this.calculateDistance(start[0], start[1], end[0], end[1]);
         const midpoint = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
-        
+
         dimensionFeatures.push({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: midpoint },
@@ -1413,7 +1459,7 @@ class SiteInspectorCore extends BaseManager {
   ------------------------------ */
   createCommentsManagerFallback() {
     this.info('Creating comments manager fallback');
-    
+
     return {
       initialize: () => Promise.resolve(),
       isCommenting: false,
@@ -1421,7 +1467,7 @@ class SiteInspectorCore extends BaseManager {
       toggleCommentsTool: () => {
         const button = document.getElementById('commentsToolButton');
         if (!button) return;
-        
+
         if (this.commentsManager.isCommenting) {
           this.commentsManager.stopCommenting();
           button.classList.remove('active');
@@ -1447,12 +1493,12 @@ class SiteInspectorCore extends BaseManager {
       },
       handleCommentClick: (e) => {
         if (!this.commentsManager.isCommenting) return;
-        
+
         e.preventDefault();
         if (e.originalEvent) {
           e.originalEvent.stopPropagation();
         }
-        
+
         const coordinates = [e.lngLat.lng, e.lngLat.lat];
         const text = prompt('Enter your comment:');
         if (text && text.trim()) {
@@ -1485,7 +1531,7 @@ class SiteInspectorCore extends BaseManager {
           </div>
         `)
         .addTo(this.map);
-        
+
         this.commentsManager.comments.push(comment);
       },
       dispose: () => {
@@ -1653,6 +1699,12 @@ class SiteInspectorCore extends BaseManager {
         return null;
       }
     }
+    // Fallback to session storage if not in URL
+    if (!projectId) {
+      projectId = sessionStorage.getItem('project_id')
+        || sessionStorage.getItem('current_project_id')
+        || sessionStorage.getItem('selectedProjectId');
+    }
     return projectId;
   }
 
@@ -1782,6 +1834,7 @@ class SiteInspectorCore extends BaseManager {
       this.mapFeaturesManager?.destroy?.();
       this.uiPanelManager?.destroy?.();
       this.extrusion3DManager?.destroy?.();
+      this.presenceManager?.destroy?.(); // Destroy presence manager
 
       if (this.map) { try { this.map.remove(); } catch {} this.map = null; }
 

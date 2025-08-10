@@ -73,6 +73,61 @@
             height: var(--header-h);
         }
 
+        /* Collaborative Presence */
+        .collaborative-presence {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 10px; /* Add some padding around the presence avatars */
+        }
+        .presence-avatars {
+            display: flex;
+            align-items: center;
+            gap: -6px; /* Overlap avatars slightly */
+            perspective: 1000px; /* For 3D effects if needed */
+        }
+        .presence-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #ccc; /* Placeholder color */
+            border: 2px solid #fff; /* White border to separate avatars */
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #333;
+            transition: transform 0.3s ease, opacity 0.3s ease; /* Smooth transitions */
+            position: relative; /* Needed for z-index stacking */
+            z-index: 1; /* Default z-index */
+            margin-left: -6px; /* Negative margin for overlap */
+        }
+        .presence-avatar:first-child {
+            margin-left: 0; /* No margin for the first avatar */
+            z-index: 10; /* Bring the first avatar to the front */
+        }
+        .presence-avatar.self {
+            border-color: #547bf7; /* Highlight for the current user */
+            box-shadow: 0 0 0 3px rgba(84, 123, 247, 0.3);
+        }
+        .presence-avatar.fading {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+        .presence-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .presence-avatar .initials {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+
         /* Engineering Flow Progress */
         .engineering-flow-progress {
             position: fixed;
@@ -904,6 +959,14 @@
                 <p class="header-subtitle">Inspect and Evaluate Your Site Before Design</p>
             </div>
         </div>
+        <div class="header-center">
+            <!-- Collaborative Presence -->
+            <div class="collaborative-presence" id="collaborativePresence">
+                <div class="presence-avatars" id="presenceAvatars">
+                    <!-- User avatars will be dynamically added here -->
+                </div>
+            </div>
+        </div>
         <div class="header-right">
             <a href="/terrain-viewer?project_id={{ project_data.get('id', project_id) if project_data else project_id }}" class="header-cta-btn">Cut & Fill Analysis</a>
         </div>
@@ -1347,20 +1410,11 @@
     </div>
 
     <script>
-        // Inject project data if available
-        {% if project_data %}
-        console.log('Template project_data:', {{ project_data|tojson|safe }});
-        window.projectId = {{ project_data.get('id', 'null') }};
-        window.projectData = {
-            id: {{ project_data.get('id', 'null') }},
-            name: "{{ project_data.get('name', '') }}",
-            address: "{{ project_data.get('address', '') }}"
-        };
-        {% else %}
-        console.log('No project_data available in template');
-        window.projectId = null;
-        window.projectData = null;
-        {% endif %}
+        // Template data
+        window.templateProjectData = {{ project_data | tojson }};
+
+        // Current user data for collaborative features
+        window.currentUser = {{ user | tojson if user else 'null' }};
 
         // Make site data available globally for JavaScript modules
         window.siteData = {{ site_data_json|safe }};
@@ -1574,7 +1628,7 @@
 
             // === End fixes ===
 
-            // Ensure site data is available and process it
+            // Ensure site data is available and processed
             if (typeof window.siteData === 'undefined' || !window.siteData) {
                 window.siteData = { coordinates: [], center: { lat: -41.2865, lng: 174.7762 }, area: 1000, type: 'residential' };
             }

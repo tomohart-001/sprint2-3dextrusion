@@ -15,14 +15,15 @@ from database import db_manager
 from utils.logger import setup_logger
 from core.error_handlers import register_error_handlers
 from core.service_manager import ServiceManager
-from routes.main_routes import main_route_handler
-from routes.auth_routes import auth_route_handler
+from routes.main_routes import main_routes
+from routes.auth_routes import auth_routes
 from routes.location_routes import location_route_handler
-from routes.site_routes import site_route_handler
+from routes.site_routes import site_routes
 from routes.conversation_routes import conversation_route_handler
 from routes.floorplan_routes import floorplan_route_handler
 from routes.building_routes import building_route_handler
 from routes.structural_routes import structural_route_handler
+from routes.presence_routes import presence_routes
 
 
 class AppFactory:
@@ -53,7 +54,7 @@ class AppFactory:
             if Config.ENVIRONMENT == 'production':
                 # Set shorter timeouts for production
                 os.environ['DATABASE_TIMEOUT'] = '30'
-            
+
             # Register components
             register_error_handlers(app)
             success, errors = register_all_routes(app)
@@ -76,6 +77,3 @@ class AppFactory:
         except Exception as e:
             logger.critical("Failed to create application", e)
             raise
-
-
-
