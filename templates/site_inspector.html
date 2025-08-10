@@ -1329,6 +1329,7 @@
                 function setActive(on){
                     btn.classList.toggle('active', on);
                     btn.setAttribute('aria-pressed', String(on));
+                    btn.innerHTML = on ? '✖' : '📐';
                 }
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -1340,6 +1341,15 @@
                         console.warn('[Measure] mapFeaturesManager not available; creating simple state toggle.');
                         const next = btn.classList.contains('active') ? false : true;
                         setActive(next);
+                        
+                        // Simple fallback measuring
+                        if (next && window.siteInspectorCore?.map) {
+                            window.siteInspectorCore.map.getCanvas().style.cursor = 'crosshair';
+                            console.log('Measure tool activated (basic mode)');
+                        } else if (window.siteInspectorCore?.map) {
+                            window.siteInspectorCore.map.getCanvas().style.cursor = '';
+                            console.log('Measure tool deactivated');
+                        }
                     }
                 });
                 // ESC to turn off measuring
@@ -1348,6 +1358,11 @@
                         if (window.mapFeaturesManager?.isMeasuringActive?.() || window.mapFeaturesManager?.isMeasuring) {
                             window.mapFeaturesManager?.stopMeasuring?.();
                             setActive(false);
+                        } else if (btn.classList.contains('active')) {
+                            setActive(false);
+                            if (window.siteInspectorCore?.map) {
+                                window.siteInspectorCore.map.getCanvas().style.cursor = '';
+                            }
                         }
                     }
                 });
@@ -1358,8 +1373,8 @@
                 const btn = document.getElementById('commentsToolButton');
                 if(!btn) return;
                 btn.addEventListener('click', () => {
-                    if (window.commentsManager?.togglePanel) {
-                        window.commentsManager.togglePanel();
+                    if (window.siteInspectorCore?.commentsManager?.toggleCommentsTool) {
+                        window.siteInspectorCore.commentsManager.toggleCommentsTool();
                     } else if (window.eventBus?.emit) {
                         window.eventBus.emit('comments:toggle');
                     } else {

@@ -497,6 +497,24 @@ class SiteInspectorCore extends BaseManager {
 
   async initializeManager(name, createInstance) {
     try {
+      // Special handling for comments manager - it should always be available
+      if (name === 'comments') {
+        try {
+          const manager = createInstance();
+          if (typeof manager.initialize === 'function') {
+            await manager.initialize();
+          }
+          this[this.toCamelCase(name)] = manager;
+          this.info(`✅ CommentsManager initialized`);
+          return 'success';
+        } catch (error) {
+          this.error(`Failed to initialize CommentsManager:`, error);
+          // Create fallback comments manager
+          this.commentsManager = this.createCommentsManagerFallback();
+          return 'fallback';
+        }
+      }
+      
       if (typeof window[this.toPascalCase(name)] === 'undefined') {
         this.warn(`${this.toPascalCase(name)} class not available`);
         return 'skipped';
@@ -1297,6 +1315,91 @@ class SiteInspectorCore extends BaseManager {
   /* -----------------------------
      Fallback MapFeaturesManager
   ------------------------------ */
+  createCommentsManagerFallback() {
+    this.info('Creating comments manager fallback');
+    
+    return {
+      initialize: () => Promise.resolve(),
+      isCommenting: false,
+      comments: [],
+      toggleCommentsTool: () => {
+        const button = document.getElementById('commentsToolButton');
+        if (!button) return;
+        
+        if (this.commentsManager.isCommenting) {
+          this.commentsManager.stopCommenting();
+          button.classList.remove('active');
+          button.innerHTML = '💬';
+        } else {
+          this.commentsManager.startCommenting();
+          button.classList.add('active');
+          button.innerHTML = '✖';
+          window.eventBus?.emit('tool-activated', 'comments');
+        }
+      },
+      startCommenting: () => {
+        this.commentsManager.isCommenting = true;
+        this.map.getCanvas().style.cursor = 'crosshair';
+        this.map.on('click', this.commentsManager.handleCommentClick);
+        this.info('Comments tool started (fallback)');
+      },
+      stopCommenting: () => {
+        this.commentsManager.isCommenting = false;
+        this.map.off('click', this.commentsManager.handleCommentClick);
+        this.map.getCanvas().style.cursor = '';
+        this.info('Comments tool stopped (fallback)');
+      },
+      handleCommentClick: (e) => {
+        if (!this.commentsManager.isCommenting) return;
+        
+        e.preventDefault();
+        if (e.originalEvent) {
+          e.originalEvent.stopPropagation();
+        }
+        
+        const coordinates = [e.lngLat.lng, e.lngLat.lat];
+        const text = prompt('Enter your comment:');
+        if (text && text.trim()) {
+          this.commentsManager.addCommentToMap({
+            id: Date.now(),
+            coordinates: coordinates,
+            text: text.trim(),
+            timestamp: new Date().toISOString(),
+            user: 'Current User'
+          });
+          this.info('Comment added (fallback)');
+        }
+      },
+      addCommentToMap: (comment) => {
+        const popup = new mapboxgl.Popup({
+          closeButton: true,
+          closeOnClick: false,
+          className: 'comment-popup',
+          anchor: 'bottom',
+          offset: [0, -10]
+        })
+        .setLngLat(comment.coordinates)
+        .setHTML(`
+          <div class="comment-content" style="padding: 8px; max-width: 200px;">
+            <div class="comment-header" style="font-size: 12px; color: #666; margin-bottom: 4px;">
+              <span class="comment-user">${comment.user}</span>
+              <span class="comment-time" style="float: right;">${new Date(comment.timestamp).toLocaleTimeString()}</span>
+            </div>
+            <div class="comment-text" style="font-size: 14px; color: #333;">${comment.text}</div>
+          </div>
+        `)
+        .addTo(this.map);
+        
+        this.commentsManager.comments.push(comment);
+      },
+      dispose: () => {
+        if (this.commentsManager.isCommenting) {
+          this.commentsManager.stopCommenting();
+        }
+      }
+    };
+  }
+
   createMapFeaturesFallback() {
     this.info('Creating comprehensive map features fallback');
 
@@ -1410,6 +1513,17 @@ class SiteInspectorCore extends BaseManager {
 
     const dimensionsToggle = document.querySelector('.dimensions-toggle-switch input');
     dimensionsToggle?.addEventListener('change', (e) => { e.preventDefault(); e.stopPropagation(); window.mapFeaturesManager.toggleDimensions(); }, { signal: this._abort.signal });
+
+    // Comments tool
+    const commentsBtn = document.getElementById('commentsToolButton');
+    commentsBtn?.addEventListener('click', (e) => { 
+      e.stopPropagation(); 
+      if (this.commentsManager?.toggleCommentsTool) {
+        this.commentsManager.toggleCommentsTool();
+      } else {
+        this.warn('Comments manager not available');
+      }
+    }, { signal: this._abort.signal });
 
     this.info('Fallback event listeners setup completed');
   }
