@@ -106,6 +106,12 @@ class CommentsManager extends BaseManager {
     handleCommentClick = (e) => {
         if (!this.isCommenting) return;
 
+        // Check if the click was on a comment marker
+        if (e.originalEvent && e.originalEvent.target && 
+            e.originalEvent.target.closest('.comment-marker')) {
+            return; // Don't create new comment if clicking on existing marker
+        }
+
         e.preventDefault();
         if (e.originalEvent) {
             e.originalEvent.stopPropagation();
@@ -551,7 +557,8 @@ class CommentsManager extends BaseManager {
         comment.marker = marker;
 
         // Click to show popup
-        markerElement.addEventListener('click', () => {
+        markerElement.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent map click from triggering
             if (comment.popup.isOpen()) {
                 comment.popup.remove();
             } else {
