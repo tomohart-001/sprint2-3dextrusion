@@ -18,7 +18,7 @@ from core.service_manager import ServiceManager
 from routes.main_routes import main_route_handler
 from routes.auth_routes import auth_route_handler
 from routes.location_routes import location_route_handler
-from routes.site_routes import site_routes
+from routes.site_routes import site_route_handler
 from routes.conversation_routes import conversation_route_handler
 from routes.floorplan_routes import floorplan_route_handler
 from routes.building_routes import building_route_handler
