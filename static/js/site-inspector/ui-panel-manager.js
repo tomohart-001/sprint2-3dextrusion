@@ -862,6 +862,18 @@ class UIPanelManager extends BaseManager {
             sessionStorage.removeItem('legal_boundary_applied');
             sessionStorage.removeItem('legal_boundary_coordinates');
 
+            // Reset legal boundary visual state on map
+            try {
+                const map = window.siteInspectorCore?.getMap?.();
+                if (map && map.getLayer && map.getLayer('property-boundaries-stroke')) {
+                    // Reset the legal boundary stroke to dashed (original state)
+                    map.setPaintProperty('property-boundaries-stroke', 'line-dasharray', [5, 5]);
+                    this.info('Legal boundary stroke reset to dashed');
+                }
+            } catch (error) {
+                this.warn('Could not reset legal boundary stroke:', error);
+            }
+
             window.eventBus?.emit?.('clear-all-site-data');
 
             const sic = window.siteInspectorCore;
