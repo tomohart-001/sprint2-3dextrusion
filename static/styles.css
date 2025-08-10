@@ -2550,7 +2550,7 @@ body {
             left: 8px;
             width: 40px;
             height: 40px;
-            background: rgba(255, 255, 255, 0.95);
+            background: #ffffff;
             border: 1px solid rgba(0, 0, 0, 0.08);
             cursor: pointer;
             display: flex;
