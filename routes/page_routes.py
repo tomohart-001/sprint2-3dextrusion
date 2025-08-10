@@ -53,7 +53,7 @@ class PageRoutes:
         """Register page rendering routes"""
         app.route('/', endpoint='index')(self.handle_index)
         app.route('/blueprints', methods=['GET'])(self.handle_blueprints)
-        app.route('/toolshop', methods=['GET'])(self.handle_toolshop)
+        
         app.route('/dashboard')(self.dashboard)  # Add dashboard route
         @app.route('/site-developer')
         def site_developer():
@@ -331,17 +331,7 @@ class PageRoutes:
                 user.update(user_profile)
         return render_template('blueprints.html', user=user)
 
-    def handle_toolshop(self):
-        """Tool shop page"""
-        user = session.get('user')
-        if user:
-            # Get complete user profile including profile picture
-            from routes.auth_routes import AuthRoutes
-            auth_handler = AuthRoutes()
-            user_profile = auth_handler.get_user_profile(user['id'])
-            if user_profile:
-                user.update(user_profile)
-        return render_template('toolshop.html', user=user)
+    
 
     @login_required
     def dashboard(self):

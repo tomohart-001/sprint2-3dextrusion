@@ -719,7 +719,7 @@
             color: #4a6fa5;
         }
 
-        /* Map Overlay Settings */
+        /* Map Overlay Controls */
         .map-overlay-settings {
             margin-top: 12px;
             padding-top: 12px;
@@ -950,7 +950,7 @@
             <div class="project-info-section">
                 {% set project_name = None %}
                 {% set project_address = None %}
-                
+
                 {# Try to get project name and address from various sources #}
                 {% if project_data and project_data.get('name') %}
                     {% set project_name = project_data.get('name') %}
@@ -959,10 +959,10 @@
                     {% set project_name = site_data.get('project_name') %}
                     {% set project_address = site_data.get('address') or site_data.get('project_address') %}
                 {% endif %}
-                
+
                 {# Display project name with fallback #}
                 <div class="project-name">{{ project_name or 'Current Project' }}</div>
-                
+
                 {# Display project address with fallback #}
                 {% if project_address and project_address.strip() %}
                     {% set address = project_address.strip() %}
@@ -1438,7 +1438,7 @@
                                     if (response.site_data.floorplan_data?.boundaries) loadedData.push('floor plan');
 
                                     console.log(`[TerrainViewer] Loaded data layers: ${loadedData.join(', ')}`);
-                                    
+
                                     if (loadedData.length > 0) {
                                         this.showMessage(`Site data loaded. Ready to generate terrain with: ${loadedData.join(', ')}`, 'success');
                                     } else {
@@ -1463,7 +1463,7 @@
             showGenerateTerrainButton() {
                 // Always show the generate terrain button
                 document.getElementById('generateTerrainSection').style.display = 'block';
-                
+
                 // Check if we have data to work with
                 const hasProjectAddress = this.siteData && (this.siteData.address || this.siteData.project_address);
                 const hasCoordinates = (this.siteData?.coordinates?.length > 0) || 
@@ -1643,7 +1643,7 @@
             showError(errorMessage) {
                 try {
                     console.error('[TerrainViewer] Terrain generation error:', errorMessage);
-                    
+
                     const errorElement = document.getElementById('errorMessage');
                     if (errorElement) {
                         errorElement.textContent = errorMessage || 'Unknown error occurred';
@@ -1667,7 +1667,7 @@
             showSuccess(message) {
                 try {
                     console.log('[TerrainViewer] Success:', message);
-                    
+
                     const successElement = document.getElementById('successMessage');
                     if (successElement) {
                         successElement.textContent = message || 'Terrain generated successfully';
@@ -1886,11 +1886,11 @@
             updateProgress(stepNumber, status) {
                 try {
                     const progressSteps = document.querySelectorAll('.progress-step');
-                    
+
                     progressSteps.forEach((step, index) => {
                         const stepNum = index + 1;
                         step.classList.remove('active', 'completed', 'error');
-                        
+
                         if (stepNum < stepNumber) {
                             step.classList.add('completed');
                         } else if (stepNum === stepNumber) {
@@ -1916,7 +1916,7 @@
                 // Check for site coordinates or buildable area coordinates
                 const hasCoordinates = (this.siteData?.coordinates?.length > 0) || 
                                      (this.siteData?.buildable_area?.coordinates?.length > 0);
-                
+
                 const hasAddress = this.siteData?.address || this.siteData?.project_address;
 
                 if (!this.siteData || (!hasCoordinates && !hasAddress)) {
@@ -1987,12 +1987,12 @@
                             this.enableViewControls();
                             this.enableEarthworksControls();
                             this.enableBuildableAreaButton();
-                            
+
                             // Refresh structure platform availability after terrain loads
                             setTimeout(() => {
                                 this.checkStructurePlatformAvailability();
                             }, 500);
-                            
+
                             this.showSuccess('3D Terrain Generated');
                             console.log('[TerrainViewer] Terrain generation completed successfully');
 
@@ -2749,7 +2749,7 @@
 
                     const btn = document.getElementById('loadBuildableAreaBtn');
                     btn.disabled = false;
-                    btn.textContent = `Load Buildable Area (${this.siteData.buildable_area.area_m2.toFixed(1)} m²)`;
+                    btn.textContent = `LoadBuildable Area (${this.siteData.buildable_area.area_m2.toFixed(1)} m²)`;
                     console.log('[TerrainViewer] Buildable area available:', this.siteData.buildable_area.area_m2.toFixed(1), 'm²');
                 } else {
                     console.log('[TerrainViewer] Buildable area button disabled - no buildable area data');
@@ -2761,7 +2761,7 @@
 
             calculatePolygonArea(coordinates) {
                 if (!coordinates || coordinates.length < 3) return 0;
-                
+
                 let area = 0;
                 const n = coordinates.length;
                 for (let i = 0; i < n; i++) {
@@ -2777,7 +2777,7 @@
 
                 // Check multiple sources for structure placement data
                 let structureData = null;
-                
+
                 // Check session storage for structure placement data
                 try {
                     const sessionData = sessionStorage.getItem('structure_placement_data');
@@ -3097,6 +3097,62 @@
                 }
             }
 
+            displayEarthworksResults(results) {
+                const cutVolume = document.getElementById('cutVolume');
+                const fillVolume = document.getElementById('fillVolume');
+                const netEarthwork = document.getElementById('netEarthwork');
+                const platformArea = document.getElementById('platformArea');
+                const finalFFL = document.getElementById('finalFFL');
+
+                if (cutVolume) cutVolume.textContent = `${results.cut_volume_m3.toFixed(2)} m³`;
+                if (fillVolume) fillVolume.textContent = `${results.fill_volume_m3.toFixed(2)} m³`;
+                if (netEarthwork) netEarthwork.textContent = `${results.net_earthwork_m3.toFixed(2)} m³`;
+                if (platformArea) platformArea.textContent = `${results.platform_area_m2.toFixed(1)} m²`;
+                if (finalFFL) finalFFL.textContent = `${results.final_ffl_m.toFixed(2)} m`;
+
+                const resultsElement = document.getElementById('earthworksResults');
+                if (resultsElement) resultsElement.style.display = 'block';
+            }
+
+            renderTerrainWithPlatform() {
+                if (!this.plot || !this.terrainData || !this.earthworksData) return;
+
+                // Remove existing platform trace if it exists
+                let currentData = this.plot.data;
+                const existingPlatformIndex = currentData.findIndex(trace => 
+                    trace.name && trace.name.includes('Building Platform')
+                );
+
+                if (existingPlatformIndex >= 0) {
+                    Plotly.deleteTraces(this.plot, existingPlatformIndex);
+                    currentData = this.plot.data; // Update data after deletion
+                }
+
+                // Create the new platform trace with FFL
+                const platformX = this.currentPlatformCoords.map(coord => coord.x * this.terrainData.width_m);
+                const platformY = this.currentPlatformCoords.map(coord => coord.y * this.terrainData.length_m);
+                const platformZ = platformX.map(() => this.earthworksData.final_ffl_m); // Use final FFL for Z
+
+                const platformTrace = {
+                    x: [...platformX, platformX[0]], // Close the polygon
+                    y: [...platformY, platformY[0]],
+                    z: [...platformZ, platformZ[0]],
+                    mode: 'lines',
+                    type: 'scatter3d',
+                    line: {
+                        color: '#ff6b35', // Orange-red color for the platform
+                        width: 10,
+                        dash: 'solid'
+                    },
+                    name: 'Building Platform',
+                    showlegend: true,
+                    opacity: 0.9
+                };
+
+                // Add the new platform trace
+                Plotly.addTraces(this.plot, [platformTrace]);
+            }
+
             clearPlatform() {
                 this.clearMessages();
 
@@ -3115,11 +3171,11 @@
                 const controlsElement = this.safeGetElement('platformControls');
                 if (controlsElement) controlsElement.style.display = 'none';
 
-                // Clear platform position
+                // Reset platform position and rotation
                 this.currentPlatformCenter = { x: 0.5, y: 0.5 };
                 this.currentPlatformRotation = 0;
 
-                // Reset platform controls using safe methods
+                // Reset platform control values to defaults
                 const resetValues = [
                     ['platformRotation', 0],
                     ['platformRotationValue', 0],
@@ -3137,13 +3193,14 @@
                 // Disable platform controls
                 this.safeSetProperty('clearPlatformBtn', 'disabled', true);
                 this.safeSetProperty('togglePlatformMoveBtn', 'disabled', true);
+                this.safeSetProperty('confirmPlatformBtn', 'disabled', true); // Disable confirm button
 
-                // Re-check platform availability
+                // Re-check platform availability to update button text
                 this.checkStructurePlatformAvailability();
 
-                // Re-render terrain without platform
+                // Re-render terrain without the platform
                 if (this.terrainData) {
-                    this.renderTerrain(this.terrainData);
+                    this.renderTerrain();
                 }
 
                 this.showSuccess('Platform cleared');
@@ -3225,7 +3282,7 @@
                 console.log('[TerrainViewer] Update rotation:', value);
                 const rotationValue = document.getElementById('platformRotationValue');
                 const rotationSlider = document.getElementById('platformRotation');
-                
+
                 if (rotationValue && rotationSlider) {
                     rotationValue.value = value;
                     rotationSlider.value = value;
@@ -3236,15 +3293,39 @@
             togglePlatformMovement() {
                 this.platformMovementEnabled = !this.platformMovementEnabled;
                 console.log('[TerrainViewer] Platform movement:', this.platformMovementEnabled ? 'enabled' : 'disabled');
+
+                const toggleButton = document.getElementById('togglePlatformMoveBtn');
+                if (toggleButton) {
+                    toggleButton.textContent = this.platformMovementEnabled ? 'Disable Platform Movement' : 'Enable Platform Movement';
+                    toggleButton.style.background = this.platformMovementEnabled ? '#28a745' : '#6c757d'; // Green when enabled, gray when disabled
+                }
+
+                // Update cursor style and platform visual feedback based on movement mode
+                if (this.plot && this.plot.nativeElement) {
+                    const plotlyDiv = this.plot.nativeElement.querySelector('.plotly-graph-div') || this.plot.nativeElement;
+                    this.updateCursor({ x: 0.5, y: 0.5 }, plotlyDiv); // Update cursor on toggle
+                    this.updatePlatformVisualFeedback(false); // Reset visual feedback on toggle
+                }
+
+                // Enable/disable confirm button based on movement mode
+                const confirmBtn = document.getElementById('confirmPlatformBtn');
+                if (confirmBtn) {
+                    confirmBtn.disabled = this.platformMovementEnabled;
+                }
             }
 
             updatePlatformDimensions() {
                 if (!this.structurePlatformData) return;
-                
+
                 const width = parseFloat(document.getElementById('platformWidth').value) || 10;
                 const length = parseFloat(document.getElementById('platformLength').value) || 10;
-                
+
                 console.log('[TerrainViewer] Platform dimensions updated:', { width, length });
+
+                // Update the platform visualization if it's currently loaded
+                if (this.currentPlatformCoords) {
+                    this.updatePlatformVisualization();
+                }
             }
 
             toggleLayer(layerType, visible) {
