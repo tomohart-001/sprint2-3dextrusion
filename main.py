@@ -28,10 +28,6 @@ def main():
         comment_routes = CommentRoutes()
         comment_routes.register_routes(app)
 
-        # Register terrain routes
-        terrain_routes = TerrainRoutes()
-        terrain_routes.register_routes(app)
-
         # Start server with timeout configuration
         port = int(os.getenv('PORT', 5000))
         logger.info(f"Starting server on 0.0.0.0:{port} in {Config.ENVIRONMENT} mode")
