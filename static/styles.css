@@ -2513,7 +2513,7 @@ body {
 /* Site Inspector Panel */
         .inspector-panel {
             position: fixed;
-            top: calc(var(--chrome-h) + 8px);
+            top: calc(var(--chrome-h) + 80px);
             left: 8px;
             width: 40px;
             height: 40px;

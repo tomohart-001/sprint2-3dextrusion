@@ -739,11 +739,34 @@
             padding: 2px 6px;
             border: 1px solid rgba(0, 0, 0, 0.1);
         }
+
+        /* --- Dimensions pill toggle (from previous step) --- */
+        .control-btn{
+          appearance:none;border:0;cursor:pointer;
+          padding:10px 14px; border-radius:12px;
+          background:#fff; color:#111; font-weight:600; font-size:14px;
+          box-shadow:0 1px 0 rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.06);
+          display:inline-flex; align-items:center; gap:10px;
+          transition:box-shadow .15s ease, transform .05s ease;
+        }
+        .control-btn:active{ transform:translateY(1px); }
+        .control-btn:hover{ box-shadow:0 2px 0 rgba(0,0,0,.05), 0 4px 12px rgba(0,0,0,.08); }
+        .toggle-btn .switch{
+          position:relative; width:36px; height:20px; border-radius:999px;
+          background:#e6e6e6; flex:0 0 36px; transition:background .2s ease;
+        }
+        .toggle-btn .knob{
+          position:absolute; top:2px; left:2px; width:16px; height:16px;
+          border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.2);
+          transition:left .2s ease;
+        }
+        .toggle-btn.is-on .switch{ background:#2ea043; }
+        .toggle-btn.is-on .knob{ left:18px; }
+        .map-controls-row{ display:flex; gap:8px; }
     </style>
 
     <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css' rel='stylesheet' />
     <link href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css' rel='stylesheet' />
-    <!-- removed the incorrect/duplicate api.mapbox.gl draw script -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/adam-chat-widget.css') }}">
 </head>
 <body class="authenticated">
@@ -826,6 +849,9 @@
     </div>
 
     <div id="inspectorMap"></div>
+
+    <!-- Panel Toggle Button (shows when panel is minimized) -->
+    <button class="panel-toggle-btn" id="panelToggleBtn" type="button" style="display: flex;">⚙️</button>
 
     <!-- Map Controls Container -->
     <div class="map-controls-container" id="mapControlsContainer">
@@ -917,8 +943,8 @@
         </div>
 
         <!-- Site Information Control -->
-        <div class="site-info-control-expandable" id="siteInfoControl">
-            <button class="site-info-toggle-btn" id="siteInfoToggle" title="Site Information" type="button">📍</button>
+        <div class="site-info-control-expandable" id="siteInfoControl" aria-expanded="false">
+            <button class="site-info-toggle-btn" id="siteInfoToggle" title="Site Information" type="button" aria-pressed="false">📍</button>
             <div class="site-info-content">
                 <div class="site-info-header">
                     <h4>Site Information</h4>
@@ -966,8 +992,6 @@
                     Clear Site Inspector
                 </button>
             </div>
-
-
 
             <!-- Site Boundary Drawing Tool -->
             <div class="boundary-controls" id="siteBoundaryControls">
@@ -1195,7 +1219,25 @@
             if (helpTooltip) { helpTooltip.style.display = 'none'; console.log('[SiteInspector] Help tooltip closed'); }
         }
 
-        // The dimensions toggle is now handled by the MapFeaturesManager
+        // Dimensions toggle pill behavior
+        (function(){
+            const btn = document.getElementById('dimensionsBtn');
+            if(!btn) return;
+            function setState(on){
+                btn.classList.toggle('is-on', on);
+                btn.setAttribute('aria-pressed', String(on));
+            }
+            btn.addEventListener('click', () => {
+                const next = btn.getAttribute('aria-pressed') !== 'true';
+                setState(next);
+                // Prefer your existing manager if present
+                if (window.mapFeaturesManager?.toggleDimensions) {
+                    try { window.mapFeaturesManager.toggleDimensions(); } catch(e){ console.warn(e); }
+                } else if (typeof window.toggleDimensionsWithSync === 'function') {
+                    try { window.toggleDimensionsWithSync(next); } catch { window.toggleDimensionsWithSync(); }
+                }
+            });
+        })();
 
         // Navigation function for engineering flow steps (allow digits, letters, dashes, underscores)
         function navigateToStep(step) {
@@ -1274,10 +1316,85 @@
                 clearConfirmBtn.addEventListener('click', () => {
                     console.log('[SiteInspector] Clearing all data...');
                     clearConfirmationModal.style.display = 'none';
-                    // In a real implementation, this would trigger actual data clearing logic.
                     alert('Site data cleared! (Functionality to be implemented)');
                 });
             }
+
+            // === FIX: Wire the three non-working controls ===
+
+            // 1) Measure tool
+            (function(){
+                const btn = document.getElementById('measureToolButton');
+                if(!btn) return;
+                function setActive(on){
+                    btn.classList.toggle('active', on);
+                    btn.setAttribute('aria-pressed', String(on));
+                }
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (window.mapFeaturesManager?.toggleMeasureTool) {
+                        window.mapFeaturesManager.toggleMeasureTool();
+                        const isOn = !!(window.mapFeaturesManager.isMeasuringActive?.() || window.mapFeaturesManager.isMeasuring);
+                        setActive(isOn);
+                    } else {
+                        console.warn('[Measure] mapFeaturesManager not available; creating simple state toggle.');
+                        const next = btn.classList.contains('active') ? false : true;
+                        setActive(next);
+                    }
+                });
+                // ESC to turn off measuring
+                document.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Escape') {
+                        if (window.mapFeaturesManager?.isMeasuringActive?.() || window.mapFeaturesManager?.isMeasuring) {
+                            window.mapFeaturesManager?.stopMeasuring?.();
+                            setActive(false);
+                        }
+                    }
+                });
+            })();
+
+            // 2) Comments tool
+            (function(){
+                const btn = document.getElementById('commentsToolButton');
+                if(!btn) return;
+                btn.addEventListener('click', () => {
+                    if (window.commentsManager?.togglePanel) {
+                        window.commentsManager.togglePanel();
+                    } else if (window.eventBus?.emit) {
+                        window.eventBus.emit('comments:toggle');
+                    } else {
+                        alert('Comments feature not available yet.');
+                    }
+                });
+            })();
+
+            // 3) Site information expand/collapse
+            (function(){
+                const container = document.getElementById('siteInfoControl');
+                const toggleBtn = document.getElementById('siteInfoToggle');
+                if(!container || !toggleBtn) return;
+                function setExpanded(on){
+                    container.classList.toggle('expanded', on);
+                    container.setAttribute('aria-expanded', String(on));
+                    toggleBtn.setAttribute('aria-pressed', String(on));
+                }
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isOpen = container.classList.contains('expanded');
+                    setExpanded(!isOpen);
+                });
+                // Click outside closes it
+                document.addEventListener('click', (e) => {
+                    if (!container.classList.contains('expanded')) return;
+                    if (!container.contains(e.target)) setExpanded(false);
+                });
+                // ESC closes it
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') setExpanded(false);
+                });
+            })();
+
+            // === End fixes ===
 
             // Ensure siteData exists and process it
             if (typeof window.siteData === 'undefined' || !window.siteData) {
