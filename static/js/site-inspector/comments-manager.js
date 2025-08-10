@@ -121,7 +121,10 @@ class CommentsManager extends BaseManager {
         modal.innerHTML = `
             <div class="comment-modal-content">
                 <div class="comment-modal-header">
-                    <h3>Add Comment</h3>
+                    <div class="comment-header-content">
+                        <h3>💬 Add Comment</h3>
+                        <p>Add a note or observation to this location</p>
+                    </div>
                     <button class="comment-modal-close">×</button>
                 </div>
                 <div class="comment-modal-body">
@@ -137,7 +140,7 @@ class CommentsManager extends BaseManager {
                 </div>
                 <div class="comment-modal-footer">
                     <button class="comment-btn-cancel">Cancel</button>
-                    <button class="comment-btn-save">Save Comment</button>
+                    <button class="comment-btn-save">💾 Save Comment</button>
                 </div>
             </div>
         `;
@@ -149,28 +152,226 @@ class CommentsManager extends BaseManager {
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 10000;
+            animation: fadeIn 0.2s ease-out;
         `;
 
         const content = modal.querySelector('.comment-modal-content');
         content.style.cssText = `
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 0;
             width: 90%;
-            max-width: 400px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-width: 440px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            color: #ffffff;
+            overflow: hidden;
+            animation: slideIn 0.3s ease-out;
+        `;
+
+        // Add animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes slideIn {
+                from { transform: translateY(-20px) scale(0.95); opacity: 0; }
+                to { transform: translateY(0) scale(1); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Style header
+        const header = modal.querySelector('.comment-modal-header');
+        header.style.cssText = `
+            background: linear-gradient(135deg, #4a6cf7 0%, #3a5ae0 100%);
+            padding: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        `;
+
+        const headerContent = modal.querySelector('.comment-header-content');
+        headerContent.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        `;
+
+        const title = modal.querySelector('h3');
+        title.style.cssText = `
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffffff;
+            line-height: 1.2;
+        `;
+
+        const subtitle = modal.querySelector('p');
+        subtitle.style.cssText = `
+            margin: 0;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 400;
+        `;
+
+        const closeBtn = modal.querySelector('.comment-modal-close');
+        closeBtn.style.cssText = `
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #ffffff;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        `;
+
+        closeBtn.addEventListener('mouseenter', () => {
+            closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+        });
+
+        closeBtn.addEventListener('mouseleave', () => {
+            closeBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+        });
+
+        // Style body
+        const body = modal.querySelector('.comment-modal-body');
+        body.style.cssText = `
+            padding: 24px;
+            background: rgba(255, 255, 255, 0.02);
         `;
 
         const textarea = modal.querySelector('#commentText');
+        textarea.style.cssText = `
+            width: 100%;
+            min-height: 100px;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 14px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            line-height: 1.5;
+            resize: vertical;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        `;
+
+        textarea.style.setProperty('outline', 'none');
+
+        textarea.addEventListener('focus', () => {
+            textarea.style.borderColor = '#4a6cf7';
+            textarea.style.background = 'rgba(255, 255, 255, 0.08)';
+            textarea.style.boxShadow = '0 0 0 3px rgba(74, 108, 247, 0.15)';
+        });
+
+        textarea.addEventListener('blur', () => {
+            textarea.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+            textarea.style.background = 'rgba(255, 255, 255, 0.05)';
+            textarea.style.boxShadow = 'none';
+        });
+
+        const charCountContainer = modal.querySelector('.comment-character-count');
+        charCountContainer.style.cssText = `
+            text-align: right;
+            margin-top: 8px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+        `;
+
         const charCount = modal.querySelector('#commentCharCount');
         
         textarea.addEventListener('input', () => {
-            charCount.textContent = textarea.value.length;
+            const length = textarea.value.length;
+            charCount.textContent = length;
+            
+            if (length > 450) {
+                charCount.style.color = '#ff6b6b';
+            } else if (length > 400) {
+                charCount.style.color = '#ffd93d';
+            } else {
+                charCount.style.color = 'rgba(255, 255, 255, 0.6)';
+            }
+        });
+
+        // Style footer
+        const footer = modal.querySelector('.comment-modal-footer');
+        footer.style.cssText = `
+            padding: 20px 24px 24px 24px;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            background: rgba(0, 0, 0, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        `;
+
+        const cancelBtn = modal.querySelector('.comment-btn-cancel');
+        cancelBtn.style.cssText = `
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            min-width: 80px;
+        `;
+
+        cancelBtn.addEventListener('mouseenter', () => {
+            cancelBtn.style.background = 'rgba(255, 255, 255, 0.15)';
+            cancelBtn.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+        });
+
+        cancelBtn.addEventListener('mouseleave', () => {
+            cancelBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+            cancelBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+        });
+
+        const saveBtn = modal.querySelector('.comment-btn-save');
+        saveBtn.style.cssText = `
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #4a6cf7 0%, #3a5ae0 100%);
+            border: none;
+            color: #ffffff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(74, 108, 247, 0.3);
+            min-width: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        `;
+
+        saveBtn.addEventListener('mouseenter', () => {
+            saveBtn.style.transform = 'translateY(-1px)';
+            saveBtn.style.boxShadow = '0 4px 16px rgba(74, 108, 247, 0.4)';
+        });
+
+        saveBtn.addEventListener('mouseleave', () => {
+            saveBtn.style.transform = 'translateY(0)';
+            saveBtn.style.boxShadow = '0 2px 8px rgba(74, 108, 247, 0.3)';
         });
 
         // Event listeners
@@ -258,14 +459,59 @@ class CommentsManager extends BaseManager {
         })
         .setLngLat(comment.coordinates)
         .setHTML(`
-            <div class="comment-content">
-                <div class="comment-header">
-                    <span class="comment-user">${comment.user}</span>
-                    <span class="comment-time">${this.formatTimestamp(comment.timestamp)}</span>
+            <div class="comment-content" style="
+                background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 12px;
+                padding: 16px;
+                color: #ffffff;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+                backdrop-filter: blur(10px);
+                min-width: 250px;
+                max-width: 300px;
+            ">
+                <div class="comment-header" style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                    padding-bottom: 8px;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                ">
+                    <span class="comment-user" style="
+                        font-weight: 600;
+                        font-size: 13px;
+                        color: #4a6cf7;
+                    ">${comment.user}</span>
+                    <span class="comment-time" style="
+                        font-size: 11px;
+                        color: rgba(255, 255, 255, 0.6);
+                    ">${this.formatTimestamp(comment.timestamp)}</span>
                 </div>
-                <div class="comment-text">${comment.text}</div>
-                <div class="comment-actions">
-                    <button class="comment-delete-btn" onclick="window.siteInspectorCore?.commentsManager?.deleteComment('${comment.id}')">Delete</button>
+                <div class="comment-text" style="
+                    font-size: 14px;
+                    line-height: 1.5;
+                    color: #ffffff;
+                    margin-bottom: 12px;
+                    word-wrap: break-word;
+                ">${comment.text}</div>
+                <div class="comment-actions" style="
+                    display: flex;
+                    justify-content: flex-end;
+                ">
+                    <button class="comment-delete-btn" onclick="window.siteInspectorCore?.commentsManager?.deleteComment('${comment.id}')" style="
+                        background: rgba(255, 107, 107, 0.1);
+                        border: 1px solid rgba(255, 107, 107, 0.3);
+                        color: #ff6b6b;
+                        padding: 6px 12px;
+                        border-radius: 6px;
+                        font-size: 12px;
+                        cursor: pointer;
+                        transition: all 0.2s ease;
+                        font-weight: 500;
+                    " onmouseenter="this.style.background='rgba(255, 107, 107, 0.2)'; this.style.borderColor='rgba(255, 107, 107, 0.5)'" 
+                       onmouseleave="this.style.background='rgba(255, 107, 107, 0.1)'; this.style.borderColor='rgba(255, 107, 107, 0.3)'">🗑️ Delete</button>
                 </div>
             </div>
         `)
