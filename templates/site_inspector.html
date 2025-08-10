@@ -1052,10 +1052,19 @@
                 </div>
 
                 <div class="boundary-content" id="boundaryContent">
-                    <p style="font-size: 13px; color: #666; margin: 8px 0 20px 0;">Click two edges of your property to define front and back, then enter setback requirements.</p>
+                    <p style="font-size: 13px; color: #666; margin: 8px 0 20px 0;">Choose how to handle property setbacks for your site.</p>
+
+                    <!-- Setback Mode Selection -->
+                    <div class="setback-mode-selection" style="margin: 12px 0;" id="setbackModeSelection">
+                        <div style="margin-bottom: 8px; font-size: 12px; color: #666;">Choose setback approach:</div>
+                        <button id="createSetbacksButton" class="draw-button" style="width: 100%; margin-bottom: 8px;" type="button">Create Setbacks</button>
+                        <div style="text-align: center; margin: 8px 0; font-size: 12px; color: #999;">OR</div>
+                        <button id="noSetbacksButton" class="draw-button" style="width: 100%; margin-bottom: 8px; background: linear-gradient(135deg, #6c757d 0%, #545b62 100%);" type="button">No Setbacks</button>
+                    </div>
 
                     <!-- Edge Selection Mode -->
-                    <div class="edge-selection-mode" style="margin: 12px 0;">
+                    <div class="edge-selection-mode" style="margin: 12px 0; display: none;" id="edgeSelectionMode">
+                        <p style="font-size: 13px; color: #666; margin: 8px 0 20px 0;">Click two edges of your property to define front and back, then enter setback requirements.</p>
                         <button id="edgeSelectionButton" class="edge-selection-btn" type="button">Select Front & Back Edges</button>
                     </div>
 

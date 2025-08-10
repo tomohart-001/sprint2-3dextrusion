@@ -28,6 +28,7 @@ class PropertySetbacksManager extends BaseManager {
     this.edgeLabels = {};
     this.edgePopups = [];
     this.cachedPolygonEdges = null;
+    this.setbackMode = null; // 'create', 'skip', or null
 
     // listeners we need to remove cleanly
     this._edgeHoverHandlers = {}; // { [index]: { enter, leave } }
@@ -204,6 +205,13 @@ class PropertySetbacksManager extends BaseManager {
   }
 
   setupUIEventListeners() {
+    // Setback mode selection buttons
+    const createSetbacksBtn = document.getElementById('createSetbacksButton');
+    const noSetbacksBtn = document.getElementById('noSetbacksButton');
+    
+    createSetbacksBtn?.addEventListener('click', () => this.enableSetbackCreation());
+    noSetbacksBtn?.addEventListener('click', () => this.skipSetbacks());
+
     const edgeSelectionBtn = document.getElementById('edgeSelectionButton');
     edgeSelectionBtn?.addEventListener('click', () => this.toggleEdgeSelectionMode());
 
@@ -248,6 +256,25 @@ class PropertySetbacksManager extends BaseManager {
     const hasValidSelection = siteBoundaryCore?.boundarySelectionType &&
                             (siteBoundaryCore.hasSiteBoundary?.() || siteBoundaryCore.legalBoundaryApplied);
 
+    // Enable/disable setback mode selection buttons
+    const createSetbacksBtn = document.getElementById('createSetbacksButton');
+    const noSetbacksBtn = document.getElementById('noSetbacksButton');
+    
+    if (createSetbacksBtn && noSetbacksBtn) {
+        createSetbacksBtn.disabled = !hasValidSelection;
+        noSetbacksBtn.disabled = !hasValidSelection;
+        createSetbacksBtn.style.opacity = hasValidSelection ? '1' : '0.6';
+        noSetbacksBtn.style.opacity = hasValidSelection ? '1' : '0.6';
+        
+        if (!hasValidSelection) {
+            createSetbacksBtn.title = 'Please complete step 1: Select either a custom boundary or legal property boundary';
+            noSetbacksBtn.title = 'Please complete step 1: Select either a custom boundary or legal property boundary';
+        } else {
+            createSetbacksBtn.title = '';
+            noSetbacksBtn.title = '';
+        }
+    }
+
     const btn = document.getElementById('edgeSelectionButton');
     if (btn) {
         btn.disabled = !hasValidSelection;
@@ -262,11 +289,96 @@ class PropertySetbacksManager extends BaseManager {
   }
 
   disableSetbackTools() {
+    const createSetbacksBtn = document.getElementById('createSetbacksButton');
+    const noSetbacksBtn = document.getElementById('noSetbacksButton');
     const btn = document.getElementById('edgeSelectionButton');
+    
+    if (createSetbacksBtn) { createSetbacksBtn.disabled = true; createSetbacksBtn.style.opacity = '0.6'; }
+    if (noSetbacksBtn) { noSetbacksBtn.disabled = true; noSetbacksBtn.style.opacity = '0.6'; }
     if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+    
     this.exitEdgeSelectionMode();
     this.clearEdgeSelections();
     this.info('Setback tools disabled');
+  }
+
+  /* -----------------------------
+     Setback Mode Selection
+  ------------------------------ */
+  enableSetbackCreation() {
+    this.info('Enabling setback creation mode');
+    
+    // Hide mode selection, show edge selection
+    const modeSelection = document.getElementById('setbackModeSelection');
+    const edgeSelectionMode = document.getElementById('edgeSelectionMode');
+    
+    if (modeSelection) modeSelection.style.display = 'none';
+    if (edgeSelectionMode) edgeSelectionMode.style.display = 'block';
+    
+    // Update UI state
+    const checkmark = document.getElementById('setbacksAppliedCheck');
+    if (checkmark) checkmark.style.display = 'none';
+    
+    this.setbackMode = 'create';
+    this.info('Setback creation mode enabled');
+  }
+
+  skipSetbacks() {
+    this.info('Skipping setbacks - using full site boundary as buildable area');
+    
+    try {
+      const siteBoundaryCore = window.siteInspectorCore?.siteBoundaryCore;
+      if (!siteBoundaryCore?.hasSiteBoundary?.()) {
+        this.warn('No site boundary available to use as buildable area');
+        return;
+      }
+
+      // Get site boundary coordinates
+      const sitePolygon = siteBoundaryCore.getSitePolygon?.();
+      const coordinates = sitePolygon?.geometry?.coordinates?.[0];
+      
+      if (!coordinates?.length) {
+        this.error('No valid site boundary coordinates found');
+        return;
+      }
+
+      // Create buildable area from full site boundary
+      const area = siteBoundaryCore.calculatePolygonArea?.(coordinates) || 0;
+      const buildableAreaData = {
+        buildable_coords: coordinates.slice(), // Copy coordinates
+        buildable_area_m2: area,
+        site_area_m2: area,
+        coverage_ratio: 1.0, // 100% coverage since no setbacks
+        calculation_method: 'no_setbacks'
+      };
+
+      // Display the buildable area
+      this.displayBuildableArea(coordinates, false);
+      
+      // Update state
+      this.currentBuildableArea = buildableAreaData;
+      this.setbackMode = 'skip';
+      
+      // Hide mode selection and show completion
+      const modeSelection = document.getElementById('setbackModeSelection');
+      const edgeSelectionMode = document.getElementById('edgeSelectionMode');
+      const checkmark = document.getElementById('setbacksAppliedCheck');
+      
+      if (modeSelection) modeSelection.style.display = 'none';
+      if (edgeSelectionMode) edgeSelectionMode.style.display = 'none';
+      if (checkmark) checkmark.style.display = 'inline';
+      
+      // Show extrusion controls
+      this.showExtrusionControls();
+      
+      // Emit completion event
+      window.eventBus?.emit?.('setbacks-applied');
+      
+      this.info('Setbacks skipped successfully - full site boundary used as buildable area');
+      
+    } catch (error) {
+      this.error('Error skipping setbacks:', error);
+    }
   }
 
   /* -----------------------------
@@ -523,6 +635,18 @@ class PropertySetbacksManager extends BaseManager {
       // Clear all internal state
       this.clearEdgeSelections();
       this.clearBuildableAreaVisualization();
+      
+      // Reset setback mode
+      this.setbackMode = null;
+      
+      // Reset UI to initial state
+      const modeSelection = document.getElementById('setbackModeSelection');
+      const edgeSelectionMode = document.getElementById('edgeSelectionMode');
+      const checkmark = document.getElementById('setbacksAppliedCheck');
+      
+      if (modeSelection) modeSelection.style.display = 'block';
+      if (edgeSelectionMode) edgeSelectionMode.style.display = 'none';
+      if (checkmark) checkmark.style.display = 'none';
 
       // Clear related session storage
       try {
