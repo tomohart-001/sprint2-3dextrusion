@@ -144,9 +144,9 @@ class CommentsManager extends BaseManager {
                     </div>
                 </div>
                 <div class="comment-modal-footer">
-                    <button class="comment-btn-cancel">Cancel</button>
-                    <button class="comment-btn-save">Save Comment</button>
-                </div>
+                <button class="comment-btn-cancel">Cancel</button>
+                <button class="comment-btn-save">Save Comment</button>
+            </div>
             </div>
         `;
 
@@ -749,8 +749,11 @@ class CommentsManager extends BaseManager {
     }
 
     handleUIClick = (e) => {
-        if (this.isCommenting) {
-            this.info('UI element clicked, stopping comments tool');
+        // Only stop commenting if the event target is NOT within the comment modal itself.
+        // This allows interaction with the modal (like typing in the textarea or clicking buttons).
+        const commentModal = document.querySelector('.comment-modal');
+        if (this.isCommenting && commentModal && !commentModal.contains(e.target)) {
+            this.info('UI element clicked outside comment modal, stopping comments tool');
             this.stopCommenting();
         }
     }
