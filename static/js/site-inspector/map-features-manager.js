@@ -1209,40 +1209,39 @@ class MapFeaturesManager extends BaseManager {
     }
 
     showDimensions() {
-        // Show dimensions for user-drawn site boundary
-        if (this.map.getLayer('user-boundary-dimension-labels')) {
-            this.map.setLayoutProperty('user-boundary-dimension-labels', 'visibility', 'visible');
-        }
-
-        // Show dimensions for legal property boundary
-        if (this.map.getLayer('legal-property-dimension-labels')) {
-            this.map.setLayoutProperty('legal-property-dimension-labels', 'visibility', 'visible');
-        }
-
-        // Legacy support for older layer names
+        // Show dimensions for user-drawn site boundary (from SiteBoundaryCore)
         if (this.map.getLayer('boundary-dimension-labels')) {
             this.map.setLayoutProperty('boundary-dimension-labels', 'visibility', 'visible');
+            this.info('User-drawn site boundary dimensions shown');
         }
 
-        // Also handle other dimension layers that might be used for various features
-        const otherDimensionLayers = [
-            'site-dimensions', 'buildable-dimensions', 'setback-dimensions',
-            'structure-dimensions', 'footprint-dimensions', 'building-dimensions',
-            'floorplan-dimensions', 'measure-dimensions', 'polygon-dimensions'
-        ];
-        otherDimensionLayers.forEach(layerId => {
-            if (this.map.getLayer(layerId)) {
-                this.map.setLayoutProperty(layerId, 'visibility', 'visible');
-            }
-        });
+        // Show dimensions for legal property boundary (only when legal boundary is active)
+        const legalBoundaryApplied = sessionStorage.getItem('legal_boundary_applied') === 'true';
+        if (legalBoundaryApplied && this.map.getLayer('legal-property-dimension-labels')) {
+            this.map.setLayoutProperty('legal-property-dimension-labels', 'visibility', 'visible');
+            this.info('Legal property boundary dimensions shown');
+        }
 
-        this.info('Boundary dimensions shown');
+        // Show buildable area dimensions if available
+        if (this.map.getLayer('buildable-area-dimension-labels')) {
+            this.map.setLayoutProperty('buildable-area-dimension-labels', 'visibility', 'visible');
+            this.info('Buildable area dimensions shown');
+        }
+
+        // Show structure/floorplan dimensions if available
+        if (this.map.getLayer('structure-dimension-labels')) {
+            this.map.setLayoutProperty('structure-dimension-labels', 'visibility', 'visible');
+            this.info('Structure dimensions shown');
+        }
+
+        this.info('All available dimensions shown based on current state');
     }
 
     hideDimensions() {
-        // Hide dimensions for user-drawn site boundary
-        if (this.map.getLayer('user-boundary-dimension-labels')) {
-            this.map.setLayoutProperty('user-boundary-dimension-labels', 'visibility', 'none');
+        // Hide dimensions for user-drawn site boundary (from SiteBoundaryCore)
+        if (this.map.getLayer('boundary-dimension-labels')) {
+            this.map.setLayoutProperty('boundary-dimension-labels', 'visibility', 'none');
+            this.info('User-drawn site boundary dimensions hidden');
         }
 
         // Hide dimensions for legal property boundary
