@@ -2545,10 +2545,13 @@ body {
         }
 
 .panel-toggle-btn {
+            position: fixed;
+            top: calc(var(--chrome-h) + 20px);
+            right: 20px;
             width: 40px;
             height: 40px;
-            background: transparent;
-            border: none;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.08);
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -2558,11 +2561,17 @@ body {
             transition: all 0.3s ease;
             border-radius: 8px;
             flex-shrink: 0;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            z-index: 1001;
         }
 
         .panel-toggle-btn:hover {
-            background: rgba(0, 124, 191, 0.1);
+            background: rgba(255, 255, 255, 1);
+            border-color: #007cbf;
             color: #007cbf;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(0, 124, 191, 0.2);
         }
 
         .inspector-panel:not(.expanded) .panel-close {
@@ -2611,6 +2620,15 @@ body {
 
         .inspector-panel.expanded .panel-toggle-btn {
             display: none !important;
+        }
+
+        /* Position toggle button inline with other map controls when collapsed */
+        .inspector-panel:not(.expanded) .panel-toggle-btn {
+            display: flex !important;
+            position: fixed;
+            top: calc(var(--chrome-h) + 20px);
+            right: 20px;
+            z-index: 1001;
         }
 
 /* Search Control Styles */
